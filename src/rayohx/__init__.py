@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from rayohx.logs import (
         configure_logging,
     )
+    from rayohx.inspection import PlaylistFetcher, inspect_playlist
     from rayohx.models import (
         AudioTrack,
         DownloadProgress,
@@ -48,6 +49,8 @@ if TYPE_CHECKING:
         Variant,
         VideoTrack,
     )
+    from rayohx.playlist import is_hls_playlist, parse_playlist
+    from rayohx.selection import StreamSelection, select_stream
 
 _SUBMODULES = frozenset({"config", "errors", "events", "models"})
 _EXPORTS = {
@@ -66,6 +69,7 @@ _EXPORTS = {
     "OutputFormat": "rayohx.enums",
     "OutputInfo": "rayohx.models",
     "Playlist": "rayohx.models",
+    "PlaylistFetcher": "rayohx.inspection",
     "RemuxBackend": "rayohx.enums",
     "Resolution": "rayohx.models",
     "Segment": "rayohx.models",
@@ -73,10 +77,15 @@ _EXPORTS = {
     "SegmentState": "rayohx.enums",
     "StorageMetrics": "rayohx.models",
     "StorageStrategy": "rayohx.enums",
+    "StreamSelection": "rayohx.selection",
     "SubtitleTrack": "rayohx.models",
     "Variant": "rayohx.models",
     "VideoTrack": "rayohx.models",
     "configure_logging": "rayohx.logs",
+    "inspect_playlist": "rayohx.inspection",
+    "is_hls_playlist": "rayohx.playlist",
+    "parse_playlist": "rayohx.playlist",
+    "select_stream": "rayohx.selection",
 }
 
 
@@ -114,6 +123,7 @@ __all__ = [
     "OutputFormat",
     "OutputInfo",
     "Playlist",
+    "PlaylistFetcher",
     "RemuxBackend",
     "Resolution",
     "Segment",
@@ -121,9 +131,14 @@ __all__ = [
     "SegmentState",
     "StorageMetrics",
     "StorageStrategy",
+    "StreamSelection",
     "SubtitleTrack",
     "Variant",
     "VideoTrack",
     "__version__",
     "configure_logging",
+    "inspect_playlist",
+    "is_hls_playlist",
+    "parse_playlist",
+    "select_stream",
 ]
