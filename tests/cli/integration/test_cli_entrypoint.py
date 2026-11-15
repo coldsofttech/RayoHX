@@ -17,19 +17,9 @@ def test_module_entrypoint() -> None:
 
 
 def test_console_script() -> None:
-    script = Path(sys.executable).parent / (
-        "rayohx-cli.exe" if sys.platform == "win32" else "rayohx-cli"
-    )
+    script = Path(sys.executable).parent / ("rayohx.exe" if sys.platform == "win32" else "rayohx")
 
-    result = _run(str(script), "hello", "Ada")
+    result = _run(str(script), "--version")
 
     assert result.returncode == 0
-    assert "Hello, Ada!" in result.stdout
-
-
-def test_errors_go_to_stderr() -> None:
-    result = _run(sys.executable, "-m", "rayohx_cli", "hello", " ")
-
-    assert result.returncode == 1
-    assert "must not be empty" in result.stderr
-    assert result.stdout == ""
+    assert rayohx.__version__ in result.stdout

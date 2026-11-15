@@ -5,7 +5,7 @@ reaches a log line or a traceback. Each exception can carry a ``hint`` that tell
 try next.
 """
 
-from rayohx.redaction import redact_text, redact_url
+from rayohx._redaction import redact_text, redact_url
 
 
 def format_bytes(size: int) -> str:

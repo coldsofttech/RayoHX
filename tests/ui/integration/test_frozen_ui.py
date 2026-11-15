@@ -48,15 +48,12 @@ def address(tmp_path: Path) -> Iterator[str]:
                 process.kill()
 
 
-def test_serves_the_page_the_api_and_the_native_action(address: str) -> None:
+def test_serves_the_page_and_the_native_action(address: str) -> None:
     base = address.split("/?", 1)[0]
     with httpx.Client(follow_redirects=True) as client:
         page = client.get(address)
         assert page.status_code == 200
         assert '<div id="root">' in page.text
-
-        hello = client.get(f"{base}/api/v1/hello/Ada")
-        assert hello.json() == {"message": "Hello, Ada!"}
 
         info = client.post(f"{base}/api/bridge/app_info", json={}, headers={"Origin": base})
         assert info.json()["result"]["version"] == rayohx.__version__
@@ -65,4 +62,4 @@ def test_serves_the_page_the_api_and_the_native_action(address: str) -> None:
 def test_refuses_requests_without_the_session(address: str) -> None:
     base = address.split("/?", 1)[0]
 
-    assert httpx.get(f"{base}/api/v1/hello/Ada").status_code in (401, 403)
+    assert httpx.get(f"{base}/api/v1/ping").status_code in (401, 403)

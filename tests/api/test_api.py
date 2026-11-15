@@ -1,8 +1,12 @@
 import json
+from typing import Annotated
 
 import pytest
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
+from pydantic import BaseModel
 
+from rayohx_api.auth import Principal, authenticate
 from rayohx_api.config import get_settings
 from rayohx_api.main import create_app
 
@@ -19,62 +23,18 @@ def test_health_and_ready(client: TestClient) -> None:
     assert body["version"]
 
 
-def test_hello(client: TestClient) -> None:
-    response = client.get("/api/v1/hello/Ada")
-
-    assert response.status_code == 200
-    assert response.json() == {"message": "Hello, Ada!"}
+class Item(BaseModel):
+    name: str
 
 
-def test_hello_blank_name_is_a_problem(client: TestClient) -> None:
-    response = client.get("/api/v1/hello/%20")
+def test_invalid_body_lists_errors() -> None:
+    app = create_app()
 
-    assert response.status_code == 422
-    assert response.headers["content-type"].startswith("application/problem+json")
-    assert response.json()["detail"] == "name must not be empty"
+    @app.post("/items")
+    def create_item(body: Item) -> Item:
+        return body
 
-
-def test_greeting_lifecycle(client: TestClient) -> None:
-    created = client.post("/api/v1/greetings", json={"name": "Ada"})
-    assert created.status_code == 201
-    assert created.json() == {"id": 1, "name": "Ada", "message": "Hello, Ada!"}
-
-    assert client.get("/api/v1/greetings").json() == [created.json()]
-    assert client.get("/api/v1/greetings/1").json() == created.json()
-
-    replaced = client.put("/api/v1/greetings/1", json={"name": "Grace"})
-    assert replaced.json()["message"] == "Hello, Grace!"
-
-    unchanged = client.patch("/api/v1/greetings/1", json={})
-    assert unchanged.json()["name"] == "Grace"
-    patched = client.patch("/api/v1/greetings/1", json={"name": "Linus"})
-    assert patched.json()["name"] == "Linus"
-
-    assert client.delete("/api/v1/greetings/1").status_code == 204
-    assert client.get("/api/v1/greetings").json() == []
-
-
-def test_missing_greeting_is_404(client: TestClient) -> None:
-    for response in (
-        client.get("/api/v1/greetings/5"),
-        client.put("/api/v1/greetings/5", json={"name": "Ada"}),
-        client.patch("/api/v1/greetings/5", json={"name": "Ada"}),
-        client.delete("/api/v1/greetings/5"),
-    ):
-        assert response.status_code == 404
-        assert response.json()["title"] == "Not Found"
-
-
-def test_blank_names_are_rejected(client: TestClient) -> None:
-    client.post("/api/v1/greetings", json={"name": "Ada"})
-
-    assert client.post("/api/v1/greetings", json={"name": " "}).status_code == 422
-    assert client.put("/api/v1/greetings/1", json={"name": " "}).status_code == 422
-    assert client.patch("/api/v1/greetings/1", json={"name": " "}).status_code == 422
-
-
-def test_invalid_body_lists_errors(client: TestClient) -> None:
-    response = client.post("/api/v1/greetings", json={})
+    response = TestClient(app).post("/items", json={})
 
     assert response.status_code == 422
     assert response.json()["errors"]
@@ -86,9 +46,22 @@ def test_request_id_is_reused_or_created(client: TestClient) -> None:
 
 
 def test_security_headers(client: TestClient) -> None:
-    response = client.get("/api/v1/hello/Ada")
+    response = client.get("/health")
 
     assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert "Cache-Control" not in response.headers
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
+
+
+def test_api_responses_are_not_cached() -> None:
+    app = create_app()
+
+    @app.get("/api/ping")
+    def ping() -> dict[str, bool]:
+        return {"ok": True}
+
+    response = TestClient(app).get("/api/ping")
+
     assert response.headers["Cache-Control"] == "no-store"
     assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
 
@@ -119,7 +92,13 @@ def test_oversized_body_is_413(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAYOHX_API_MAX_BODY_BYTES", "10")
     get_settings.cache_clear()
 
-    response = TestClient(create_app()).post("/api/v1/greetings", json={"name": "A" * 50})
+    app = create_app()
+
+    @app.post("/items")
+    def create_item(body: Item) -> Item:
+        return body
+
+    response = TestClient(app).post("/items", json={"name": "A" * 50})
 
     assert response.status_code == 413
 
@@ -149,6 +128,16 @@ def test_cors_allows_configured_origin(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.headers["access-control-allow-origin"] == "https://app.example.com"
 
 
+def _app_with_whoami(*, embedded: bool = False) -> FastAPI:
+    app = create_app(embedded=embedded)
+
+    @app.get("/whoami")
+    def whoami(principal: Annotated[Principal, Depends(authenticate)]) -> dict[str, str]:
+        return {"subject": principal.subject, "method": principal.method}
+
+    return app
+
+
 class TestAuth:
     @pytest.fixture(autouse=True)
     def _api_key_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -157,11 +146,11 @@ class TestAuth:
         get_settings.cache_clear()
 
     def test_whoami_needs_a_valid_key(self) -> None:
-        client = TestClient(create_app())
+        client = TestClient(_app_with_whoami())
 
-        missing = client.get("/api/v1/whoami")
-        wrong = client.get("/api/v1/whoami", headers={"X-API-Key": "nope"})
-        valid = client.get("/api/v1/whoami", headers={"X-API-Key": "s3cret"})
+        missing = client.get("/whoami")
+        wrong = client.get("/whoami", headers={"X-API-Key": "nope"})
+        valid = client.get("/whoami", headers={"X-API-Key": "s3cret"})
 
         assert missing.status_code == wrong.status_code == 401
         assert missing.headers["WWW-Authenticate"] == "ApiKey"
@@ -180,7 +169,7 @@ class TestAuth:
         monkeypatch.delenv("RAYOHX_API_API_KEYS")
         get_settings.cache_clear()
 
-        response = TestClient(create_app(embedded=True)).get("/api/v1/whoami")
+        response = TestClient(_app_with_whoami(embedded=True)).get("/whoami")
 
         assert response.json() == {"subject": "cornea-session", "method": "cornea"}
 
@@ -188,6 +177,6 @@ class TestAuth:
         monkeypatch.setenv("RAYOHX_API_AUTH_MODE", "none")
         get_settings.cache_clear()
 
-        response = TestClient(create_app()).get("/api/v1/whoami")
+        response = TestClient(_app_with_whoami()).get("/whoami")
 
         assert response.json() == {"subject": "anonymous", "method": "none"}

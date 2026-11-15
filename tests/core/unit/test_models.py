@@ -5,7 +5,6 @@ import pytest
 
 from rayohx import (
     AudioTrack,
-    ConfigurationError,
     ContainerFormat,
     DownloadProgress,
     DownloadRequest,
@@ -13,7 +12,6 @@ from rayohx import (
     DownloadState,
     EncryptionInfo,
     EncryptionMethod,
-    InvalidPlaylistError,
     MasterPlaylist,
     MediaPlaylist,
     OutputInfo,
@@ -23,6 +21,7 @@ from rayohx import (
     SubtitleTrack,
     Variant,
 )
+from rayohx.errors import ConfigurationError, InvalidPlaylistError
 
 
 def test_resolution_parse_and_compare() -> None:

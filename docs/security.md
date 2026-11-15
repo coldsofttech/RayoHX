@@ -26,7 +26,7 @@ When run alone (`python -m rayohx_api`), Cornea is absent, so the API protects i
 
 ## Download engine
 
-- **Redaction:** URLs (user info and values of keys such as `token`, `sig`, `key`), `Authorization`, `Cookie` and proxy credentials are hidden in log records and error messages by `rayohx.redaction`. Every exception message and every handler added by `configure_logging` goes through it, including formatted tracebacks.
+- **Redaction:** URLs (user info and values of keys such as `token`, `sig`, `key`), `Authorization`, `Cookie` and proxy credentials are hidden in log records and error messages by `rayohx._redaction`. Every exception message and every handler added by `configure_logging` goes through it, including formatted tracebacks.
 - **Settings:** `repr` and `as_dict()` of the settings leave out header values, cookie values and proxy passwords. Resume state must be built from `as_dict()`, never from the raw objects.
 - **Input checks:** download addresses must be absolute `http` or `https` URLs without control characters. Header names must be valid tokens, and header and cookie values cannot hold line breaks, which stops header injection. Proxies must be `http` or `https`.
 - **Files:** an existing output file is never replaced unless `overwrite` is on.

@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.scripts]
-rayohx-cli = "rayohx_cli.cli:run"
+rayohx = "rayohx_cli.cli:run"
 
 [project.urls]
 Homepage = "https://github.com/coldsofttech/RayoHX"
@@ -75,7 +75,7 @@ installer = [
 # it has no script: ui is its executable name and ui-target the function it runs. api is the API
 # package.
 [tool.installer]
-cli = "rayohx-cli"
+cli = "rayohx"
 ui = "rayohx-ui"
 ui-target = "rayohx_ui.__main__:main"
 api = "rayohx_api"

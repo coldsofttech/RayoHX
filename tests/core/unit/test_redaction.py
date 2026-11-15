@@ -1,6 +1,6 @@
 import pytest
 
-from rayohx.redaction import REDACTED, redact_headers, redact_text, redact_url
+from rayohx._redaction import REDACTED, redact_headers, redact_text, redact_url
 
 
 @pytest.mark.parametrize(

@@ -12,28 +12,3 @@ class HealthResponse(BaseModel):
 class ReadyResponse(BaseModel):
     status: Literal["ready"] = "ready"
     version: str = Field(description="Version of the running service.")
-
-
-class HelloResponse(BaseModel):
-    message: str = Field(examples=["Hello, Ada!"])
-
-
-class WhoAmIResponse(BaseModel):
-    subject: str = Field(description="Identity of the caller.")
-    method: str = Field(description="How the caller was authenticated.")
-
-
-class GreetingCreate(BaseModel):
-    name: str = Field(max_length=100, examples=["Ada"])
-
-
-class GreetingUpdate(BaseModel):
-    """Fields left out are not changed."""
-
-    name: str | None = Field(default=None, max_length=100, examples=["Grace"])
-
-
-class GreetingResponse(BaseModel):
-    id: int
-    name: str
-    message: str = Field(examples=["Hello, Ada!"])

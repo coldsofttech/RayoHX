@@ -46,7 +46,7 @@ A ready-to-use starting point for public Python tools that come with a command l
 
 ## Installation
 
-The Python package gives you the command line (`rayohx-cli`). Requires Python 3.11 or newer. The recommended way to install a tool is in its own isolated environment:
+The Python package gives you the command line (`rayohx`). Requires Python 3.11 or newer. The recommended way to install a tool is in its own isolated environment:
 
 ```bash
 uv tool install RayoHX
@@ -71,8 +71,8 @@ The window needs Windows 10 or 11 with the Microsoft Edge WebView2 runtime, whic
 ## Usage
 
 ```console
-$ rayohx-cli hello Ada
-Hello, Ada!
+$ rayohx --version
+rayohx 0.1.0
 $ rayohx-ui
 ```
 

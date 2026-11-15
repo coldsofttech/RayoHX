@@ -41,7 +41,7 @@ Modules are added phase by phase under `src/rayohx/`. The first group exists; th
 | `config` | `DownloadConfig`, `NetworkConfig`, `ProxyConfig`, `OutputConfig`, `StorageConfig`, `SelectionConfig` |
 | `errors` | The `RayoHXError` hierarchy |
 | `events` | The download state machine and the `EventBus` |
-| `redaction` | Hides secrets in URLs, headers and text |
+| `_redaction` (internal) | Hides secrets in URLs, headers and text |
 | `logs` | Standard `logging` setup with a redaction filter |
 
 Still to come: `playlist`, `selection`, `http`, `storage`, `scheduler`, `crypto`, `output`.
@@ -54,8 +54,6 @@ Still to come: `playlist`, `selection`, `http`, `storage`, `scheduler`, `crypto`
 - **Explicit states.** `DownloadStateMachine` allows only the moves in `TRANSITIONS`, safely across threads. `COMPLETED`, `FAILED` and `CANCELLED` are final. A cancelled download ends as `CANCELLED`, not as a failure.
 - **Errors say what to do.** Every `RayoHXError` has a redacted `message` and an optional `hint`. `describe()` joins them.
 - **Logging.** Loggers live under `rayohx` and the library stays silent until an application calls `configure_logging`. Logs go to stderr, never stdout, and every record is redacted and tagged with the download id.
-
-The greeting example (`core.py`, `greetings.py`) is temporary. It stays only until the API and window are moved onto the engine, then it is deleted.
 
 ## Output without FFmpeg
 

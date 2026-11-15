@@ -3,13 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from rayohx.logs import (
-    ROOT_LOGGER_NAME,
-    RedactionFilter,
-    configure_logging,
-    get_logger,
-    set_download_id,
-)
+from rayohx._logs import ROOT_LOGGER_NAME, RedactionFilter, get_logger, set_download_id
+from rayohx.logs import configure_logging
 
 
 @pytest.fixture(autouse=True)

@@ -2,14 +2,15 @@
 
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import cornea
 import pytest
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from rayohx import __version__
+from rayohx_api.auth import Principal, authenticate
 from rayohx_ui import app as ui_app
 
 
@@ -120,19 +121,27 @@ def test_native_action_is_registered(shell_on_windows: type[FakeShell]) -> None:
 
 
 def test_api_router_is_mounted_under_cornea_prefix() -> None:
+    router = ui_app.api_router()
+    router.add_api_route("/ping", lambda: {"ok": True})
     app = FastAPI()
-    app.include_router(ui_app.api_router(), prefix="/api")
+    app.include_router(router, prefix="/api")
 
-    response = TestClient(app).get("/api/v1/hello/Ada")
+    response = TestClient(app).get("/api/v1/ping")
 
-    assert response.json() == {"message": "Hello, Ada!"}
+    assert response.json() == {"ok": True}
 
 
 def test_api_router_leaves_authentication_to_cornea(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAYOHX_API_AUTH_MODE", "api_key")
     monkeypatch.setenv("RAYOHX_API_API_KEYS", '["s3cret"]')
+    router = ui_app.api_router()
+
+    def whoami(principal: Annotated[Principal, Depends(authenticate)]) -> dict[str, str]:
+        return {"method": principal.method}
+
+    router.add_api_route("/whoami", whoami)
     app = FastAPI()
-    app.include_router(ui_app.api_router(), prefix="/api")
+    app.include_router(router, prefix="/api")
 
     response = TestClient(app).get("/api/v1/whoami")
 

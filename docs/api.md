@@ -31,12 +31,8 @@ Read from `RAYOHX_API_*` environment variables or a `.env` file. List values are
 | Method and path | Purpose |
 | --- | --- |
 | `GET /health`, `GET /ready` | Liveness and readiness probes, no authentication |
-| `GET /api/v1/hello/{name}` | Greet someone without storing it |
-| `GET /api/v1/whoami` | Show the caller; needs an API key when authentication is on |
-| `GET`, `POST /api/v1/greetings` | List greetings, create one |
-| `GET`, `PUT`, `PATCH`, `DELETE /api/v1/greetings/{id}` | Read, replace, update, delete one |
 
-The greetings are kept in memory and stand in for your own storage. Errors use the problem-details format (`application/problem+json`).
+There are no `/api/v1` routes yet. Errors use the problem-details format (`application/problem+json`).
 
 ## The contract
 

@@ -1,22 +1,21 @@
-"""The download state machine and the event bus.
+"""The download state machine and the event that describes what happened."""
 
-The engine never prints. It reports what happens through typed events, and every front end (command
-line, API, desktop window) subscribes to the same stream.
-"""
+from __future__ import annotations
 
-import logging
-import threading
 import time
-from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any
+from typing import TYPE_CHECKING
 
-from rayohx.enums import DownloadState, EventType
+from rayohx.enums import DownloadState
 from rayohx.errors import InvalidStateTransitionError
-from rayohx.models import DownloadProgress
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from typing import Any
+
+    from rayohx.enums import EventType
+    from rayohx.models.download_progress import DownloadProgress
 
 _S = DownloadState
 
@@ -40,6 +39,8 @@ class DownloadStateMachine:
     """Holds the state of one download and allows only valid moves. Safe across threads."""
 
     def __init__(self, state: DownloadState = DownloadState.QUEUED) -> None:
+        import threading
+
         self._state = state
         self._lock = threading.Lock()
 
@@ -84,36 +85,3 @@ class DownloadEvent:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "data", MappingProxyType(dict(self.data)))
-
-
-EventListener = Callable[[DownloadEvent], None]
-
-
-class EventBus:
-    """Delivers events to listeners. A listener that raises never stops the download."""
-
-    def __init__(self) -> None:
-        self._listeners: list[EventListener] = []
-        self._lock = threading.Lock()
-
-    def subscribe(self, listener: EventListener) -> Callable[[], None]:
-        """Add ``listener`` and return a function that removes it again."""
-        with self._lock:
-            self._listeners.append(listener)
-
-        def unsubscribe() -> None:
-            with self._lock:
-                if listener in self._listeners:
-                    self._listeners.remove(listener)
-
-        return unsubscribe
-
-    def emit(self, event: DownloadEvent) -> None:
-        """Deliver ``event`` to every listener, in the order they subscribed."""
-        with self._lock:
-            listeners = tuple(self._listeners)
-        for listener in listeners:
-            try:
-                listener(event)
-            except Exception:
-                logger.exception("An event listener failed on %s", event.type.value)

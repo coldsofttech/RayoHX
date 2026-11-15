@@ -12,4 +12,5 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - The library is now imported as `rayohx`.
+- The command line tool is now run as `rayohx` (it was `rayohx-cli`), and its options read `RAYOHX_VERBOSE`, `RAYOHX_QUIET` and `RAYOHX_NO_COLOR`.
 - A license check in CI blocks GPL and AGPL dependencies.

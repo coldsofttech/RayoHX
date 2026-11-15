@@ -1,4 +1,4 @@
-"""Start the server with ``python -m rayohx_api`` (``rayohx-cli api`` does the same)."""
+"""Start the server with ``python -m rayohx_api`` (``rayohx api`` does the same)."""
 
 import uvicorn
 
