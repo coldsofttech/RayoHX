@@ -1,8 +1,9 @@
 import pytest
 
-from rayohx import ConfigurationError, InvalidPlaylistError, MasterPlaylist, MediaPlaylist
-from rayohx.inspection import inspect_playlist
-from tests.core.hls import fixture_text
+from rayohx import MasterPlaylist, MediaPlaylist
+from rayohx.errors import ConfigurationError, InvalidPlaylistError
+from rayohx.playlist.inspection import inspect_playlist
+from tests.helpers.hls import fixture_text
 
 
 class FakeFetcher:

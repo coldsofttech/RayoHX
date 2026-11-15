@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from rayohx.logs import (
         configure_logging,
     )
-    from rayohx.inspection import PlaylistFetcher, inspect_playlist
     from rayohx.models import (
         AudioTrack,
         DownloadProgress,
@@ -49,10 +48,15 @@ if TYPE_CHECKING:
         Variant,
         VideoTrack,
     )
-    from rayohx.playlist import is_hls_playlist, parse_playlist
-    from rayohx.selection import StreamSelection, select_stream
+    from rayohx.playlist import (
+        PlaylistFetcher,
+        inspect_playlist,
+        is_hls_playlist,
+        parse_playlist,
+    )
+    from rayohx.stream import StreamSelection, select_stream
 
-_SUBMODULES = frozenset({"config", "errors", "events", "models"})
+_SUBMODULES = frozenset({"config", "errors", "events", "models", "playlist", "stream"})
 _EXPORTS = {
     "AudioTrack": "rayohx.models",
     "ContainerFormat": "rayohx.enums",
@@ -69,7 +73,7 @@ _EXPORTS = {
     "OutputFormat": "rayohx.enums",
     "OutputInfo": "rayohx.models",
     "Playlist": "rayohx.models",
-    "PlaylistFetcher": "rayohx.inspection",
+    "PlaylistFetcher": "rayohx.playlist",
     "RemuxBackend": "rayohx.enums",
     "Resolution": "rayohx.models",
     "Segment": "rayohx.models",
@@ -77,15 +81,15 @@ _EXPORTS = {
     "SegmentState": "rayohx.enums",
     "StorageMetrics": "rayohx.models",
     "StorageStrategy": "rayohx.enums",
-    "StreamSelection": "rayohx.selection",
+    "StreamSelection": "rayohx.stream",
     "SubtitleTrack": "rayohx.models",
     "Variant": "rayohx.models",
     "VideoTrack": "rayohx.models",
     "configure_logging": "rayohx.logs",
-    "inspect_playlist": "rayohx.inspection",
+    "inspect_playlist": "rayohx.playlist",
     "is_hls_playlist": "rayohx.playlist",
     "parse_playlist": "rayohx.playlist",
-    "select_stream": "rayohx.selection",
+    "select_stream": "rayohx.stream",
 }
 
 

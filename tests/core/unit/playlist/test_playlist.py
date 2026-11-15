@@ -5,15 +5,16 @@ import pytest
 from rayohx import (
     ContainerFormat,
     EncryptionMethod,
-    InvalidPlaylistError,
     MasterPlaylist,
     MediaPlaylist,
     Resolution,
     SegmentRange,
-    UnsupportedPlaylistError,
 )
-from rayohx.playlist import is_hls_playlist, parse_attribute_list, parse_playlist
-from tests.core.hls import BASE, fixture_text
+from rayohx.errors import InvalidPlaylistError, UnsupportedPlaylistError
+from rayohx.playlist.attributes import parse_attribute_list
+from rayohx.playlist.detect import is_hls_playlist
+from rayohx.playlist.parser import parse_playlist
+from tests.helpers.hls import BASE, fixture_text
 
 DIR = "https://media.example.com/vod/title/"
 

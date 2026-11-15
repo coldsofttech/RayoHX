@@ -1,11 +1,11 @@
 """Looking at a stream before downloading it."""
 
-from typing import Protocol
+from __future__ import annotations
 
-from rayohx.config import validate_url
-from rayohx.errors import InvalidPlaylistError
-from rayohx.models import Playlist
-from rayohx.playlist import is_hls_playlist, parse_playlist
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from rayohx.models import Playlist
 
 
 class PlaylistFetcher(Protocol):
@@ -23,6 +23,11 @@ def inspect_playlist(url: str, fetcher: PlaylistFetcher) -> Playlist:
         ConfigurationError: If ``url`` is not an http(s) address.
         InvalidPlaylistError: If what comes back is not an HLS playlist.
     """
+    from rayohx.config import validate_url
+    from rayohx.errors import InvalidPlaylistError
+    from rayohx.playlist.detect import is_hls_playlist
+    from rayohx.playlist.parser import parse_playlist
+
     text, final_url = fetcher.fetch_text(validate_url(url))
     if not is_hls_playlist(text):
         raise InvalidPlaylistError(
