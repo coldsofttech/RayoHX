@@ -10,7 +10,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-import rayo_package
+import rayohx
 from tests.frozen import locate, skip_if_blocked
 
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="the UI is built on Windows only")
@@ -20,8 +20,8 @@ STARTUP_SECONDS = 30
 
 @pytest.fixture
 def address(tmp_path: Path) -> Iterator[str]:
-    """Start ``rayo-ui --no-window`` and return its first URL; stop it afterwards."""
-    exe = locate("rayo-ui", "rayo-ui")
+    """Start ``rayohx-ui --no-window`` and return its first URL; stop it afterwards."""
+    exe = locate("rayohx-ui", "rayohx-ui")
     out = tmp_path / "out.txt"
     with out.open("w", encoding="utf-8") as stdout:
         try:
@@ -37,9 +37,9 @@ def address(tmp_path: Path) -> Iterator[str]:
                     yield str(json.loads(lines[0])["url"])
                     return
                 if process.poll() is not None:
-                    pytest.fail(f"rayo-ui exited early: {out.read_text(encoding='utf-8')}")
+                    pytest.fail(f"rayohx-ui exited early: {out.read_text(encoding='utf-8')}")
                 time.sleep(0.2)
-            pytest.fail("rayo-ui did not report an address in time")
+            pytest.fail("rayohx-ui did not report an address in time")
         finally:
             process.terminate()
             try:
@@ -48,21 +48,18 @@ def address(tmp_path: Path) -> Iterator[str]:
                 process.kill()
 
 
-def test_serves_the_page_the_api_and_the_native_action(address: str) -> None:
+def test_serves_the_page_and_the_native_action(address: str) -> None:
     base = address.split("/?", 1)[0]
     with httpx.Client(follow_redirects=True) as client:
         page = client.get(address)
         assert page.status_code == 200
         assert '<div id="root">' in page.text
 
-        hello = client.get(f"{base}/api/v1/hello/Ada")
-        assert hello.json() == {"message": "Hello, Ada!"}
-
         info = client.post(f"{base}/api/bridge/app_info", json={}, headers={"Origin": base})
-        assert info.json()["result"]["version"] == rayo_package.__version__
+        assert info.json()["result"]["version"] == rayohx.__version__
 
 
 def test_refuses_requests_without_the_session(address: str) -> None:
     base = address.split("/?", 1)[0]
 
-    assert httpx.get(f"{base}/api/v1/hello/Ada").status_code in (401, 403)
+    assert httpx.get(f"{base}/api/v1/ping").status_code in (401, 403)

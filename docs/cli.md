@@ -1,26 +1,26 @@
 # CLI reference
 
-`rayo-cli` is a command line tool built with [Typer](https://typer.tiangolo.com/) and [Rich](https://rich.readthedocs.io/). Rename the command and replace the example commands below with your own.
+`rayohx` is a command line tool built with [Typer](https://typer.tiangolo.com/) and [Rich](https://rich.readthedocs.io/). Rename the command and replace the example commands below with your own.
 
 ## Running
 
 ```bash
-rayo-cli --help          # installed script
-python -m rayo_cli       # without relying on the script being on PATH
-uvx --from Rayo rayo-cli --help   # one-off, no install
+rayohx --help          # installed script
+python -m rayohx_cli       # without relying on the script being on PATH
+uvx --from RayoHX rayohx --help   # one-off, no install
 ```
 
 ## Global options
 
-These go before the command name, for example `rayo-cli --quiet hello`.
+These go before the command name, for example `rayohx --quiet`.
 
 | Option | Short | Environment variable | Description |
 | --- | --- | --- | --- |
 | `--help` | | | Show help for the tool or for a command. |
 | `--version` | `-V` | | Show the version and exit. |
-| `--verbose` | `-v` | `RAYO_CLI_VERBOSE` | Show extra detail on stderr, and a traceback for unexpected errors. |
-| `--quiet` | `-q` | `RAYO_CLI_QUIET` | Only show errors. Cannot be combined with `--verbose`. |
-| `--no-color` | | `RAYO_CLI_NO_COLOR` | Disable colored output. The standard `NO_COLOR` variable has the same effect. |
+| `--verbose` | `-v` | `RAYOHX_VERBOSE` | Show extra detail on stderr, and a traceback for unexpected errors. |
+| `--quiet` | `-q` | `RAYOHX_QUIET` | Only show errors. Cannot be combined with `--verbose`. |
+| `--no-color` | | `RAYOHX_NO_COLOR` | Disable colored output. The standard `NO_COLOR` variable has the same effect. |
 | `--install-completion` | | | Install shell completion for the current shell. |
 | `--show-completion` | | | Print the completion script instead of installing it. |
 
@@ -29,25 +29,14 @@ Boolean environment variables accept `1`, `true` and `yes`. A flag on the comman
 The full, generated list of commands and options is in [cli-reference.md](cli-reference.md). Regenerate it after changing a command:
 
 ```bash
-uv run typer rayo_cli.cli utils docs --name rayo-cli --output docs/cli-reference.md
+uv run typer rayohx_cli.cli utils docs --name rayohx --output docs/cli-reference.md
 ```
 
 CI fails if the file is out of date.
 
 ## Commands
 
-### `hello [NAME]`
-
-Print a greeting. `NAME` defaults to `world`. Add `--json` for machine-readable output.
-
-```console
-$ rayo-cli hello Ada
-Hello, Ada!
-```
-
-### `info`
-
-Show the tool version, the Python version and the platform in a table. Add `--json` for machine-readable output.
+There are no commands yet.
 
 ## Output conventions
 
@@ -61,7 +50,7 @@ Show the tool version, the Python version and the platform in a table. Add `--js
 | Code | Meaning |
 | --- | --- |
 | `0` | Success. |
-| `1` | The command failed, for example an empty name given to `hello`, or an unexpected error. |
+| `1` | The command failed, or there was an unexpected error. |
 | `2` | Invalid usage, such as an unknown option or conflicting options. |
 
 ## Errors
@@ -70,7 +59,7 @@ Expected failures print `Error: <message>` to stderr and exit with code 1. Unexp
 
 ## Adding a command
 
-1. Add the logic to `rayo_package` as a plain function that returns a value or raises an exception. It must not print or exit.
-2. Add a command to `src/rayo_cli/cli.py` that calls it, writes through the consoles in `output.py`, and raises `typer.Exit(code=1)` on failure.
+1. Add the logic to `rayohx` as a plain function that returns a value or raises an exception. It must not print or exit.
+2. Add a command to `src/rayohx_cli/cli.py` that calls it, writes through the consoles in `output.py`, and raises `typer.Exit(code=1)` on failure.
 3. Add a `--json` option if the command returns data.
 4. Add tests with `typer.testing.CliRunner`, document the command in this file, and regenerate `cli-reference.md`.

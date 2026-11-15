@@ -2,8 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from rayo_api.config import get_settings
-from rayo_api.routers.v1 import get_store
+from rayohx_api.config import get_settings
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -15,11 +14,9 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 @pytest.fixture(autouse=True)
 def _fresh_state(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Give every test new settings and an empty greeting store, with no API key needed."""
-    monkeypatch.setenv("RAYO_API_AUTH_MODE", "none")
-    monkeypatch.delenv("RAYO_API_API_KEYS", raising=False)
+    """Give every test new settings, with no API key needed."""
+    monkeypatch.setenv("RAYOHX_API_AUTH_MODE", "none")
+    monkeypatch.delenv("RAYOHX_API_API_KEYS", raising=False)
     get_settings.cache_clear()
-    get_store.cache_clear()
     yield
     get_settings.cache_clear()
-    get_store.cache_clear()

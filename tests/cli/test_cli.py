@@ -1,16 +1,16 @@
-import json
 import re
 import sys
 
 import pytest
 from typer.testing import CliRunner
 
-import rayo_package
-from rayo_cli.cli import app, run
+import rayohx
+from rayohx_cli import output
+from rayohx_cli.cli import app, run
 
 runner = CliRunner()
 
-ANSI = re.compile(r"\x1b\[[0-9;]*m")
+ANSI = re.compile(chr(27) + re.escape("[") + "[0-9;]*m")
 
 
 def plain(text: str) -> str:
@@ -18,11 +18,11 @@ def plain(text: str) -> str:
     return ANSI.sub("", text)
 
 
-def test_help_lists_commands_and_options() -> None:
+def test_help_lists_options() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for text in ("hello", "info", "--version", "--verbose", "--quiet", "--no-color"):
+    for text in ("--version", "--verbose", "--quiet", "--no-color"):
         assert text in plain(result.output)
 
 
@@ -30,94 +30,25 @@ def test_version() -> None:
     result = runner.invoke(app, ["--version"])
 
     assert result.exit_code == 0
-    assert rayo_package.__version__ in result.output
-
-
-def test_hello_default_name() -> None:
-    result = runner.invoke(app, ["hello"])
-
-    assert result.exit_code == 0
-    assert "Hello, world!" in result.output
-
-
-def test_hello_with_name() -> None:
-    result = runner.invoke(app, ["hello", "Ada"])
-
-    assert result.exit_code == 0
-    assert "Hello, Ada!" in result.output
-
-
-def test_hello_quiet_suppresses_output() -> None:
-    result = runner.invoke(app, ["--quiet", "hello", "Ada"])
-
-    assert result.exit_code == 0
-    assert "Hello" not in result.output
-
-
-def test_hello_verbose_adds_detail() -> None:
-    result = runner.invoke(app, ["--verbose", "hello", "Ada"])
-
-    assert result.exit_code == 0
-    assert "Greeting 'Ada'" in result.output
-
-
-def test_hello_empty_name_fails() -> None:
-    result = runner.invoke(app, ["hello", " "])
-
-    assert result.exit_code == 1
-    assert "must not be empty" in result.output
+    assert rayohx.__version__ in result.output
 
 
 def test_verbose_and_quiet_conflict() -> None:
-    result = runner.invoke(app, ["--verbose", "--quiet", "hello"])
+    result = runner.invoke(app, ["--verbose", "--quiet"])
 
     assert result.exit_code == 2
 
 
-def test_info_shows_version() -> None:
-    result = runner.invoke(app, ["info"])
-
-    assert result.exit_code == 0
-    assert rayo_package.__version__ in result.output
-
-
-def test_no_color_flag_is_accepted() -> None:
-    result = runner.invoke(app, ["--no-color", "hello", "Ada"])
-
-    assert result.exit_code == 0
-    assert "Hello, Ada!" in result.output
-
-
-def test_hello_json() -> None:
-    result = runner.invoke(app, ["hello", "Ada", "--json"])
-
-    assert result.exit_code == 0
-    assert json.loads(result.output) == {"message": "Hello, Ada!"}
-
-
-def test_info_json() -> None:
-    result = runner.invoke(app, ["info", "--json"])
-
-    assert result.exit_code == 0
-    assert json.loads(result.output)["version"] == rayo_package.__version__
-
-
-def test_quiet_from_environment() -> None:
-    result = runner.invoke(app, ["hello", "Ada"], env={"RAYO_CLI_QUIET": "1"})
-
-    assert result.exit_code == 0
-    assert "Hello" not in result.output
-
-
-def _boom(name: str) -> str:
+def _boom() -> None:
     raise RuntimeError("boom")
 
 
 def test_unexpected_error_is_short_by_default(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["rayo-cli", "hello", "Ada"])
-    monkeypatch.setattr("rayo_cli.cli.greet", _boom)
+    monkeypatch.setattr(sys, "argv", ["rayohx"])
+    monkeypatch.setattr(output.settings, "verbose", False)
+    monkeypatch.setattr("rayohx_cli.cli.app", _boom)
 
     with pytest.raises(SystemExit) as exit_info:
         run()
@@ -132,8 +63,9 @@ def test_unexpected_error_is_short_by_default(
 def test_unexpected_error_shows_traceback_with_verbose(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["rayo-cli", "--verbose", "hello", "Ada"])
-    monkeypatch.setattr("rayo_cli.cli.greet", _boom)
+    monkeypatch.setattr(sys, "argv", ["rayohx", "--verbose"])
+    monkeypatch.setattr(output.settings, "verbose", True)
+    monkeypatch.setattr("rayohx_cli.cli.app", _boom)
 
     with pytest.raises(SystemExit):
         run()
