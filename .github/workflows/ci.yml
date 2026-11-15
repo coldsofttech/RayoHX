@@ -14,21 +14,27 @@ concurrency:
 
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out the repository
+        uses: actions/checkout@v7
       - name: Read project names
         shell: bash
         run: python3 installer/projectinfo.py github || python installer/projectinfo.py github
-      - uses: astral-sh/setup-uv@v10.3.3
-      - uses: actions/setup-node@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
         with:
           node-version-file: ${{ env.UI_DIR }}/.nvmrc
           cache: npm
           cache-dependency-path: ${{ env.UI_DIR }}/package-lock.json
-      - run: uv sync --locked
-      - run: npm ci --prefix "$UI_DIR"
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Install UI dependencies
+        run: npm ci --prefix "$UI_DIR"
       - name: Check the generated CLI reference is up to date
         run: |
           uv run typer "$CLI_MODULE" utils docs --name "$CLI_NAME" --output docs/cli-reference.md
@@ -39,7 +45,8 @@ jobs:
           git diff --exit-code docs/openapi.json
       - name: Check dependency licenses
         run: uv run pip-licenses --from=mixed --partial-match --fail-on="GPL" --format=plain
-      - uses: pre-commit/action@v3.0.1
+      - name: Run pre-commit hooks
+        uses: pre-commit/action@v3.0.1
         env:
           SKIP: pytest # covered by the test job across all Python versions
 
@@ -52,26 +59,34 @@ jobs:
       matrix:
         node-version: ["22", "24"]
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out the repository
+        uses: actions/checkout@v7
       - name: Read project names
         shell: bash
         run: python3 installer/projectinfo.py github || python installer/projectinfo.py github
-      - uses: actions/setup-node@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: ${{ env.UI_DIR }}/package-lock.json
-      - run: npm ci
+      - name: Install UI dependencies
+        run: npm ci
         working-directory: ${{ env.UI_DIR }}
-      - run: npm run lint
+      - name: Lint the UI
+        run: npm run lint
         working-directory: ${{ env.UI_DIR }}
-      - run: npm run format:check
+      - name: Check UI formatting
+        run: npm run format:check
         working-directory: ${{ env.UI_DIR }}
-      - run: npm test
+      - name: Run UI tests
+        run: npm test
         working-directory: ${{ env.UI_DIR }}
-      - run: npm run build
+      - name: Build the UI
+        run: npm run build
         working-directory: ${{ env.UI_DIR }}
-      - uses: actions/upload-artifact@v7
+      - name: Upload the UI build
+        uses: actions/upload-artifact@v7
         if: matrix.node-version == '24'
         with:
           name: ui-dist
@@ -93,12 +108,16 @@ jobs:
           - os: macos-latest
             python-version: "3.11"
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv sync --locked
-      - run: uv run pytest
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Run tests
+        run: uv run pytest
 
   integration:
     name: integration (${{ matrix.os }}, ${{ matrix.python-version }})
@@ -115,11 +134,14 @@ jobs:
           - os: macos-latest
             python-version: "3.11"
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv sync --locked
+      - name: Install dependencies
+        run: uv sync --locked
       # One step per component (tests/<component>/integration), so a failure names its area. The
       # UI's integration test needs the built frontend and Windows, so the ui-windows job runs it.
       - name: Integration tests (core)
@@ -133,35 +155,46 @@ jobs:
 
   # The UI Python tests need the built frontend and Windows, where Cornea Shell runs.
   ui-windows:
+    name: UI window (windows)
     needs: ui
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out the repository
+        uses: actions/checkout@v7
       - name: Read project names
         shell: bash
         run: python3 installer/projectinfo.py github || python installer/projectinfo.py github
-      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: "3.11"
-      - uses: actions/download-artifact@v8
+      - name: Download the UI build
+        uses: actions/download-artifact@v8
         with:
           name: ui-dist
           path: ${{ env.UI_DIR }}/dist/
-      - run: uv sync --locked
-      - run: uv run pytest -m integration tests/ui/integration/test_ui_window.py --no-cov
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Run the UI window integration test
+        run: uv run pytest -m integration tests/ui/integration/test_ui_window.py --no-cov
 
   build:
+    name: Build the package
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out the repository
+        uses: actions/checkout@v7
       - name: Read project names
         shell: bash
         run: python3 installer/projectinfo.py github || python installer/projectinfo.py github
-      - uses: astral-sh/setup-uv@v10.3.3
-      - run: uv build
-      - run: uvx twine check --strict dist/*
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+      - name: Build the package
+        run: uv build
+      - name: Check the package metadata
+        run: uvx twine check --strict dist/*
       - name: Check the package holds the core library and command line only
         run: |
           unzip -l dist/*.whl > wheel.txt
@@ -175,6 +208,7 @@ jobs:
 
   # Single required status check for the branch ruleset.
   ci:
+    name: CI result
     if: always()
     needs: [lint, ui, test, integration, ui-windows, build]
     runs-on: ubuntu-latest

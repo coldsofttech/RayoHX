@@ -29,24 +29,30 @@ permissions:
 
 jobs:
   build:
+    name: Build the package
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
       - name: Check tag matches package version
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           version="$(uv version --short)"
           [ "$TAG" = "v$version" ] || { echo "Tag $TAG does not match version $version"; exit 1; }
-      - run: uv build
-      - uses: actions/upload-artifact@v7
+      - name: Build the package
+        run: uv build
+      - name: Upload the distribution files
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
 
   publish:
+    name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -54,25 +60,31 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v8
+      - name: Download the distribution files
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
   installers-windows:
+    name: Windows installers
     needs: build
     runs-on: windows-latest
     timeout-minutes: 30 # target: under 10 minutes
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out the repository
+        uses: actions/checkout@v7
       - name: Read project names
         shell: bash
         run: python3 installer/projectinfo.py github || python installer/projectinfo.py github
-      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: "3.13"
-      - uses: actions/setup-node@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
         with:
           node-version-file: ${{ env.UI_DIR }}/.nvmrc
           cache: npm
@@ -84,12 +96,14 @@ jobs:
           python -c "import tomllib, os; t = tomllib.load(open('installer/tools.toml', 'rb'))['tools']; open(os.environ['GITHUB_OUTPUT'], 'a').write(''.join(f'{k}={v}\n' for k, v in t.items()))"
       - name: Install NSIS
         run: choco install nsis --version "${{ steps.tools.outputs.nsis }}" --yes --no-progress
-      - run: uv sync --locked --group installer
+      - name: Install dependencies (installer group)
+        run: uv sync --locked --group installer
       - name: Build, sign (if SIGN_COMMAND is set) and smoke test the installers
         env:
           SIGN_COMMAND: ${{ vars.SIGN_COMMAND }}
         run: uv run python scripts/build_installer.py cli ui --build-frontend --smoke
-      - uses: actions/upload-artifact@v7
+      - name: Upload the Windows installers
+        uses: actions/upload-artifact@v7
         with:
           name: installers-windows
           path: |
@@ -97,12 +111,15 @@ jobs:
             dist/installer/*.zip
 
   installers-linux:
+    name: Linux packages
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15 # target: under 5 minutes
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: "3.13"
       - name: Read tool versions
@@ -119,10 +136,12 @@ jobs:
           sha256sum --ignore-missing --check checksums.txt
           tar -xzf "nfpm_${VERSION}_Linux_x86_64.tar.gz" nfpm
           sudo install nfpm /usr/local/bin/nfpm
-      - run: uv sync --locked --group installer
+      - name: Install dependencies (installer group)
+        run: uv sync --locked --group installer
       - name: Build the packages and smoke test the executable
         run: uv run python scripts/build_installer.py cli --smoke
-      - uses: actions/upload-artifact@v7
+      - name: Upload the Linux packages
+        uses: actions/upload-artifact@v7
         with:
           name: installers-linux
           path: |
@@ -130,6 +149,7 @@ jobs:
             dist/installer/*.rpm
 
   github-release:
+    name: GitHub release
     needs: [build, installers-windows, installers-linux]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -139,10 +159,14 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ github.event.release.tag_name }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-      - run: uv sync --locked
-      - uses: actions/download-artifact@v8
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Download the installers
+        uses: actions/download-artifact@v8
         with:
           path: release/
           merge-multiple: true
@@ -161,6 +185,7 @@ jobs:
           fi
 
   homebrew:
+    name: Homebrew formula
     if: ${{ vars.PUBLISH_HOMEBREW == 'true' }}
     needs: [publish, github-release]
     runs-on: ubuntu-latest
@@ -170,10 +195,14 @@ jobs:
       TAP: ${{ vars.HOMEBREW_TAP_REPO || format('{0}/homebrew-tap', github.repository_owner) }}
       VERSION: ${{ github.event.release.tag_name }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-      - run: uv sync --locked
-      - uses: actions/download-artifact@v8
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Download the distribution files
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -204,6 +233,7 @@ jobs:
             --title "${NAME} ${VERSION#v}" --body "Update ${NAME} to ${VERSION#v}."
 
   scoop:
+    name: Scoop manifest
     if: ${{ vars.PUBLISH_SCOOP == 'true' }}
     needs: github-release
     runs-on: ubuntu-latest
@@ -213,10 +243,14 @@ jobs:
       BUCKET: ${{ vars.SCOOP_BUCKET_REPO || format('{0}/scoop-bucket', github.repository_owner) }}
       VERSION: ${{ github.event.release.tag_name }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-      - run: uv sync --locked
-      - uses: actions/download-artifact@v8
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Download the Windows installers
+        uses: actions/download-artifact@v8
         with:
           name: installers-windows
           path: release/
@@ -247,6 +281,7 @@ jobs:
             --title "${NAME} ${VERSION#v}" --body "Update ${NAME} to ${VERSION#v}."
 
   winget:
+    name: winget package
     if: ${{ vars.PUBLISH_WINGET == 'true' }}
     needs: github-release
     runs-on: windows-latest
@@ -254,7 +289,8 @@ jobs:
     steps:
       # Opens a pull request in microsoft/winget-pkgs from a fork of the token's account. The package
       # must already exist there: the first submission is manual (docs/releasing.md).
-      - uses: vedantmgoyal9/winget-releaser@v2
+      - name: Open a pull request in winget-pkgs
+        uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: ${{ vars.WINGET_IDENTIFIER }}
           installers-regex: ${{ vars.WINGET_INSTALLERS_REGEX || '-cli-.*-setup\.exe$' }}
