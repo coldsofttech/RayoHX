@@ -14,10 +14,10 @@ macOS gets no installer. Install the PyPI package, or use Homebrew once it is sw
 ## The pieces
 
 ```text
-installer/pyinstaller/       cli.spec, ui.spec, common.py   freeze the programs (both OSs; ui.spec is Windows only)
+installer/pyinstaller/       ui.spec, common.py   freeze the window (Windows only) and the helpers both specs share
+packages/cli/installer/      pyinstaller/cli.spec, windows/cli.nsi, linux/nfpm.yaml   the command line's own installer files
 installer/projectinfo.py       names, version and title read from pyproject.toml and the code
-installer/windows/nsis/      cli.nsi, ui.nsi, common.nsh, path.ps1   Windows setup.exe files
-installer/linux/             nfpm.yaml   .deb and .rpm
+installer/windows/nsis/      ui.nsi, common.nsh, path.ps1   Windows setup.exe files (common.nsh and path.ps1 are shared with cli.nsi)
 installer/tools.toml         pinned versions of NSIS and nfpm
 scripts/build_installer.py   runs the steps above
 scripts/update_manifests.py  release notes and the Homebrew and Scoop manifests
@@ -32,10 +32,11 @@ uv sync --group installer
 uv run python scripts/build_installer.py            # everything this OS can build
 uv run python scripts/build_installer.py cli        # only the command line
 uv run python scripts/build_installer.py ui --build-frontend --smoke
-uv run python scripts/build_installer.py --sync     # install the needed dependency groups first
+uv run python scripts/build_installer.py --sync     # run `uv sync --group installer` first
+uv run python scripts/build_installer.py cli --format deb,rpm   # choose formats (exe on Windows, deb and rpm on Linux)
 ```
 
-`--sync` runs `uv sync --inexact` for the `installer` group, plus `ui` and `api` when the window is built, so nothing already installed is removed.
+`--sync` runs `uv sync --group installer`. `--format` takes a comma-separated list; a format the current OS cannot build (`deb` or `rpm` on Windows, `exe` on Linux) stops the build with an error. The command line's names and version are read by `packages/cli/installer/projectinfo.py`, the window's by `installer/projectinfo.py`.
 
 Results are in `dist/installer/`; the PyInstaller folders are in `build/installer/`. `--smoke` starts each built program and checks it answers. Independent steps (the CLI and UI PyInstaller builds, then the setups and zip, or the deb and rpm) run side by side on as many threads as there are CPUs; `--jobs 1` runs them one after the other, which keeps the log in order when you are chasing a failure.
 

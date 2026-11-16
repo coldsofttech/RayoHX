@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Build the installers: PyInstaller folders, then NSIS setups (Windows) or deb and rpm (Linux).
 
-Everything comes from the project's own metadata (installer/projectinfo.py), so renaming the
-project needs no edit here: names from [project.scripts] and [tool.installer], version from
-``__version__``, title from ``TITLE`` in the window's app module, description, author, homepage and
-license from [project] in pyproject.toml, icon and setup art from brand/. Tool versions
+Everything comes from the products' own metadata, so renaming a product needs no edit here: the
+command line's from packages/cli/installer/projectinfo.py (its pyproject.toml and ``__version__``),
+the window's from installer/projectinfo.py (read only when the window is built). Icon and setup art
+come from brand/. Tool versions
 are pinned in installer/tools.toml.
 
 Signing is off by default. Set SIGN_COMMAND to a command that signs one file, with {file} where
@@ -15,12 +15,14 @@ Products:  cli  the command line (Windows setup, Linux deb and rpm)
            ui   the window together with the command line (Windows setup only)
 
 Usage:  uv sync --group installer
-        uv run python scripts/build_installer.py [cli] [ui] [--sync] [--build-frontend] [--smoke]
+        uv run python scripts/build_installer.py [cli] [ui] [--sync] [--format exe,deb,rpm]
+                                                      [--build-frontend] [--smoke]
 The installers are written to dist/installer/. See docs/packaging.md for the details.
 """
 
 import argparse
 import functools
+import importlib.util
 import os
 import platform
 import re
@@ -33,42 +35,66 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypeVar
+from types import ModuleType
+from typing import Any, TypeVar
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "installer"))
-import projectinfo  # noqa: E402
-
-INFO = projectinfo.load()
-UI_DIR = INFO.ui_dir
+CLI_INSTALLER = ROOT / "packages" / "cli" / "installer"
 BUILD = ROOT / "build" / "installer"
 WORK = ROOT / "build" / "installer-work"
 OUT = ROOT / "dist" / "installer"
 SPECS = ROOT / "installer" / "pyinstaller"
+CLI_SPECS = CLI_INSTALLER / "pyinstaller"
 NSIS_DIR = ROOT / "installer" / "windows" / "nsis"
-NFPM_CONFIG = ROOT / "installer" / "linux" / "nfpm.yaml"
+CLI_NSIS_DIR = CLI_INSTALLER / "windows"
+NFPM_CONFIG = CLI_INSTALLER / "linux" / "nfpm.yaml"
 WINDOWS = sys.platform == "win32"
 LINUX = sys.platform.startswith("linux")
 T = TypeVar("T")
 
 
+def load_module(name: str, path: Path) -> ModuleType:
+    """Import a projectinfo.py by path; the command line's and the window's share a file name."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"Cannot load {path}.")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@functools.cache
+def cli_info() -> Any:
+    return load_module("cli_projectinfo", CLI_INSTALLER / "projectinfo.py").load()
+
+
+@functools.cache
+def ui_info() -> Any:
+    """The window's metadata, read only when the window is built (the command line builds alone)."""
+    return load_module("ui_projectinfo", ROOT / "installer" / "projectinfo.py").load()
+
+
 @dataclass(frozen=True)
 class Meta:
-    """What the installers are built from."""
+    """What one product's installers are built from."""
 
     project: dict[str, object]
-    cli: str  # command line executable and package name
-    ui: str  # window executable name
+    name: str  # executable and package name
     version: str
-    title: str  # product name of the window
-
-    @property
-    def cli_title(self) -> str:
-        return f"{self.title} CLI"
+    title: str  # product name
+    publisher: str = ""  # shown in Apps & features; the first author when empty
+    install_dir: str = ""  # folder under Program Files, "/" between parts; the title when empty
 
 
-def load_meta() -> Meta:
-    return Meta(INFO.project, INFO.cli_script, INFO.ui_script, INFO.version, INFO.title)
+@functools.cache
+def meta(product: str) -> Meta:
+    if product == "cli":
+        info = cli_info()
+        return Meta(
+            info.project, info.script, info.version, info.title, info.publisher, info.install_dir
+        )
+    info = ui_info()
+    return Meta(info.project, info.ui_script, info.version, info.title)
 
 
 def run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path = ROOT) -> None:
@@ -95,8 +121,8 @@ def author(meta: Meta) -> dict[str, str]:
 # ---- PyInstaller -------------------------------------------------------------------------------
 def build_frontend() -> None:
     npm = "npm.cmd" if WINDOWS else "npm"
-    run([npm, "ci"], cwd=UI_DIR)
-    run([npm, "run", "build"], cwd=UI_DIR)
+    run([npm, "ci"], cwd=ui_info().ui_dir)
+    run([npm, "run", "build"], cwd=ui_info().ui_dir)
 
 
 def freeze(product: str) -> Path:
@@ -107,7 +133,7 @@ def freeze(product: str) -> Path:
             sys.executable,
             "-m",
             "PyInstaller",
-            str(SPECS / spec),
+            str((CLI_SPECS if product == "cli" else SPECS) / spec),
             "--noconfirm",
             "--distpath",
             str(BUILD),
@@ -115,7 +141,7 @@ def freeze(product: str) -> Path:
             str(WORK / product),
         ]
     )
-    return BUILD / (META.cli if product == "cli" else META.ui)
+    return BUILD / meta(product).name
 
 
 # ---- Windows: NSIS -----------------------------------------------------------------------------
@@ -161,6 +187,11 @@ def find_makensis() -> str:
     raise SystemExit("makensis not found. Install NSIS (version in installer/tools.toml).")
 
 
+def licence_file(product: str) -> Path:
+    """The command line ships its own LICENSE; the window uses the repository's."""
+    return CLI_INSTALLER.parent / "LICENSE" if product == "cli" else ROOT / "LICENSE"
+
+
 def numeric_version(version: str) -> str:
     numbers = re.findall(r"\d+", version)[:4]
     return ".".join(numbers + ["0"] * (4 - len(numbers)))
@@ -169,25 +200,30 @@ def numeric_version(version: str) -> str:
 def package_exe(product: str, folder: Path) -> Path:
     """Build the NSIS setup for one product."""
     OUT.mkdir(parents=True, exist_ok=True)
-    name = META.cli if product == "cli" else META.ui
+    m = meta(product)
+    name = m.name
     sign(sorted(folder.glob("*.exe")))
-    setup = OUT / f"{name}-{META.version}-setup.exe"
-    urls = META.project.get("urls") or {}
+    setup = OUT / f"{name}-{m.version}-setup.exe"
+    urls = m.project.get("urls") or {}
     flags = {
-        "APP_NAME": META.cli_title if product == "cli" else META.title,
-        "APP_VERSION": META.version,
-        "APP_VERSION_NUMERIC": numeric_version(META.version),
+        "APP_NAME": m.title,
+        "APP_VERSION": m.version,
+        "APP_VERSION_NUMERIC": numeric_version(m.version),
         "SOURCE_DIR": str(folder),
         "OUT_FILE": str(setup),
         "ICON_FILE": str(brand_icon()),
         **brand_art(),
-        "LICENSE_FILE": str(ROOT / "LICENSE"),
-        "PUBLISHER": author(META).get("name", ""),
+        "LICENSE_FILE": str(licence_file(product)),
+        "PUBLISHER": m.publisher or author(m).get("name", ""),
+        "INSTALL_DIR": m.install_dir.replace("/", "\\"),
+        "INSTALL_DIR_DEPTH": len(m.install_dir.split("/")) if m.install_dir else "",
+        "SUPPORT_URL": str(urls.get("Issues", "")),  # type: ignore[attr-defined]
+        "UPDATE_URL": str(urls.get("Changelog", "")),  # type: ignore[attr-defined]
         "URL": str(urls.get("Homepage", "")),  # type: ignore[attr-defined]
     }
     command = [find_makensis(), "/V2"]
     command += [f"/D{key}={value}" for key, value in flags.items() if value]
-    run([*command, str(NSIS_DIR / f"{product}.nsi")])
+    run([*command, str((CLI_NSIS_DIR if product == "cli" else NSIS_DIR) / f"{product}.nsi")])
     sign([setup])
     return setup
 
@@ -195,7 +231,8 @@ def package_exe(product: str, folder: Path) -> Path:
 def package_zip(folder: Path) -> Path:
     """The command line as a portable zip (what the Scoop manifest installs)."""
     OUT.mkdir(parents=True, exist_ok=True)
-    target = OUT / f"{META.cli}-{META.version}-windows-x64"
+    m = meta("cli")
+    target = OUT / f"{m.name}-{m.version}-windows-x64"
     return Path(shutil.make_archive(str(target), "zip", root_dir=folder))
 
 
@@ -216,22 +253,23 @@ def package_linux(folder: Path, formats: list[str], jobs: int = 1) -> list[Path]
     normalise_modes(folder)
     OUT.mkdir(parents=True, exist_ok=True)
     machine = platform.machine().lower()
-    who = author(META)
+    m = meta("cli")
+    who = author(m)
     maintainer = who.get("name", "")
     if who.get("email"):
         maintainer = f"{maintainer} <{who['email']}>"
-    urls = META.project.get("urls") or {}
+    urls = m.project.get("urls") or {}
     env = {
         **os.environ,
-        "PKG_NAME": META.cli,
-        "PKG_VERSION": META.version,
+        "PKG_NAME": m.name,
+        "PKG_VERSION": m.version,
         "PKG_ARCH": {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64"}.get(machine, machine),
-        "PKG_DESCRIPTION": str(META.project.get("description", META.cli)),
+        "PKG_DESCRIPTION": str(m.project.get("description", m.name)),
         "PKG_MAINTAINER": maintainer,
         "PKG_HOMEPAGE": str(urls.get("Homepage", "")),  # type: ignore[attr-defined]
-        "PKG_LICENSE": str(META.project.get("license", "")),
+        "PKG_LICENSE": str(m.project.get("license", "")),
         "PKG_SOURCE_DIR": str(folder),
-        "PKG_LICENSE_FILE": str(ROOT / "LICENSE"),
+        "PKG_LICENSE_FILE": str(licence_file("cli")),
     }
     nfpm = shlex.split(os.environ.get("NFPM", "nfpm"))
     if shutil.which(nfpm[0]) is None:
@@ -251,13 +289,12 @@ def package_linux(folder: Path, formats: list[str], jobs: int = 1) -> list[Path]
     return sorted(set(OUT.iterdir()) - before)
 
 
-def sync(products: list[str]) -> None:
-    """Install the dependency groups the chosen products need, keeping what is already there."""
+def sync() -> None:
+    """Install the installer dependency group (``uv sync --group installer``)."""
     uv = shutil.which("uv")
     if uv is None:
         raise SystemExit("--sync needs uv on PATH.")
-    groups = ["installer", *(["ui", "api"] if "ui" in products else [])]
-    run([uv, "sync", "--inexact", *(arg for g in groups for arg in ("--group", g))])
+    run([uv, "sync", "--group", "installer"])
 
 
 # ---- smoke test --------------------------------------------------------------------------------
@@ -278,8 +315,9 @@ def main() -> None:
                         help="uv sync the groups the products need first")  # fmt: skip
     parser.add_argument("--build-frontend", action="store_true", help="run npm ci && npm run build")
     parser.add_argument("--smoke", action="store_true", help="run the smoke tests on the builds")
-    parser.add_argument("--formats", nargs="+", default=["deb", "rpm"], choices=["deb", "rpm"],
-                        help="Linux package formats")  # fmt: skip
+    parser.add_argument("--format", metavar="exe,deb,rpm",
+                        help="comma-separated formats: exe on Windows, deb and rpm on Linux "
+                             "(default: all for this OS)")  # fmt: skip
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1,
                         help="builds to run at once (1 = one after the other)")  # fmt: skip
     args = parser.parse_args()
@@ -289,12 +327,23 @@ def main() -> None:
     unknown = sorted(set(args.products) - {"cli", "ui"})
     if unknown:
         parser.error(f"unknown product: {', '.join(unknown)} (choose from 'cli', 'ui')")
+    formats = [f.strip() for f in args.format.split(",") if f.strip()] if args.format else []
+    unknown_formats = sorted(set(formats) - {"exe", "deb", "rpm"})
+    if unknown_formats:
+        parser.error(f"unknown format: {', '.join(unknown_formats)} (choose from exe, deb, rpm)")
+    allowed = ["exe"] if WINDOWS else ["deb", "rpm"]
+    wrong = [f for f in formats if f not in allowed]
+    if wrong:
+        raise SystemExit(
+            f"--format {','.join(wrong)} cannot be built on this OS (here: {', '.join(allowed)})."
+        )
+    formats = formats or allowed
     products = args.products or (["cli", "ui"] if WINDOWS else ["cli"])
     if "ui" in products and not WINDOWS:
         raise SystemExit("The UI is Windows only.")
 
     if args.sync:
-        sync(products)
+        sync()
     built: list[Path] = []
     if "ui" in products and args.build_frontend:
         build_frontend()
@@ -314,15 +363,13 @@ def main() -> None:
             tasks.append(functools.partial(package_zip, folders["cli"]))
         built.extend(run_parallel(tasks, args.jobs))
     else:
-        built.extend(package_linux(folders["cli"], args.formats, args.jobs))
+        built.extend(package_linux(folders["cli"], formats, args.jobs))
     if args.smoke:
         smoke(products)
     print("\nBuilt:")
     for path in built:
         print(f"  {path.relative_to(ROOT)}  ({path.stat().st_size / 1_048_576:.1f} MB)")
 
-
-META = load_meta()
 
 if __name__ == "__main__":
     main()

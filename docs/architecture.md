@@ -34,7 +34,7 @@ src/rayohx_cli/       Typer + Rich command line over the library
 src/rayohx_api/       FastAPI app over the library: routers, schemas, errors, settings
 src/rayohx_ui/        Cornea Shell wiring and the `rayohx-ui` command
 src/rayohx_ui/ui/     React + Vite frontend (JavaScript); `dist/` is built, not committed
-installer/               PyInstaller specs, NSIS scripts, nfpm config and pinned tool versions
+installer/               window spec and NSIS script, shared helpers and pinned tool versions (the command line's are in packages/cli/installer/)
 scripts/                 repository settings, OpenAPI export, installer build and manifest generation
 tests/<component>/     pytest unit tests with coverage (80% minimum), one folder each for core, cli, api and ui
 tests/<component>/integration/   tests marked `integration`: skipped by default and in pre-commit, run in CI

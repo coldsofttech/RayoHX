@@ -1,60 +1,20 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+# Workspace root: not published itself. The distributions live in packages/ (core -> rayohx,
+# cli -> rayohx-cli, api -> rayohx-api, ui -> rayohxu).
+[tool.uv.workspace]
+members = ["packages/core", "packages/cli", "packages/api", "packages/ui"]
 
-[project]
-name = "RayoHX"
-dynamic = ["version"]
-description = "Python tool with a command line, an HTTP API and a native Windows UI."
-keywords = ["cli", "api", "ui"]
-readme = "README.md"
-requires-python = ">=3.11"
-license = "MIT"
-license-files = ["LICENSE"]
-authors = [{ name = "coldsofttech" }]
-classifiers = [
-  "Environment :: Console",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3.14",
-  "Programming Language :: Python :: 3.15",
-  "Topic :: Utilities",
-  "Typing :: Typed",
-]
-# What the published package (core library and command line) needs. The API and the window are not
-# published to PyPI (the installers and the source tree carry them), so their libraries are
-# dependency groups below.
-dependencies = [
-  "cryptography>=44",
-  "httpx>=0.28",
-  "rich>=13.9",
-  "typer>=0.15",
-]
-
-[project.scripts]
-rayohx = "rayohx_cli.cli:run"
-
-[project.urls]
-Homepage = "https://github.com/coldsofttech/RayoHX"
-Issues = "https://github.com/coldsofttech/RayoHX/issues"
-Changelog = "https://github.com/coldsofttech/RayoHX/blob/main/CHANGELOG.md"
+[tool.uv.sources]
+rayohx = { workspace = true }
+rayohx-cli = { workspace = true }
+rayohx-api = { workspace = true }
+rayohxu = { workspace = true }
 
 [dependency-groups]
-# The HTTP API (src/rayohx_api): run on its own with `python -m rayohx_api`, and mounted by the window.
-api = [
-  "fastapi>=0.162.0",
-  "pydantic-settings>=2.16.2",
-  "uvicorn>=0.54.0",
-]
-# The Windows window (src/rayohx_ui).
-ui = [
-  "cornea-shell>=0.1.1 ; sys_platform == 'win32'",
-]
 dev = [
-  { include-group = "api" },
-  { include-group = "ui" },
+  "rayohx",
+  "rayohx-cli",
+  "rayohx-api",
+  "rayohxu",
   "cornea-shell[proxy]>=0.1.1",
   "httpx2>=2.16.2",
   "mypy>=1.13",
@@ -81,48 +41,35 @@ ui = "rayohx-ui"
 ui-target = "rayohx_ui.__main__:main"
 api = "rayohx_api"
 
-[tool.hatch.version]
-path = "src/rayohx/__init__.py"
-
-# `uv build` publishes the core library and the command line only. The API and the window ship in
-# the Windows installers instead. The wheel is built from the sdist, so both
-# list the same two packages.
-[tool.hatch.build.targets.sdist]
-include = [
-  "src/rayohx",
-  "src/rayohx_cli",
-  "/README.md",
-  "/LICENSE",
-  "/CHANGELOG.md",
-]
-
-[tool.hatch.build.targets.wheel]
-packages = [
-  "src/rayohx",
-  "src/rayohx_cli",
-]
-
 [tool.ruff]
 line-length = 100
-src = ["src", "tests"]
+src = [
+  "packages/core/src",
+  "packages/cli/src",
+  "packages/api/src",
+  "packages/ui/src",
+  "tests",
+  "packages/core/tests",
+]
 target-version = "py311"
 
 [tool.ruff.lint]
 select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106", "S603"]  # assert, subprocess and fake passwords are fine in tests
-"tests/core/integration/**" = ["SIM117"]  # the client is built from the running server's address
+"tests/**" = ["S101", "S105", "S106", "S603"]
+"packages/*/tests/**" = ["S101", "S105", "S106", "S603"]  # assert, subprocess and fake passwords are fine in tests
+"packages/core/tests/integration/**" = ["SIM117"]  # the client is built from the running server's address
 "scripts/**" = ["S603", "S607", "T201"]  # scripts call the trusted gh CLI and print progress
 
 [tool.mypy]
 strict = true
 explicit_package_bases = true
-mypy_path = "src"
-files = ["src", "tests"]
+mypy_path = "packages/core/src:packages/cli/src:packages/api/src:packages/ui/src"
+files = ["packages", "tests"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "packages/core/tests"]
 addopts = "-m 'not integration' --strict-markers --cov=rayohx --cov=rayohx_cli --cov=rayohx_api --cov=rayohx_ui --cov-report=term-missing --cov-fail-under=80"
 markers = ["integration: slower end-to-end tests, run in CI but not by default or in pre-commit"]
 

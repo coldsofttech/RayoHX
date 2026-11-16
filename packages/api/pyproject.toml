@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rayohx-api"
+version = "0.1.0"
+description = "RayoHX HTTP API for working with HLS streams."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "coldsofttech" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Typing :: Typed",
+]
+dependencies = [
+  "rayohx",
+  "fastapi>=0.115",
+  "pydantic-settings>=2.6",
+  "uvicorn>=0.32",
+]
+
+[project.scripts]
+rayohx-api = "rayohx_api.__main__:serve"
+
+[project.urls]
+Homepage = "https://github.com/coldsofttech/RayoHX"
+Issues = "https://github.com/coldsofttech/RayoHX/issues"
+Changelog = "https://github.com/coldsofttech/RayoHX/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rayohx_api"]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.13",
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "pytest-xdist>=3.6",
+  "ruff>=0.8",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S603"]  # assert, subprocess and fake passwords are fine in tests
+
+[tool.mypy]
+strict = true
+explicit_package_bases = true
+mypy_path = "src"
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not integration' --strict-markers --cov=rayohx_api --cov-report=term-missing --cov-fail-under=80"
+markers = ["integration: slower end-to-end tests, run in CI but not by default or in pre-commit"]
+
+[tool.coverage.run]
+branch = true

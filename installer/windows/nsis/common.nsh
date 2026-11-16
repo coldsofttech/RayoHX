@@ -15,6 +15,10 @@
 ;   SOURCE_DIR    the PyInstaller folder to install (build/installer/rayohx)
 ;   OUT_FILE      the installer to write (e.g. dist/rayohx-0.1.0-setup.exe)
 ;   PUBLISHER, URL, ICON_FILE (.ico), LICENSE_FILE   optional
+;   SUPPORT_URL, UPDATE_URL   optional: the support page and the release notes (Apps & features)
+;   INSTALL_DIR   optional: folder under Program Files (or Programs for one user), e.g.
+;                 "Vendor\Product\CLI"; defaults to APP_NAME. INSTALL_DIR_DEPTH is its number of
+;                 parts, so the uninstaller can remove the empty parent folders too.
 ;   HEADER_IMAGE (.bmp, 150x57), WELCOME_IMAGE (.bmp, 164x314)   optional, from brand/
 ;   USER_DATA_DIR optional: folder with settings and data; the uninstaller asks before removing it
 ;
@@ -45,6 +49,12 @@
 !endif
 !ifndef PUBLISHER
   !define PUBLISHER "${APP_NAME}"
+!endif
+!ifndef INSTALL_DIR
+  !define INSTALL_DIR "${APP_NAME}"
+!endif
+!ifndef INSTALL_DIR_DEPTH
+  !define INSTALL_DIR_DEPTH 1
 !endif
 
 !ifdef HAS_PATH
@@ -87,7 +97,7 @@ VIAddVersionKey "LegalCopyright" "${PUBLISHER}"
 !define MULTIUSER_INSTALLMODE_ALLOW_ELEVATION
 !define MULTIUSER_INSTALLMODE_DEFAULT_CURRENTUSER
 !define MULTIUSER_USE_PROGRAMFILES64
-!define MULTIUSER_INSTALLMODE_INSTDIR "${APP_NAME}"
+!define MULTIUSER_INSTALLMODE_INSTDIR "${INSTALL_DIR}"
 !define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_KEY "Software\${APP_NAME}"
 !define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_VALUENAME "InstallLocation"
 !define MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_KEY "Software\${APP_NAME}"
@@ -167,7 +177,7 @@ Section "!${APP_NAME}" SecMain
     File "/oname=LICENSE.txt" "${LICENSE_FILE}"
   !endif
   !ifdef HAS_PATH
-    File "path.ps1"
+    File "${__FILEDIR__}\path.ps1"
   !endif
 
   WriteUninstaller "$INSTDIR\${UNINSTALLER}"
@@ -196,6 +206,12 @@ Section "!${APP_NAME}" SecMain
   WriteRegStr SHCTX "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\${MAIN_EXE}"
   !ifdef URL
     WriteRegStr SHCTX "${UNINSTALL_KEY}" "URLInfoAbout" "${URL}"
+  !endif
+  !ifdef SUPPORT_URL
+    WriteRegStr SHCTX "${UNINSTALL_KEY}" "HelpLink" "${SUPPORT_URL}"
+  !endif
+  !ifdef UPDATE_URL
+    WriteRegStr SHCTX "${UNINSTALL_KEY}" "URLUpdateInfo" "${UPDATE_URL}"
   !endif
   WriteRegDWORD SHCTX "${UNINSTALL_KEY}" "NoModify" 1
   WriteRegDWORD SHCTX "${UNINSTALL_KEY}" "NoRepair" 1
@@ -301,6 +317,13 @@ Section "Uninstall"
   Delete "$INSTDIR\path.ps1"
   Delete "$INSTDIR\${UNINSTALLER}"
   RMDir "$INSTDIR"
+  ; The vendor and product folders above it, only when empty.
+  !if ${INSTALL_DIR_DEPTH} >= 2
+    RMDir "$INSTDIR\.."
+  !endif
+  !if ${INSTALL_DIR_DEPTH} >= 3
+    RMDir "$INSTDIR\..\.."
+  !endif
 
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
   !ifdef HAS_DESKTOP
