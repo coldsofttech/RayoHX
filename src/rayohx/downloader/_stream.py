@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from rayohx._download._containers import sniff_container
 from rayohx._download._fetcher import HlsSegmentFetcher
+from rayohx._mux.source import probe_streams
 from rayohx.enums import ContainerFormat
 from rayohx.errors import InvalidPlaylistError, OutputFormatError
 from rayohx.models import MasterPlaylist, MediaPlaylist
@@ -13,6 +14,7 @@ from rayohx.playlist import is_hls_playlist, parse_playlist
 
 if TYPE_CHECKING:
     from rayohx._http import HttpClient
+    from rayohx.models import SegmentData
     from rayohx.stream import StreamSelection
 
 
@@ -63,9 +65,22 @@ def require_single_stream(stream: StreamSelection | None) -> None:
         )
 
 
+def first_segment(client: HttpClient, media: MediaPlaylist) -> SegmentData:
+    return HlsSegmentFetcher(client, media.segments).fetch(0)
+
+
 def probe_container(client: HttpClient, media: MediaPlaylist) -> ContainerFormat:
     """Tell the segment format from the first segment when the playlist does not say."""
     if not media.segments:
         return ContainerFormat.UNKNOWN
-    first = HlsSegmentFetcher(client, media.segments).fetch(0)
-    return sniff_container(first.media)
+    return sniff_container(first_segment(client, media).media)
+
+
+def audio_codecs(
+    client: HttpClient, media: MediaPlaylist, container: ContainerFormat
+) -> tuple[str, ...]:
+    """The audio codecs in a transport stream. Fragmented MP4 needs no fix, so it has none."""
+    if container is not ContainerFormat.MPEG_TS:
+        return ()
+    streams = probe_streams(first_segment(client, media).media)
+    return tuple(info.codec for info in streams if info.kind == "audio")

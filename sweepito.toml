@@ -3,20 +3,13 @@ profiles = ["python", "node"]
 risk = "safe"
 
 [clean]
-# Hypothesis (used by Schemathesis) keeps a local example database; it is opt-in because it holds
-# regression seeds, which this template does not rely on.
-enable = ["python.hypothesis"]
+# Hypothesis (python.hypothesis) keeps a local example database and Schemathesis (python.schemathesis)
+# keeps failing cases for replay. Both are opt-in because they hold regression seeds, which this
+# template does not rely on; both are rebuilt on the next test run.
+enable = ["python.hypothesis", "python.schemathesis"]
 # Exclusions always win over cleanup rules. Keep the uv environment and installed UI dependencies
 # between commits.
 exclude = [".venv/", "node_modules/"]
 
 [hook]
 quiet = true
-
-# Schemathesis has no built-in rule. Its cache is rebuilt on the next contract test run.
-[[rule]]
-id = "custom.schemathesis"
-paths = [".schemathesis/"]
-requires = ["pyproject.toml"]
-profile = "python"
-description = "Schemathesis cache"

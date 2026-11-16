@@ -102,9 +102,11 @@ Which tool may remux the stream into the requested container.
 | `NATIVE` | `"native"` | Only the built-in muxer |
 | `FFMPEG` | `"ffmpeg"` | An FFmpeg already installed (see `OutputConfig.ffmpeg_path`) |
 
-RayoHX remuxes and never transcodes. Remuxing is not available yet, so every download is saved in
-the stream's own container, and a request that would need it (such as MPEG-TS into MP4) raises
-`OutputFormatError`.
+RayoHX remuxes and never transcodes. The built-in muxer re-wraps MPEG-TS (H.264 and HEVC video
+with AAC, AC-3, E-AC-3 or MP3 audio) and fragmented MP4 into a fragmented MP4. With `AUTO`, a
+codec it cannot copy is handed to an installed FFmpeg; if there is none, or the backend is
+`NATIVE`, the download fails with `UnsupportedCodecError`. `FFMPEG` fails with `OutputFormatError`
+when no FFmpeg can be found.
 
 ## SegmentState
 

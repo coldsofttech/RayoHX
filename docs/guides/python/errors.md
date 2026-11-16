@@ -34,6 +34,7 @@ RayoHXError
 │   ├── InsufficientStorageError not enough disk space (has required_bytes, available_bytes)
 │   ├── OutputExistsError        the output exists and overwriting was not requested
 │   ├── OutputFormatError        no way to produce the requested format
+│   │   └── UnsupportedCodecError    a codec that cannot be re-wrapped (has codec)
 │   └── FinalizationError        joining or validating the data failed
 └── CancellationError            the download was cancelled
 ```
@@ -96,7 +97,7 @@ see the error, retries have been used.
 | `parse_playlist` | `InvalidPlaylistError`, `UnsupportedPlaylistError` |
 | `CancellationToken.raise_if_cancelled` | `CancellationError` |
 | `DownloadStateMachine.move_to` | `InvalidStateTransitionError` |
-| `download()` | Raises what went wrong: `ConfigurationError` before it starts; then `UnsupportedPlaylistError` (live, DRM or SAMPLE-AES streams), `OutputFormatError` (a name that does not match the content, separate audio or subtitles), `OutputExistsError`, `InsufficientStorageError`, `WorkspaceLockedError`, `SegmentDownloadError`, `DecryptionError`, `FinalizationError`, and the `NetworkError` family. A cancelled download returns a result and does not raise |
+| `download()` | Raises what went wrong: `ConfigurationError` before it starts; then `UnsupportedPlaylistError` (live, DRM or SAMPLE-AES streams), `OutputFormatError` (a name that does not match the content, or audio and subtitles that cannot be saved as segments), `UnsupportedCodecError`, `OutputExistsError`, `InsufficientStorageError`, `WorkspaceLockedError`, `SegmentDownloadError`, `DecryptionError`, `FinalizationError`, and the `NetworkError` family. A cancelled download returns a result and does not raise |
 | `Downloader.run()` | Returns a `FAILED` result instead of raising, and keeps the error in `Downloader.exception`. Raises `DownloadError` if it runs a second time |
 
 ## Examples

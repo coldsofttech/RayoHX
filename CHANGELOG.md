@@ -12,6 +12,9 @@ All notable changes to this project are documented here. The format follows [Kee
 - Download a stream to a file in one call, with parallel segments, progress events, and a cancelled download returning a result instead of an error.
 - Encrypted (AES-128) streams are decrypted; protected (DRM) and live streams are refused with an explanation.
 - MPEG-TS streams are saved as `.ts` and fragmented MP4 streams as `.mp4`; a name that does not match is refused instead of mislabelling the file, and an existing file is never replaced unless you allow it.
+- Streams with a separate audio track are joined into one MP4 in the chosen language, and MPEG-TS streams can be saved as MP4. The re-wrapping is built in and nothing is re-encoded.
+- Subtitles are saved next to the video as `.vtt` files that line up with it.
+- An installed FFmpeg is used as an optional fallback for codecs the built-in remuxer cannot copy; it is never required or shipped.
 - Segments can be saved as separate files in a folder, and a video-only option downloads just the video of a stream with a separate audio track.
 - Interrupted or cancelled downloads continue where they stopped, and need disk space for the video only, not twice that.
 - Every segment and the finished file are checked, so an error page, a cut-off file or a wrong key is caught instead of producing a corrupt file.
@@ -19,7 +22,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - Typed settings, results, progress events and clear errors with hints, and logging that stays silent until you turn it on.
 - A cancellation token lets one thread stop work started by others.
 - A Python guide describes using RayoHX as a library.
-- A license check in CI blocks GPL and AGPL dependencies.
 
 ### Security
 

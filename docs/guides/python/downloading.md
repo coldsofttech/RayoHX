@@ -37,14 +37,22 @@ video, not twice that.
 
 ## What works today
 
-- **MPEG-TS** streams are saved as `.ts` and **fragmented MP4** streams as `.mp4`.
+- **MPEG-TS** streams are saved as `.ts` and **fragmented MP4** streams as `.mp4`. An MPEG-TS stream
+  can also be saved as `.mp4`: it is re-wrapped without re-encoding.
 - **Encrypted streams** (plain AES-128) work. Protected (DRM) streams, SAMPLE-AES and live streams
   are refused with an explanation.
 - **A name that does not match what is inside** (for example `.mp4` for an MPEG-TS stream) is
   refused, never quietly mislabeled.
-- **Streams with a separate audio track** need a merge step that is not available yet. Add
-  `video_only=True` to download just the video, or save the pieces with `format="segments"`.
-- **Subtitles cannot be saved yet.**
+- **Streams with a separate audio track** are joined into one `.mp4`, using the audio you chose
+  (see [`select_stream`](selecting.md)). Add `video_only=True` to download just the video instead.
+- **Subtitles** you ask for are saved next to the video as `<name>.<language>.vtt` files that line
+  up with it. Only WebVTT text is supported.
+- **FFmpeg is optional.** The built-in remuxer copies H.264 and HEVC video with AAC, AC-3, E-AC-3
+  and MP3 audio. For other codecs an FFmpeg already installed on your machine is used if there is
+  one; otherwise the download fails with `UnsupportedCodecError`. FFmpeg is never required,
+  shipped or asked to re-encode. See [`RemuxBackend`](enums.md#remuxbackend).
+- **Re-wrapped downloads do not resume.** An interrupted download that joined audio or turned
+  MPEG-TS into MP4 starts again; plain downloads keep resuming.
 - **An existing file is never replaced** unless you add `overwrite=True`.
 
 ## download
@@ -201,9 +209,9 @@ Downloader("ftp://x")  # ConfigurationError: url must be an absolute http or htt
 
 | You pass | `format` | You get |
 |---|---|---|
-| `"video.ts"` | any / auto | `video.ts` for an MPEG-TS stream; an error for an fMP4 stream |
-| `"video.mp4"` | any / auto | `video.mp4` for an fMP4 stream; an error for an MPEG-TS stream |
-| `"video"` | auto | The right extension added: `video.ts` or `video.mp4` |
+| `"video.ts"` | any / auto | `video.ts` for an MPEG-TS stream; an error for an fMP4 stream or a stream with separate audio |
+| `"video.mp4"` | any / auto | `video.mp4` for an fMP4 stream; for an MPEG-TS stream the segments are re-wrapped into it |
+| `"video"` | auto | The right extension added: `video.ts` or `video.mp4` (always `.mp4` when audio is joined) |
 | `None` | auto | A file named after the address in the current folder, such as `my-show.ts` |
 | `"parts"` | `segments` | A folder `parts/` with `segment-00001.ts`, `segment-00002.ts`, ... and `init-00001.mp4` for fMP4 |
 
@@ -214,6 +222,11 @@ Downloader("ftp://x")  # ConfigurationError: url must be an absolute http or htt
 - A playlist that contains only subtitles, or whose format cannot be recognised, is refused.
 - The result's `output.size_bytes` for a folder is the total size of the segment files.
 - A folder of segments cannot resume: running it again starts over.
+- Separate audio and subtitles cannot be saved as `format="segments"`; use `video_only=True` or a
+  different format.
+- Subtitle files are named after the output: `video.mp4` with English subtitles gives
+  `video.en.vtt`. A name that is already taken gets a number (`video.en2.vtt`), and an existing
+  subtitle file blocks the download unless you add `overwrite=True`.
 
 While a download runs, the data is in `<name>.part` (a file, or a folder for `segments`). It is
 renamed only when the download is complete and validated.
@@ -282,6 +295,28 @@ Download the video of a stream that keeps its audio in a separate track:
 download("https://cdn.example.com/vod/master.m3u8", "video.ts", video_only=True)
 ```
 
+Join a separate audio track into the video and save English subtitles beside it:
+
+```python
+download(
+    "https://cdn.example.com/vod/master.m3u8",
+    "video.mp4",
+    audio="en",
+    subtitles="en",
+)
+# video.mp4 and video.en.vtt
+```
+
+Re-wrap an MPEG-TS stream into MP4 using only the built-in remuxer:
+
+```python
+from rayohx import RemuxBackend
+from rayohx.config import DownloadConfig, OutputConfig
+
+config = DownloadConfig(output=OutputConfig(remux_backend=RemuxBackend.NATIVE))
+download("https://cdn.example.com/vod/media.m3u8", "video.mp4", config=config)
+```
+
 Save the pieces and join them yourself:
 
 ```python
@@ -318,6 +353,5 @@ downloader = Downloader(url, output="video.ts")
 result = downloader.run()
 if result.state.name == "FAILED":
     print(result.error)
-    # This stream keeps its audio in a separate track ('English'), which has to be merged with
-    # the video. Merging is not available yet. Set video_only to download the video without that audio.
+    # Joining a separate audio track into the video needs an MP4 file. Save it as .mp4.
 ```

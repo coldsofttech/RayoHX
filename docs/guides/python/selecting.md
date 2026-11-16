@@ -73,8 +73,8 @@ Details worth knowing:
 - Forced tracks are chosen only when nothing else matches or when asked for by name.
 - With `video_only=True` no audio or subtitle tracks are chosen at all. `audio_tracks` and
   `subtitle_tracks` are empty and `notes` says "Only the video stream is downloaded; separate audio
-  and subtitles are skipped." Use it for streams that keep their audio in a separate track, which
-  cannot be downloaded in one file yet (see [Downloading](downloading.md#what-works-today)).
+  and subtitles are skipped." Use it to download just the video of a stream that keeps its audio in a
+  separate track (see [Downloading](downloading.md#what-works-today)).
 - Tracks are matched within the audio and subtitle groups the chosen variant refers to
   (`Variant.audio_group` and `Variant.subtitle_group`).
 
