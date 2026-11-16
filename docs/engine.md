@@ -40,27 +40,29 @@ Modules are added phase by phase under `src/rayohx/`. The first group exists; th
 | `models` | Frozen dataclasses for playlists, tracks, segments, requests, progress and results |
 | `config` | `DownloadConfig`, `NetworkConfig`, `ProxyConfig`, `OutputConfig`, `StorageConfig`, `SelectionConfig` |
 | `errors` | The `RayoHXError` hierarchy |
-| `playlist` | The HLS parser for master and media playlists |
-| `selection` | Choosing the variant, audio and subtitle tracks |
-| `inspection` | `inspect_playlist`, which looks at a stream without downloading it |
+| `playlist` | The HLS parser for master and media playlists, and `inspect` / `inspect_playlist`, which look at a stream without downloading it |
+| `stream` | Choosing the variant, audio and subtitle tracks |
+| `downloader` | `Downloader` and `download()`: a web address to a finished file. The public front door of the engine |
 | `_http` | Internal. `HttpClient`: the only code that makes network requests |
 | `_ratelimit` | Internal. A speed limit shared by all workers |
 | `_crypto` | Internal. AES-128 decryption and key retrieval |
-| `download` | Internal for now. The segment download engine; the modules below live inside it and start with an underscore |
-| `download._media` | `MediaDownload`: one media playlist from start to finish, and its `DownloadSummary` |
-| `download._pipeline` | Parallel fetching with ordered writing |
-| `download._fetcher` | Downloads and decrypts one segment |
-| `download._storage` | Strategy choice, size estimates, disk-space checks, metrics and the segment stores |
-| `download._workspace` | The private working folder, its lock and cleanup |
-| `download._state` | Resume state, saved atomically |
-| `download._sinks` | `FileSink` and `StreamSink`: where ordered segments go |
-| `download._progress` | Speed, ETA and progress snapshots |
+| `_download` | Internal. The engine that downloads segments; the modules below live inside it |
+| `_download._media` | `MediaDownload`: one media playlist from start to finish, and its `DownloadSummary` |
+| `_download._pipeline` | Parallel fetching with ordered writing |
+| `_download._fetcher` | Downloads, decrypts and checks one segment |
+| `_download._storage` | Strategy choice, size estimates, disk-space checks, metrics and the segment stores |
+| `_download._workspace` | The private working folder, its lock and cleanup |
+| `_download._state` | Resume state, saved atomically |
+| `_download._sinks` | `FileSink`, `StreamSink` and `DirectorySink`: where ordered segments go |
+| `_download._progress` | Speed, ETA and progress snapshots |
+| `_download._containers` | Recognising and checking MPEG-TS and fMP4 data |
+| `_download._output` | Choosing the output name and format |
 | `cancellation` | `CancellationToken` for cooperative cancellation |
 | `events` | The download state machine and the `EventBus` |
 | `_redaction` (internal) | Hides secrets in URLs, headers and text |
 | `logs` | Standard `logging` setup with a redaction filter |
 
-Still to come: the output and muxing code (`output`) and the controller that joins everything behind `download()`.
+Still to come: the native muxer, separate audio and subtitle tracks, and the optional FFmpeg fallback.
 
 ## Conventions
 
@@ -139,7 +141,7 @@ Compressed responses are accepted for playlists. Media is requested uncompressed
 
 ## Downloading segments
 
-`MediaDownload(playlist, client=..., config=..., sink=...).run()` (internal, in `rayohx.download`) downloads one media playlist. Workers fetch and decrypt segments in parallel, and the calling thread writes them to the sink in playlist order, so a sink never needs locking. Segments that finish early wait in a *store*. New work starts only while the strategy allows it, so waiting data stays bounded. A segment leaves the store the moment it is written, so working storage never grows to the size of the stream.
+`MediaDownload(playlist, client=..., config=..., sink=...).run()` (internal, in `rayohx._download`) downloads one media playlist. Workers fetch and decrypt segments in parallel, and the calling thread writes them to the sink in playlist order, so a sink never needs locking. Segments that finish early wait in a *store*. New work starts only while the strategy allows it, so waiting data stays bounded. A segment leaves the store the moment it is written, so working storage never grows to the size of the stream.
 
 | Strategy | Where finished segments wait | Notes |
 | --- | --- | --- |
@@ -163,3 +165,32 @@ The next segment to be written is always allowed to start, which rules out a dea
 **Encryption.** Plain AES-128 is decrypted, with the IV from the playlist or the segment's sequence number. Keys come through the HTTP layer and are cached. Initialization sections are treated as unencrypted. SAMPLE-AES and DRM key formats are refused before anything is downloaded; encrypted segments are not DRM support. Live streams (no `#EXT-X-ENDLIST`) are refused.
 
 **Events.** `SEGMENT_STARTED`, `SEGMENT_COMPLETED`, `SEGMENT_FAILED` and `DOWNLOAD_PROGRESS` (at most four a second) go to the `EventBus`. Progress carries bytes downloaded and written, estimated total, current and average speed, ETA, active workers, and storage figures including peak temporary use.
+
+## The controller
+
+`download(url, output)` is the one-call interface and `Downloader` is the same thing with a handle: `events` to follow it, `cancel()` to stop it, `state` and `exception`. They return a `DownloadResult` for completed **and** cancelled downloads (check `result.cancelled`). A failure raises from `download()`; from `Downloader.run()` it comes back as a `FAILED` result with the message, and the original exception in `exception`.
+
+| State | What happens | Events |
+| --- | --- | --- |
+| `QUEUED` | Created | `DOWNLOAD_STARTED` |
+| `INSPECTING` | The playlist is fetched and a stream chosen | `PLAYLIST_LOADED`, `STREAM_SELECTED` |
+| `PREPARING` | The format is settled and the output planned | |
+| `DOWNLOADING` | Segments are fetched and written | `SEGMENT_STARTED`, `SEGMENT_COMPLETED`, `SEGMENT_FAILED`, `DOWNLOAD_PROGRESS` |
+| `FINALIZING` | The finished file is validated and put in place | `FINALIZATION_STARTED`, `FINALIZATION_COMPLETED` |
+| `COMPLETED`, `FAILED`, `CANCELLED` | Final | `DOWNLOAD_COMPLETED`, `DOWNLOAD_FAILED`, `DOWNLOAD_CANCELLED` |
+
+Every event carries the download id and the state. Log lines from the worker threads carry the same id.
+
+**Output rules.** The file name must match what is inside, so raw MPEG-TS is never saved as `.mp4`.
+
+| Stream | Allowed names | Result |
+| --- | --- | --- |
+| MPEG-TS | `.ts`, `.m2ts`, `.mts`, or no extension (`.ts` is added) | Segments joined in order |
+| Fragmented MP4 | `.mp4`, `.m4v`, `.m4a`, or no extension (`.mp4` is added) | Initialization section, then fragments: a fragmented MP4 |
+| Either, with `format=SEGMENTS` | A folder name | One file per segment (`segment-00001.ts`) |
+
+Anything that needs remuxing (MPEG-TS into MP4, other containers) is refused with a hint, not mislabelled. With no output name, the file is named after the address (a safe name: letters, digits, dots, dashes and underscores only, never a Windows device name) in the current folder. When the playlist does not say what the segments are, the first segment is downloaded and looked at.
+
+**Checks.** Each segment is checked against the stream's format as it arrives, so an error page, a cut-off file or the output of a wrong key is caught at once with the segment number. When the file is finished it is validated before it is put in place: MPEG-TS gets a spot check of up to 2000 packets spread over the file (reading all of a large file would cost as much as downloading it), and fragmented MP4 gets a walk through every top-level box, requiring the initialization (`moov`), at least one fragment (`moof`) and its media data (`mdat`). A file that fails is never put in place, and nothing is kept for resuming since the download itself finished. Validation can be switched off with `OutputConfig(validate=False)`.
+
+**Not yet.** Streams with a separate audio track, subtitles, and TS-to-MP4 need the muxer. Until then the controller refuses them with a clear message; `video_only` downloads the video alone.

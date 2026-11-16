@@ -36,6 +36,11 @@ def select_stream(master: MasterPlaylist, config: SelectionConfig) -> StreamSele
 
     notes: list[str] = []
     variant = select_variant(master.variants, config, notes)
+    if config.video_only:
+        notes.append(
+            "Only the video stream is downloaded; separate audio and subtitles are skipped."
+        )
+        return StreamSelection(variant=variant, notes=tuple(notes))
     audio = select_audio(master, variant, config, notes)
     subtitles = select_subtitles(master, variant, config, notes)
     return StreamSelection(

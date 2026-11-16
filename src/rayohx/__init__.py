@@ -17,6 +17,7 @@ logging.getLogger("rayohx").addHandler(logging.NullHandler())
 
 if TYPE_CHECKING:
     from rayohx.cancellation import CancellationToken
+    from rayohx.downloader import Downloader, download
     from rayohx.enums import (
         ContainerFormat,
         DownloadState,
@@ -78,6 +79,7 @@ _EXPORTS = {
     "DownloadRequest": "rayohx.models",
     "DownloadResult": "rayohx.models",
     "DownloadState": "rayohx.enums",
+    "Downloader": "rayohx.downloader",
     "EncryptionInfo": "rayohx.models",
     "EncryptionMethod": "rayohx.enums",
     "EventType": "rayohx.enums",
@@ -101,6 +103,7 @@ _EXPORTS = {
     "Variant": "rayohx.models",
     "VideoTrack": "rayohx.models",
     "configure_logging": "rayohx.logs",
+    "download": "rayohx.downloader",
     "inspect": "rayohx.playlist.inspection",
     "inspect_playlist": "rayohx.playlist",
     "is_hls_playlist": "rayohx.playlist",
@@ -135,6 +138,7 @@ __all__ = [
     "DownloadRequest",
     "DownloadResult",
     "DownloadState",
+    "Downloader",
     "EncryptionInfo",
     "EncryptionMethod",
     "EventType",
@@ -159,6 +163,7 @@ __all__ = [
     "VideoTrack",
     "__version__",
     "configure_logging",
+    "download",
     "inspect",
     "inspect_playlist",
     "is_hls_playlist",
