@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-DEFAULT_DIR = Path(__file__).resolve().parents[1] / "build" / "installer"
+DEFAULT_DIR = Path(__file__).resolve().parents[3] / "build" / "installer"
 SUFFIX = ".exe" if sys.platform == "win32" else ""
 
 

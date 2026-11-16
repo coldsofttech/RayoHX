@@ -113,7 +113,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
       - name: Run tests
-        run: uv run pytest
+        run: uv run python scripts/run_tests.py
 
   integration:
     name: integration (${{ matrix.os }}, ${{ matrix.python-version }})
@@ -138,16 +138,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: uv sync --locked
-      # One step per component (tests/<component>/integration), so a failure names its area. The
+      # One step per component (packages/<component>/tests/integration), so a failure names its area. The
       # UI's integration test needs the built frontend and Windows, so the ui-windows job runs it.
       - name: Integration tests (core)
-        run: uv run pytest -m integration tests/core --no-cov
+        run: uv run pytest -m integration packages/core/tests --no-cov
       - name: Integration tests (cli)
         if: ${{ !cancelled() }}
-        run: uv run pytest -m integration tests/cli --no-cov
+        run: uv run pytest -m integration packages/cli/tests --no-cov
       - name: Integration tests (api)
         if: ${{ !cancelled() }}
-        run: uv run pytest -m integration tests/api --no-cov
+        run: uv run pytest -m integration packages/api/tests --no-cov
 
   # The UI Python tests need the built frontend and Windows, where Cornea Shell runs.
   ui-windows:
@@ -173,7 +173,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
       - name: Run the UI window integration test
-        run: uv run pytest -m integration tests/ui/integration/test_ui_window.py --no-cov
+        run: uv run pytest -m integration packages/ui/tests/integration/test_ui_window.py --no-cov
 
   build:
     name: Build the package

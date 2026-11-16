@@ -48,8 +48,9 @@ src = [
   "packages/cli/src",
   "packages/api/src",
   "packages/ui/src",
-  "tests",
   "packages/core/tests",
+  "packages/api/tests",
+  "packages/ui/tests",
 ]
 target-version = "py311"
 
@@ -57,7 +58,6 @@ target-version = "py311"
 select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106", "S603"]
 "packages/*/tests/**" = ["S101", "S105", "S106", "S603"]  # assert, subprocess and fake passwords are fine in tests
 "packages/core/tests/integration/**" = ["SIM117"]  # the client is built from the running server's address
 "scripts/**" = ["S603", "S607", "T201"]  # scripts call the trusted gh CLI and print progress
@@ -66,10 +66,9 @@ select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 strict = true
 explicit_package_bases = true
 mypy_path = "packages/core/src:packages/cli/src:packages/api/src:packages/ui/src"
-files = ["packages", "tests"]
+files = ["packages"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "packages/core/tests"]
 addopts = "-m 'not integration' --strict-markers --cov=rayohx --cov=rayohx_cli --cov=rayohx_api --cov=rayohx_ui --cov-report=term-missing --cov-fail-under=80"
 markers = ["integration: slower end-to-end tests, run in CI but not by default or in pre-commit"]
 
