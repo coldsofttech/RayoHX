@@ -13,3 +13,4 @@ Technical documentation for this project lives in this folder. The top-level [RE
 - [Packaging](packaging.md): how the Windows setups and Linux packages are built.
 - [Releasing](releasing.md): publishing, signing, and the Homebrew, Scoop and winget channels.
 - [Command line guide](guides/cli.md): using `rayohx` from the terminal: commands, options, settings and exit codes.
+- [Benchmarks](benchmarks.md): measuring download speed and memory between changes.

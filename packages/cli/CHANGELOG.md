@@ -6,4 +6,5 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Linux packages (`.deb` and `.rpm`) are also built for ARM64.
 - The `rayohx` command: `rayohx info URL` shows a stream's qualities and tracks, and `rayohx download URL` saves it, with progress, `--json` output and settings from a file or `RAYOHX_` environment variables.

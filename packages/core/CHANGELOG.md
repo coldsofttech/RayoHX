@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Damaged or hostile streams are refused with a clear error instead of crashing: playlists, MPEG-TS, MP4 and subtitles are tested against thousands of corrupted variations.
+- A benchmark script (`scripts/benchmark.py`) to compare download speed and memory between changes.
 - Read HLS playlists, including audio and subtitle tracks, encryption, byte ranges and fMP4.
 - Look at a stream's variants, tracks and encryption from a web address without downloading any media.
 - Choose a stream by quality, resolution or bitrate limit, with audio and subtitle selection by language or name.
