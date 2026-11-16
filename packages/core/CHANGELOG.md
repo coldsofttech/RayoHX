@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Choose a stream exactly with `variant` (its number in the listing, from 1), `resolution` (such as `1280x720`), `bandwidth` and `variant_name` in `SelectionConfig`. A choice that matches nothing lists the available streams.
+- `StorageConfig(check_space=False)` turns off the disk-space check, for drives that report free space wrongly.
+- A guide for moving from `pym3u8downloader`.
 - Damaged or hostile streams are refused with a clear error instead of crashing: playlists, MPEG-TS, MP4 and subtitles are tested against thousands of corrupted variations.
 - A benchmark script (`scripts/benchmark.py`) to compare download speed and memory between changes.
 - Read HLS playlists, including audio and subtitle tracks, encryption, byte ranges and fMP4.

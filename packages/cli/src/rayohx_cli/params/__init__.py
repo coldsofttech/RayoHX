@@ -13,6 +13,7 @@ from rayohx_cli.params.engine import (
     Concurrency,
     MaxTempSize,
     Resume,
+    SpaceCheck,
     Storage,
     Workspace,
 )
@@ -43,18 +44,23 @@ from rayohx_cli.params.output import (
 from rayohx_cli.params.selection import (
     Audio,
     AudioName,
+    Bandwidth,
     MaxBitrate,
     MaxResolution,
     Quality,
+    Resolution,
     SubtitleName,
     Subtitles,
     Url,
+    Variant,
+    VariantName,
     VideoOnly,
 )
 
 __all__ = [
     "Audio",
     "AudioName",
+    "Bandwidth",
     "BufferSize",
     "CaBundle",
     "Concurrency",
@@ -79,8 +85,10 @@ __all__ = [
     "ReadTimeout",
     "Referer",
     "RemuxBackendOption",
+    "Resolution",
     "Resume",
     "Retries",
+    "SpaceCheck",
     "Storage",
     "SubtitleName",
     "Subtitles",
@@ -88,6 +96,8 @@ __all__ = [
     "Url",
     "UserAgent",
     "Validate",
+    "Variant",
+    "VariantName",
     "VideoOnly",
     "Workspace",
 ]

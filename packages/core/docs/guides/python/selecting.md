@@ -63,6 +63,8 @@ The settings that drive the choice. All fields are keyword-only. See
 | `quality="1080p"` | The best stream at or below that size. If every stream is larger, the smallest one. |
 | `quality="auto"` | Like `1080p`: sharp without the cost of the largest stream. |
 | `max_resolution`, `max_bitrate` | Limits applied before the quality choice. If nothing fits, the smallest stream is used. A stream that does not state its size is never ruled out by a size limit. |
+| `variant` | The stream to download, by its number in the listing (the first is 1). It chooses the stream by itself, so it cannot be combined with `resolution`, `bandwidth`, `variant_name`, `max_resolution` or `max_bitrate`. A number past the end raises `ConfigurationError`. |
+| `resolution`, `bandwidth`, `variant_name` | Only streams with exactly this size (`"1280x720"`), bandwidth or average bandwidth (bits per second) or name (ignoring case). They can be combined, and `quality` then picks among what is left. If nothing matches, `ConfigurationError` lists the streams that exist. |
 | `audio_languages`, `audio_names` | One track per entry, in the order given. If none is found, the default audio track is used. `en` matches `en-US`, but `en-US` does not match `en-GB`. |
 | `subtitle_languages`, `subtitle_names` | Subtitles are off by default. A missing language selects nothing and adds a note. |
 

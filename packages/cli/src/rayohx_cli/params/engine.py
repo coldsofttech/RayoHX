@@ -66,3 +66,12 @@ MaxTempSize = Annotated[
         rich_help_panel=ENGINE,
     ),
 ]
+SpaceCheck = Annotated[
+    bool,
+    typer.Option(
+        "--space-check/--no-space-check",
+        envvar="RAYOHX_SPACE_CHECK",
+        help="Check that the disk has room (turn off if the free space is reported wrongly).",
+        rich_help_panel=ENGINE,
+    ),
+]

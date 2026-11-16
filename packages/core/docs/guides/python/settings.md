@@ -186,8 +186,12 @@ Which tracks to download. The rules are explained in [Selecting tracks](selectin
 | `subtitle_languages` | `tuple[str, ...]` | `()` | Subtitle language codes |
 | `subtitle_names` | `tuple[str, ...]` | `()` | Subtitle track names |
 | `video_only` | `bool` | `False` | Download only the video stream, leaving out separate audio and subtitle tracks |
+| `variant` | `int \| None` | `None` | Stream to download by its number in the listing (the first is 1); cannot be combined with `resolution`, `bandwidth`, `variant_name`, `max_resolution` or `max_bitrate` |
+| `resolution` | `str \| None` | `None` | Only streams with exactly this size, such as `1280x720` |
+| `bandwidth` | `int \| None` | `None` | Only streams with exactly this bandwidth or average bandwidth, in bits per second |
+| `variant_name` | `str \| None` | `None` | Only streams with exactly this name, ignoring case |
 
-Method: `as_dict()` (it includes `video_only`). Language codes must look like `en`, `en-US` or `fil`; names must not be empty.
+Method: `as_dict()` (it includes `video_only` and the exact-choice fields). Language codes must look like `en`, `en-US` or `fil`; names must not be empty.
 
 ## OutputConfig
 
@@ -227,6 +231,7 @@ Where working data lives and how much of it may pile up.
 | `max_temp_bytes` | `int \| None` | `None` | Most temporary data allowed on disk at once; `None` means no explicit limit |
 | `reserve_bytes` | `int` | `268435456` | Free space that must remain after the download (256 MiB); must not be negative |
 | `keep_state_on_failure` | `bool` | `True` | Keep resume state after a failure or cancellation |
+| `check_space` | `bool` | `True` | Check that the disk has room before and during the download; turn off only when the free-space figure is wrong, for example on some network drives |
 
 Method: `as_dict()`.
 

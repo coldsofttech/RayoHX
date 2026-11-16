@@ -51,6 +51,14 @@ def describe(variant: Variant) -> str:
     return f"{size}, {variant.bandwidth // 1000} kbps"
 
 
+def describe_full(variant: Variant) -> str:
+    parts = [str(variant.resolution) if variant.resolution else "audio only"]
+    parts.append(f"{variant.bandwidth} bit/s")
+    if variant.name:
+        parts.append(f"name {variant.name!r}")
+    return ", ".join(parts)
+
+
 def closest_to(entries: list[tuple[int, Variant]], target: int, notes: list[str]) -> Variant:
     """The best stream at or below ``target``; if all are larger, the smallest of them."""
     at_or_below = [entry for entry in entries if quality_height(entry[1]) <= target]

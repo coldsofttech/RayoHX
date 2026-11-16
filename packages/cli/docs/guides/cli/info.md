@@ -41,7 +41,11 @@ With these settings a download would take:
 ```
 
 - The `*` marks the stream the options you gave would pick. Change `--quality`, `--max-resolution`,
-  `--max-bitrate`, `--audio` or `--subtitles` and the mark moves.
+  `--max-bitrate`, `--variant`, `--audio` or `--subtitles` and the mark moves.
+- Streams are numbered from 1. `--variant 3` picks stream 3 by itself; `--resolution 1280x720`,
+  `--bandwidth` (matches the bit rate or the average) and `--variant-name` narrow the choice and can
+  be combined, and `--quality` then picks among what is left. A choice that matches nothing lists
+  the streams that exist.
 - If a wish cannot be met (for example no French audio exists), the summary says so in plain words
   and shows the closest choice.
 
@@ -64,6 +68,10 @@ These only decide which stream is marked with `*`; nothing is downloaded.
 | `--quality` | | `best` (default), `worst`, `auto` (up to 1080p), or a height such as `720p` (the best at or below it). |
 | `--max-resolution` | | Never pick a picture taller than this, for example `1080p`. |
 | `--max-bitrate` | | Never pick a stream above this many bits per second, for example `4M`. |
+| `--variant` | | Download this stream, by its number in `rayohx info` (the first is 1). |
+| `--resolution` | | Only streams with exactly this size, such as `1280x720`. |
+| `--bandwidth` | | Only streams with exactly this bit rate, in bits per second (for example `2800000`). |
+| `--variant-name` | | Only streams with exactly this name (ignoring case). |
 | `--audio` | `-a` | Audio language to pick (repeat for several), for example `en`. |
 | `--audio-name` | | Pick the audio track with this exact name (repeatable). |
 | `--subtitles` | `-s` | Subtitle language to pick (repeat for several). |

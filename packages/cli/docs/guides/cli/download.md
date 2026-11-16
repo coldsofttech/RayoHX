@@ -98,6 +98,10 @@ Options are grouped the same way in `rayohx download --help`.
 | `--quality` | | `best` (default), `worst`, `auto` (up to 1080p), or a height such as `720p` (the best at or below it). |
 | `--max-resolution` | | Never pick a picture taller than this, for example `1080p`. |
 | `--max-bitrate` | | Never pick a stream above this many bits per second, for example `4M`. |
+| `--variant` | | Download this stream, by its number in `rayohx info` (the first is 1). |
+| `--resolution` | | Only streams with exactly this size, such as `1280x720`. |
+| `--bandwidth` | | Only streams with exactly this bit rate, in bits per second (for example `2800000`). |
+| `--variant-name` | | Only streams with exactly this name (ignoring case). |
 | `--audio` | `-a` | Audio language to download (repeat for several), for example `en`. |
 | `--audio-name` | | Download the audio track with this exact name (repeatable). |
 | `--subtitles` | `-s` | Subtitle language to save beside the video (repeat for several). |
@@ -139,6 +143,7 @@ and a speed limit.
 | `--workspace` | | A folder for working files (default: beside the output). |
 | `--buffer-size` | | Memory for the segment buffer, for example `64M`. |
 | `--max-temp-size` | | Most working disk space to use, for example `2G`. |
+| `--space-check` / `--no-space-check` | | Check that the disk has room (on by default). Turn it off if the free space is reported wrongly, for example on some network drives. |
 
 ### Display
 

@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rayohx.stream._ranking import best_key, closest_to, describe, is_audio_only, worst_key
+from rayohx.errors import ConfigurationError
+from rayohx.stream._ranking import (
+    best_key,
+    closest_to,
+    describe,
+    describe_full,
+    is_audio_only,
+    worst_key,
+)
 from rayohx.stream.quality import quality_height
 
 if TYPE_CHECKING:
@@ -32,6 +40,14 @@ def select_variant(
         raise PlaylistError("The playlist lists no streams to download.")
 
     entries = list(enumerate(variants))
+    if config.variant is not None:
+        if config.variant > len(entries):
+            raise ConfigurationError(
+                f"There is no stream number {config.variant}.",
+                hint=f"The playlist lists {len(entries)} stream(s), numbered from 1.",
+            )
+        return entries[config.variant - 1][1]
+    entries = _exact_matches(entries, config, notes)
     video = [entry for entry in entries if not is_audio_only(entry[1])]
     entries = video or entries
 
@@ -61,3 +77,31 @@ def select_variant(
         return max(allowed, key=best_key)[1]
     target = AUTO_TARGET_HEIGHT if mode == "auto" else int(mode[:-1])
     return closest_to(allowed, target, notes)
+
+
+def _exact_matches(
+    entries: list[tuple[int, Variant]], config: SelectionConfig, notes: list[str]
+) -> list[tuple[int, Variant]]:
+    """Keep the streams that match the exact size, bandwidth and name that were asked for."""
+    found = entries
+    wanted: list[str] = []
+    if config.resolution is not None:
+        wanted.append(f"size {config.resolution}")
+        found = [e for e in found if e[1].resolution and str(e[1].resolution) == config.resolution]
+    if config.bandwidth is not None:
+        wanted.append(f"bandwidth {config.bandwidth}")
+        found = [e for e in found if config.bandwidth in (e[1].bandwidth, e[1].average_bandwidth)]
+    if config.variant_name is not None:
+        wanted.append(f"name {config.variant_name!r}")
+        name = config.variant_name.strip().lower()
+        found = [e for e in found if (e[1].name or "").strip().lower() == name]
+    if not wanted:
+        return entries
+    if not found:
+        listing = "; ".join(f"{index + 1}: {describe_full(v)}" for index, v in entries)
+        raise ConfigurationError(
+            f"No stream has {' and '.join(wanted)}.", hint=f"The streams are {listing}."
+        )
+    if len(found) > 1:
+        notes.append(f"{len(found)} streams have {' and '.join(wanted)}; the best of them is used.")
+    return found

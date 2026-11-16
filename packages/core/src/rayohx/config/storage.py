@@ -31,6 +31,9 @@ class StorageConfig:
     reserve_bytes: int = 256 * 1024 * 1024
     #: Keep resume state after a failure or cancellation.
     keep_state_on_failure: bool = True
+    #: Check that the disk has room before and during the download. Turn it off only when the
+    #: free-space figure is wrong, for example on some network drives.
+    check_space: bool = True
 
     def __post_init__(self) -> None:
         check_positive("buffer_bytes", self.buffer_bytes)
@@ -47,4 +50,5 @@ class StorageConfig:
             "max_temp_bytes": self.max_temp_bytes,
             "reserve_bytes": self.reserve_bytes,
             "keep_state_on_failure": self.keep_state_on_failure,
+            "check_space": self.check_space,
         }

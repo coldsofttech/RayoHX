@@ -18,6 +18,10 @@ def download(
     quality: params.Quality = "best",
     max_resolution: params.MaxResolution = None,
     max_bitrate: params.MaxBitrate = None,
+    variant: params.Variant = None,
+    resolution: params.Resolution = None,
+    bandwidth: params.Bandwidth = None,
+    variant_name: params.VariantName = None,
     audio: params.Audio = None,
     audio_name: params.AudioName = None,
     subtitles: params.Subtitles = None,
@@ -48,6 +52,7 @@ def download(
     workspace: params.Workspace = None,
     buffer_size: params.BufferSize = None,
     max_temp_size: params.MaxTempSize = None,
+    space_check: params.SpaceCheck = True,
     json_output: params.JsonOutput = False,
     progress: params.ProgressMode = "auto",
 ) -> None:
@@ -62,6 +67,10 @@ def download(
         quality=quality,
         max_resolution=max_resolution,
         max_bitrate=max_bitrate,
+        variant=variant,
+        resolution=resolution,
+        bandwidth=bandwidth,
+        variant_name=variant_name,
         audio=audio or [],
         audio_name=audio_name or [],
         subtitles=subtitles or [],
@@ -92,6 +101,7 @@ def download(
         workspace=workspace,
         buffer_size=buffer_size,
         max_temp_size=max_temp_size,
+        space_check=space_check,
     )
     try:
         downloader = Downloader(url, output=output_path, config=config)
