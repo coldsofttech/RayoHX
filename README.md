@@ -70,13 +70,13 @@ The window needs Windows 10 or 11 with the Microsoft Edge WebView2 runtime, whic
 
 ## Usage
 
-```console
-$ rayohx --version
-rayohx 0.1.0
-$ rayohx-ui
+```bash
+rayohx info https://example.com/master.m3u8
+rayohx download https://example.com/master.m3u8 -o movie.mp4
+rayohx-ui
 ```
 
-`rayohx-ui` opens the app window. `rayohx-ui --no-window` prints an address you can open in a browser instead. On other systems it explains that the window needs Windows; the command line and the API work everywhere.
+`rayohx info` lists the qualities and tracks of a stream, and `rayohx download` saves it (see the [command line guide](docs/guides/cli.md)). `rayohx-ui` opens the app window. `rayohx-ui --no-window` prints an address you can open in a browser instead. On other systems it explains that the window needs Windows; the command line and the API work everywhere.
 
 ## Downloading a stream from Python
 
@@ -102,7 +102,7 @@ What works today:
 - Use `on_event=` to follow progress, and `cancel=` with a `CancellationToken` to stop a download.
 - A download that is interrupted or cancelled continues where it stopped, except when audio and video are being joined, which starts again.
 
-See the [CLI reference](docs/cli.md) for every command, option and exit code, and the [API guide](docs/api.md) to run the API on its own.
+See the [command line guide](docs/guides/cli.md) for every command, option and exit code, and the [API guide](docs/api.md) to run the API on its own.
 
 > After renaming the commands, update the examples above. Once you have written your tool's real behavior, replace this example with a short walkthrough.
 

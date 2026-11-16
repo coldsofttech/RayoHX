@@ -33,3 +33,19 @@ def test_reports_its_version(folder: str) -> None:
 
     assert result.returncode == 0
     assert rayohx.__version__ in result.stdout
+
+
+@pytest.mark.parametrize("folder", FOLDERS)
+def test_shows_help_for_a_command(folder: str) -> None:
+    result = _run(locate(folder, "rayohx"), "download", "--help")
+
+    assert result.returncode == 0
+    assert "--output" in result.stdout
+
+
+@pytest.mark.parametrize("folder", FOLDERS)
+def test_reports_errors_with_a_failing_exit_code(folder: str) -> None:
+    result = _run(locate(folder, "rayohx"), "download", "not a url")
+
+    assert result.returncode == 2
+    assert "http" in result.stderr

@@ -15,6 +15,8 @@ from rayohx._logs import HANDLER_MARK, LOG_FORMAT, RedactionFilter, get_logger
 if TYPE_CHECKING:
     from pathlib import Path
 
+__all__ = ["RedactionFilter", "configure_logging"]
+
 
 def configure_logging(
     level: int | str = logging.INFO,

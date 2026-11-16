@@ -20,7 +20,7 @@ Open an issue using one of the provided forms. Search existing issues first. For
 | You changed | Run |
 | --- | --- |
 | Any Python | `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .` and `uv run mypy` |
-| The command line | `uv run pytest tests/cli`; if commands or options changed, regenerate `docs/cli-reference.md` (the command is in `docs/cli.md`) |
+| The command line | `uv run pytest tests/cli`; if commands, options or exit codes changed, update the [command line guide](docs/guides/cli.md) |
 | The API | `uv run pytest tests/api`, then `uv run python scripts/export_openapi.py` and commit `docs/openapi.json` |
 | The frontend (`src/<ui package>/ui`) | `npm ci`, `npm run lint`, `npm test` and `npm run build` in that folder |
 | The installers (`installer/`) | `uv sync --group installer`, then `uv run python scripts/build_installer.py --smoke` |

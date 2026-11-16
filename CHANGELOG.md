@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- The `rayohx` command: `rayohx info URL` shows a stream's qualities and tracks, and `rayohx download URL` saves it, with progress, `--json` output and settings from a file or `RAYOHX_` environment variables.
 - Read HLS playlists, including audio and subtitle tracks, encryption, byte ranges and fMP4.
 - Look at a stream's variants, tracks and encryption from a web address without downloading any media.
 - Choose a stream by quality, resolution or bitrate limit, with audio and subtitle selection by language or name.
@@ -27,4 +28,3 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Login credentials go only to the starting host and to hosts you list; redirects never carry them elsewhere.
 - Secrets such as tokens, cookies and proxy passwords are hidden from logs and error messages.
-

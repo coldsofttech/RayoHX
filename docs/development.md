@@ -11,7 +11,7 @@ src/rayohx_ui/ui/     React + Vite frontend (JavaScript)
 tests/                 pytest tests, one folder per component: core/, cli/, api/, ui/ (each with integration/)
 installer/             PyInstaller specs, NSIS scripts, nfpm config, pinned tool versions (see packaging.md)
 scripts/               repository settings, OpenAPI export, installer build, release manifests
-docs/                  documentation, including the generated openapi.json and cli-reference.md
+docs/                  documentation, including the generated openapi.json
 pyproject.toml         metadata, dependencies and tool configuration
 uv.lock                locked dependencies (commit this file)
 ```
@@ -20,7 +20,7 @@ The example names are `rayohx` (library), `rayohx_cli` (command line package), `
 
 - replaces the owner and repository name;
 - renames the packages (`acme_package`, `acme_cli`, `acme_api`, `acme_ui`), the commands (`acme-cli`, `acme-ui`), the settings prefix (`ACME_API_`) and the app id, and replaces "RayoHX" with your title;
-- generates new product GUIDs for the Windows installers, then regenerates `uv.lock`, `docs/cli-reference.md` and `docs/openapi.json`.
+- generates new product GUIDs for the Windows installers, then regenerates `uv.lock` and `docs/openapi.json`.
 
 The rename is `scripts/init_template.py` (it replaces only those exact patterns, so prose such as "for example" is left alone, and it deletes itself afterwards). The workflows and the installer scripts read names from `pyproject.toml` (`[project.scripts]` and `[tool.installer]`, through `installer/projectinfo.py`), so they need no renaming. If you add a new place that uses an example name, keep it in one of the patterns the script knows.
 
@@ -33,7 +33,19 @@ What is left for you:
 
 See [packaging](packaging.md) and [releasing](releasing.md) for the installers and the first-release checklist.
 
-Commands, options and exit codes are documented in [CLI reference](cli.md).
+Commands, options and exit codes are documented in the [command line guide](guides/cli.md).
+
+## Adding a command
+
+The command line only reads options and shows results; the work belongs in the `rayohx` library.
+
+1. Add the logic to `rayohx` as a plain function that returns a value or raises an exception. It must not print or exit.
+2. Add a module for the command in `src/rayohx_cli/cli/` (see `info.py` and `download.py`) that calls it, registers it on the `app` from `root.py`, and writes through the consoles in `output.py`. Put options shared with other commands in `src/rayohx_cli/params/`, and import the module in `src/rayohx_cli/cli/__init__.py` so it is registered.
+3. Add a `--json` option if the command returns data.
+4. Add tests with `typer.testing.CliRunner` in `tests/cli/unit/`, mirroring the module's place in `rayohx_cli`.
+5. Document the command in the [command line guide](guides/cli.md): a page under `guides/cli/`, and a row in its contents and command tables.
+
+Unexpected exceptions are caught by `run()` in `src/rayohx_cli/cli/__init__.py`: they print a one-line message to stderr and show a traceback only with `--verbose`. Local variables are never shown, because they can contain secrets.
 
 ## Tooling
 

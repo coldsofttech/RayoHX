@@ -58,6 +58,11 @@ if TYPE_CHECKING:
         parse_playlist,
     )
     from rayohx.playlist.inspection import inspect
+    from rayohx.serialization import (
+        playlist_to_dict,
+        progress_to_dict,
+        result_to_dict,
+    )
     from rayohx.stream import StreamSelection, select_stream
 
 _SUBMODULES = frozenset(
@@ -108,6 +113,9 @@ _EXPORTS = {
     "inspect_playlist": "rayohx.playlist",
     "is_hls_playlist": "rayohx.playlist",
     "parse_playlist": "rayohx.playlist",
+    "playlist_to_dict": "rayohx.serialization",
+    "progress_to_dict": "rayohx.serialization",
+    "result_to_dict": "rayohx.serialization",
     "select_stream": "rayohx.stream",
 }
 
@@ -168,5 +176,8 @@ __all__ = [
     "inspect_playlist",
     "is_hls_playlist",
     "parse_playlist",
+    "playlist_to_dict",
+    "progress_to_dict",
+    "result_to_dict",
     "select_stream",
 ]
