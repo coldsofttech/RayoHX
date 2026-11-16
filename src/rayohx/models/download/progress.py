@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from rayohx.enums import DownloadState
-from rayohx.models.storage_metrics import StorageMetrics
+from rayohx.models.download.storage import StorageMetrics
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

@@ -9,8 +9,8 @@ from rayohx._redaction import redact_url
 from rayohx.enums import DownloadState
 
 if TYPE_CHECKING:
-    from rayohx.models.download_progress import DownloadProgress
-    from rayohx.models.output_info import OutputInfo
+    from rayohx.models.download.output import OutputInfo
+    from rayohx.models.download.progress import DownloadProgress
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

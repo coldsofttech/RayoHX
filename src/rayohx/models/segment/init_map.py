@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rayohx.models.segment_range import SegmentRange
+    from rayohx.models.segment.range import SegmentRange
 
 
 @dataclass(frozen=True, slots=True)

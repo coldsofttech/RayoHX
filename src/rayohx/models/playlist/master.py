@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rayohx.models.audio_track import AudioTrack
-    from rayohx.models.subtitle_track import SubtitleTrack
-    from rayohx.models.variant import Variant
-    from rayohx.models.video_track import VideoTrack
+    from rayohx.models.playlist.tracks.audio import AudioTrack
+    from rayohx.models.playlist.tracks.subtitle import SubtitleTrack
+    from rayohx.models.playlist.tracks.video import VideoTrack
+    from rayohx.models.playlist.variant import Variant
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

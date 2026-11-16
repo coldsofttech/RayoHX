@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     from rayohx.enums import EventType
-    from rayohx.models.download_progress import DownloadProgress
+    from rayohx.models.download.progress import DownloadProgress
 
 _S = DownloadState
 

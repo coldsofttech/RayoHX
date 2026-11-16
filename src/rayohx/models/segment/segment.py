@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from rayohx.models.encryption_info import EncryptionInfo
-    from rayohx.models.init_map import InitMap
-    from rayohx.models.segment_range import SegmentRange
+    from rayohx.models.segment.encryption import EncryptionInfo
+    from rayohx.models.segment.init_map import InitMap
+    from rayohx.models.segment.range import SegmentRange
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rayohx.models.resolution import Resolution
+    from rayohx.models.playlist.resolution import Resolution
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
