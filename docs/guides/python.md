@@ -20,16 +20,24 @@ print([track.name for track in choice.audio_tracks])
 print(choice.notes)  # why a wish could not be met, if any
 ```
 
-> **What exists today.** You can look at a stream without downloading it, parse playlists, choose
-> tracks, and use the settings, models, events, cancellation, errors and logging. The segment
-> download engine is built and tested but is internal for now: the public `download()` call that
-> joins everything arrives with the controller. See [Not yet available](#not-yet-available).
+To download it:
+
+```python
+result = rayohx.download("https://cdn.example.com/vod/master.m3u8", "video.ts", quality="720p")
+print(result.output.path, result.output.size_bytes)
+```
+
+> **What works today.** You can look at a stream without downloading it, parse playlists, choose
+> tracks, and download MPEG-TS and fragmented MP4 streams (including AES-128 encrypted ones) to a
+> file or a folder of segments, with events, cancellation and resume. Streams that need merging or
+> remuxing are not supported yet. See [Not yet available](#not-yet-available).
 
 ## Contents
 
 | Page | What it covers |
 |---|---|
 | [Inspecting streams](python/inspecting.md) | `inspect`, `inspect_playlist`, `parse_playlist`, `is_hls_playlist`, fetchers, parsing rules |
+| [Downloading](python/downloading.md) | `download`, `Downloader`, output files, results, what is and is not supported |
 | [Selecting tracks](python/selecting.md) | `select_stream`, `StreamSelection`, how quality, limits and languages are decided |
 | [Settings](python/settings.md) | `DownloadConfig`, `NetworkConfig`, `ProxyConfig`, `OutputConfig`, `StorageConfig`, `SelectionConfig`, constants, secrets |
 | [Models](python/models.md) | Every playlist, segment and download model, with fields, properties and methods |
@@ -65,7 +73,7 @@ print(rayohx.__version__)  # 0.1.0
 
 Names without a leading underscore are the public API. Anything starting with an underscore
 (`rayohx._http`, `rayohx._crypto`, `rayohx._ratelimit`, `rayohx._redaction`, `rayohx._logs`, and
-the underscore modules inside `rayohx.download`) is internal and can change in any release.
+everything inside `rayohx._download`) is internal and can change in any release.
 
 The top-level package loads its names the first time you use them, so `import rayohx` stays fast
 and a front end loads only the parts it needs.
@@ -74,8 +82,9 @@ and a front end loads only the parts it needs.
 
 ```text
 rayohx
-├── (top level)       inspect, inspect_playlist, parse_playlist, is_hls_playlist, select_stream,
-│                     configure_logging, CancellationToken, __version__, the models and the enums
+├── (top level)       download, Downloader, inspect, inspect_playlist, parse_playlist,
+│                     is_hls_playlist, select_stream, configure_logging, CancellationToken,
+│                     __version__, the models and the enums
 ├── config            DownloadConfig, NetworkConfig, ProxyConfig, OutputConfig, StorageConfig,
 │                     SelectionConfig, validate_url
 ├── models            every model, grouped in three packages
@@ -83,6 +92,7 @@ rayohx
 │   │   └── tracks    AudioTrack, SubtitleTrack, VideoTrack
 │   ├── segment       Segment, SegmentData, SegmentRange, EncryptionInfo, InitMap
 │   └── download      DownloadRequest, DownloadProgress, DownloadResult, StorageMetrics, OutputInfo
+├── downloader        download, Downloader: the whole job, and the controller behind it
 ├── playlist          the parser: parse_playlist, is_hls_playlist, inspect_playlist, PlaylistFetcher
 ├── stream            select_stream, StreamSelection
 ├── events            EventBus, DownloadEvent, DownloadStateMachine, TRANSITIONS
@@ -90,7 +100,7 @@ rayohx
 ├── errors            the RayoHXError hierarchy
 ├── cancellation      CancellationToken
 ├── logs              configure_logging
-├── download          internal for now: the segment download engine
+├── _download         internal: the engine that downloads segments (pipeline, storage, sinks, ...)
 └── _http, _crypto, _ratelimit, _redaction, _logs     internal
 ```
 
@@ -113,6 +123,8 @@ from rayohx.errors import PlaylistNotFoundError
 
 | Function | Purpose | Page |
 |---|---|---|
+| `rayohx.download(url, output, **options)` | Download a stream to a file or a folder of segments | [Downloading](python/downloading.md#download) |
+| `rayohx.Downloader(url, ...)` | One download with events, state and cancellation | [Downloading](python/downloading.md#downloader) |
 | `rayohx.inspect(url, network=None)` | Fetch and parse the playlist at a URL | [Inspecting](python/inspecting.md#inspect) |
 | `rayohx.inspect_playlist(url, fetcher)` | The same, with a fetcher you supply | [Inspecting](python/inspecting.md#inspect_playlist) |
 | `rayohx.parse_playlist(text, uri)` | Parse playlist text you already have | [Inspecting](python/inspecting.md#parse_playlist) |
@@ -173,6 +185,26 @@ if not isinstance(playlist, MasterPlaylist) and playlist.is_vod:
     print(f"{playlist.segment_count} segments, {minutes}:{seconds:02d}")
 ```
 
+Download a stream with progress, and stop it on demand:
+
+```python
+from rayohx import CancellationToken, download
+from rayohx.enums import EventType
+
+token = CancellationToken()
+
+
+def show(event):
+    if event.type is EventType.DOWNLOAD_PROGRESS and event.progress:
+        print(f"{event.progress.fraction:.0%}")
+
+
+result = download(
+    "https://cdn.example.com/vod/master.m3u8", "video.ts", on_event=show, cancel=token
+)
+print("cancelled" if result.cancelled else result.output.path)
+```
+
 Test code that uses RayoHX without a network, by supplying a fetcher:
 
 ```python
@@ -190,16 +222,13 @@ More examples are on each page.
 
 ## Not yet available
 
-These parts of the engine are planned and are not public yet:
+These are planned and are not part of the library yet:
 
-- **`download()`.** The controller that joins inspecting, selecting and downloading behind one call,
-  and the public result of a run (`DownloadResult`).
-- **Muxing.** The output stage that joins or remuxes segments into the requested container.
+- **Merging separate tracks.** A stream that keeps its audio in a separate track needs a merge
+  step. Use `video_only=True` to download the video alone, or `format="segments"` to save the
+  pieces.
+- **Saving subtitles.**
+- **Remuxing.** MPEG-TS cannot be saved as MP4 yet; the file name has to match what is inside.
+- **Live streams** and **protected (DRM) streams** are refused with an explanation.
 
-The segment download engine (parallel fetching with ordered writing, storage strategies,
-disk-space checks, AES-128 decryption, resume state and cleanup) is built and tested in
-`rayohx.download`, but it needs internal pieces such as the HTTP client and the output sinks, so it
-is not part of the public API yet. The settings and models it uses (`DownloadConfig`,
-`StorageConfig`, `OutputConfig`, `DownloadRequest`, `DownloadProgress`, `DownloadResult`,
-`StorageMetrics`, `SegmentData`) and the events and enums are public today, so code written against
-them keeps working. See the [engine design](../engine.md) for the full picture.
+See the [engine design](../engine.md) for the full picture.

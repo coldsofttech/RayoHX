@@ -238,7 +238,7 @@ Property: `size`, the bytes this segment adds to the output (`len(init) + len(me
 
 ## Downloads
 
-Models that describe a download. The engine fills them in; front ends read them.
+Models that describe a download. `Downloader` and `download()` fill them in; front ends read them.
 
 ### DownloadRequest
 
@@ -292,7 +292,10 @@ How a download ended. A cancelled download has its own state, not a failure.
 | `output` | `OutputInfo \| None` | `None` | The produced file, when there is one |
 | `error` | `str \| None` | `None` | A short description when it failed |
 
-Properties: `success` (the download completed) and `cancelled` (it was cancelled).
+Properties: `success` (the download completed) and `cancelled` (it was cancelled). `download()`
+returns one for a completed or cancelled download, and `Downloader.run()` returns one for every
+outcome (see [Downloading](downloading.md#downloader)). For a folder of segments,
+`output.size_bytes` is the total size of the files.
 
 ```python
 if result.success:

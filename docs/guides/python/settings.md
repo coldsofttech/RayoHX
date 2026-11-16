@@ -72,6 +72,9 @@ Everything that shapes a download, grouped by area.
 Method: `as_dict() -> dict[str, Any]`, a serializable view without secrets, safe for logs and resume
 state.
 
+Pass it to [`download(config=...)`](downloading.md#download) or `Downloader(config=...)`. The keyword
+options of `download()` (such as `quality` or `overwrite`) override the matching fields.
+
 ```python
 config = DownloadConfig(
     concurrency=8,
@@ -182,8 +185,9 @@ Which tracks to download. The rules are explained in [Selecting tracks](selectin
 | `audio_names` | `tuple[str, ...]` | `()` | Track names, in order of preference |
 | `subtitle_languages` | `tuple[str, ...]` | `()` | Subtitle language codes |
 | `subtitle_names` | `tuple[str, ...]` | `()` | Subtitle track names |
+| `video_only` | `bool` | `False` | Download only the video stream, leaving out separate audio and subtitle tracks |
 
-Method: `as_dict()`. Language codes must look like `en`, `en-US` or `fil`; names must not be empty.
+Method: `as_dict()` (it includes `video_only`). Language codes must look like `en`, `en-US` or `fil`; names must not be empty.
 
 ## OutputConfig
 

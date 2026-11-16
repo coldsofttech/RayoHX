@@ -4,7 +4,7 @@ Looking at a stream means fetching and parsing its playlist without downloading 
 result is a typed, frozen object you can read, filter and pass to
 [`select_stream`](selecting.md).
 
-[Back to the Python guide](../python.md)
+[Back to the Python guide](../python.md) · To download a stream, see [Downloading](downloading.md).
 
 | Function | Module | Returns |
 |---|---|---|

@@ -87,10 +87,10 @@ The kind of file the user asks for.
 
 | Member | Value | Meaning |
 |---|---|---|
-| `AUTO` | `"auto"` | Choose from the stream |
-| `TS` | `"ts"` | An MPEG transport stream file |
-| `MP4` | `"mp4"` | A (fragmented) MP4 file |
-| `SEGMENTS` | `"segments"` | Keep the segments as separate files |
+| `AUTO` | `"auto"` | Follow the file name, else the stream's own format |
+| `TS` | `"ts"` | An MPEG transport stream file (only for MPEG-TS streams today) |
+| `MP4` | `"mp4"` | A fragmented MP4 file (only for fMP4 streams today) |
+| `SEGMENTS` | `"segments"` | Keep the segments as separate files in a folder (`segment-00001.ts`, ...) |
 
 ## RemuxBackend
 
@@ -102,7 +102,9 @@ Which tool may remux the stream into the requested container.
 | `NATIVE` | `"native"` | Only the built-in muxer |
 | `FFMPEG` | `"ffmpeg"` | An FFmpeg already installed (see `OutputConfig.ffmpeg_path`) |
 
-RayoHX remuxes and never transcodes. When no route exists it raises `OutputFormatError`.
+RayoHX remuxes and never transcodes. Remuxing is not available yet, so every download is saved in
+the stream's own container, and a request that would need it (such as MPEG-TS into MP4) raises
+`OutputFormatError`.
 
 ## SegmentState
 

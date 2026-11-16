@@ -41,8 +41,9 @@ Every line has the same shape:
 2026-11-16 09:30:12,345 INFO     [d1a2b3c4d5e6] rayohx.http: Attempt 1 of 4 failed (...). Retrying ...
 ```
 
-The bracketed part is the download id, so lines from several downloads can be told apart. It is
-`-` outside a download.
+The bracketed part is the download id, so lines from several downloads can be told apart. A
+`Downloader` tags every line it causes, including those from its worker threads, with its
+`download_id` (pass your own, or let it make one). It is `-` outside a download.
 
 ## What is redacted
 

@@ -96,7 +96,8 @@ see the error, retries have been used.
 | `parse_playlist` | `InvalidPlaylistError`, `UnsupportedPlaylistError` |
 | `CancellationToken.raise_if_cancelled` | `CancellationError` |
 | `DownloadStateMachine.move_to` | `InvalidStateTransitionError` |
-| The segment download engine | `UnsupportedPlaylistError` (live or DRM streams), `OutputExistsError`, `InsufficientStorageError`, `WorkspaceLockedError`, `SegmentDownloadError`, `DecryptionError`, `CancellationError` |
+| `download()` | Raises what went wrong: `ConfigurationError` before it starts; then `UnsupportedPlaylistError` (live, DRM or SAMPLE-AES streams), `OutputFormatError` (a name that does not match the content, separate audio or subtitles), `OutputExistsError`, `InsufficientStorageError`, `WorkspaceLockedError`, `SegmentDownloadError`, `DecryptionError`, `FinalizationError`, and the `NetworkError` family. A cancelled download returns a result and does not raise |
+| `Downloader.run()` | Returns a `FAILED` result instead of raising, and keeps the error in `Downloader.exception`. Raises `DownloadError` if it runs a second time |
 
 ## Examples
 

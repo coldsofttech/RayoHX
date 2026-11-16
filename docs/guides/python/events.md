@@ -71,23 +71,26 @@ Something that happened during a download. A frozen dataclass with keyword-only 
 
 ### EventType reference
 
-| `EventType` | Meaning | Fields filled | Emitted today |
-|---|---|---|---|
-| `DOWNLOAD_STARTED` | A download was accepted | `state` | by the controller, not yet public |
-| `PLAYLIST_LOADED` | The playlist was fetched and parsed | `state`, `data` | by the controller, not yet public |
-| `STREAM_SELECTED` | Tracks were chosen | `state`, `data` | by the controller, not yet public |
-| `SEGMENT_STARTED` | A segment began | `segment_index` | yes |
-| `SEGMENT_COMPLETED` | A segment finished | `segment_index`, and `data["bytes"]` with its size; `message` says "Reused from earlier run." when a resumed download already had it | yes |
-| `SEGMENT_FAILED` | A segment could not be downloaded | `segment_index`, `message` | yes |
-| `DOWNLOAD_PROGRESS` | Periodic totals | `progress` | yes |
-| `FINALIZATION_STARTED` | Joining or remuxing began | `state` | by the controller, not yet public |
-| `FINALIZATION_COMPLETED` | Joining or remuxing ended | `state` | by the controller, not yet public |
-| `DOWNLOAD_COMPLETED` | The download succeeded | `state` | by the controller, not yet public |
-| `DOWNLOAD_FAILED` | The download failed | `message` | by the controller, not yet public |
-| `DOWNLOAD_CANCELLED` | The download was cancelled | `state` | by the controller, not yet public |
+`Downloader` and `download()` emit every type. See [Downloading](downloading.md#events-during-a-download)
+for the order.
 
-Write listeners against the full set of types now. The ones the controller will emit are part of
-the same event stream.
+| `EventType` | When | Fields filled |
+|---|---|---|
+| `DOWNLOAD_STARTED` | A download was accepted | `message` is the address with secrets removed |
+| `PLAYLIST_LOADED` | A playlist was fetched and parsed (twice for a master playlist) | `data["kind"]` is `"master"` or `"media"` |
+| `STREAM_SELECTED` | Tracks were chosen | `data`: `bandwidth`, `resolution`, `codecs`, `audio`, `subtitles`, `notes` |
+| `SEGMENT_STARTED` | A segment began | `segment_index` |
+| `SEGMENT_COMPLETED` | A segment finished | `segment_index`, `data["bytes"]`; `message` says "Reused from earlier run." when a resumed download already had it |
+| `SEGMENT_FAILED` | A segment could not be downloaded | `segment_index`, `message` |
+| `DOWNLOAD_PROGRESS` | Periodic totals | `progress` |
+| `FINALIZATION_STARTED` | Joining and validating began | `progress` |
+| `FINALIZATION_COMPLETED` | The output was validated and put in place | `message` is the output path |
+| `DOWNLOAD_COMPLETED` | The download succeeded | `message` is the output path, `progress` |
+| `DOWNLOAD_FAILED` | The download failed | `message`, `progress`, `data["hint"]` |
+| `DOWNLOAD_CANCELLED` | The download was cancelled | `message`, `progress`, `data["hint"]` |
+
+The `PREPARING` state has no event of its own; it is visible through `Downloader.state` and the
+`state` field of the next events.
 
 ## States
 
@@ -218,8 +221,10 @@ token.cancel()
 worker.join()
 ```
 
-The download controller will accept a token and stop waiting, retrying and reading between chunks
-as soon as it is set.
+Pass a token to `download(cancel=token)` or `Downloader(cancel=token)`. The download stops waiting,
+retrying and reading between chunks as soon as the token is set, and returns a result in the
+`CANCELLED` state (see [Downloading](downloading.md#downloader)). What was downloaded so far is kept
+so the next run can continue.
 
 ## Examples
 

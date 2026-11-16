@@ -71,6 +71,10 @@ Details worth knowing:
 - Picture size is the shorter side, so a 720x1280 portrait stream counts as 720p.
 - Audio-only streams are skipped when video streams exist.
 - Forced tracks are chosen only when nothing else matches or when asked for by name.
+- With `video_only=True` no audio or subtitle tracks are chosen at all. `audio_tracks` and
+  `subtitle_tracks` are empty and `notes` says "Only the video stream is downloaded; separate audio
+  and subtitles are skipped." Use it for streams that keep their audio in a separate track, which
+  cannot be downloaded in one file yet (see [Downloading](downloading.md#what-works-today)).
 - Tracks are matched within the audio and subtitle groups the chosen variant refers to
   (`Variant.audio_group` and `Variant.subtitle_group`).
 
@@ -106,6 +110,16 @@ choice = rayohx.select_stream(
         subtitle_names=("English",),
     ),
 )
+```
+
+Choose the video only:
+
+```python
+choice = rayohx.select_stream(master, SelectionConfig(video_only=True))
+print(choice.audio_tracks, choice.subtitle_tracks)  # () ()
+print(
+    choice.notes
+)  # ('Only the video stream is downloaded; separate audio and subtitles are skipped.',)
 ```
 
 Show the user what was decided and why:
