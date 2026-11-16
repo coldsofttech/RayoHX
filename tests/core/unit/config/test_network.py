@@ -48,3 +48,12 @@ def test_request_headers_let_user_values_win() -> None:
     headers = network.request_headers()
     assert headers == {"user-agent": "Mine", "Origin": "o"}
     assert NetworkConfig(user_agent="Agent/1").request_headers() == {"User-Agent": "Agent/1"}
+
+
+def test_credential_hosts_are_validated_and_lowercased() -> None:
+    network = NetworkConfig(credential_hosts=("CDN.Example.com", "localhost"))
+    assert network.credential_hosts == ("cdn.example.com", "localhost")
+    assert network.as_dict()["credential_hosts"] == ["cdn.example.com", "localhost"]
+    for bad in ("https://cdn.example.com", "cdn.example.com/path", "a b", "", "-bad.com"):
+        with pytest.raises(ConfigurationError, match="host name"):
+            NetworkConfig(credential_hosts=(bad,))

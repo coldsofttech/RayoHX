@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
+    from rayohx.config import NetworkConfig
     from rayohx.models import Playlist
 
 
@@ -35,3 +36,22 @@ def inspect_playlist(url: str, fetcher: PlaylistFetcher) -> Playlist:
             hint="It may be a web page or need sign-in. Check the address, headers and cookies.",
         )
     return parse_playlist(text, final_url)
+
+
+def inspect(url: str, network: NetworkConfig | None = None) -> Playlist:
+    """Look at the stream at ``url`` without downloading it: its variants, tracks or segments.
+
+    ``network`` sets headers, cookies, proxy, timeouts and TLS for the request.
+
+    Raises:
+        ConfigurationError: If ``url`` is not an http(s) address.
+        PlaylistNotFoundError: If the playlist does not exist.
+        InvalidPlaylistError: If what comes back is not an HLS playlist.
+        NetworkError: If the request fails.
+    """
+    from rayohx._http import HttpClient
+    from rayohx.config import NetworkConfig, validate_url
+
+    address = validate_url(url)
+    with HttpClient(network or NetworkConfig(), origin_url=address) as client:
+        return inspect_playlist(address, client)

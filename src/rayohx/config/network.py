@@ -20,6 +20,10 @@ if TYPE_CHECKING:
 DEFAULT_USER_AGENT = "RayoHX"
 
 _HEADER_NAME = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+_HOSTNAME = re.compile(
+    r"^(?=.{1,253}$)[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?"
+    r"(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$"
+)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -41,8 +45,20 @@ class NetworkConfig:
     proxy: ProxyConfig | None = None
     #: Cap on download speed in bytes per second across all workers; ``None`` means no cap.
     rate_limit: int | None = None
+    #: Hosts, besides the one the download starts from, that may receive credentials
+    #: (``Authorization``, ``Cookie`` and other secret headers). Other hosts get none of them.
+    credential_hosts: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
+        for host in self.credential_hosts:
+            if not _HOSTNAME.match(host):
+                raise ConfigurationError(
+                    f"{host!r} is not a valid host name.",
+                    hint="Give a bare host such as cdn.example.com, without scheme or path.",
+                )
+        object.__setattr__(
+            self, "credential_hosts", tuple(host.lower() for host in self.credential_hosts)
+        )
         for name, value in self.headers.items():
             if not _HEADER_NAME.match(name):
                 raise ConfigurationError(f"{name!r} is not a valid header name.")
@@ -93,4 +109,5 @@ class NetworkConfig:
             "verify_tls": verify,
             "proxy": self.proxy.as_dict() if self.proxy else None,
             "rate_limit": self.rate_limit,
+            "credential_hosts": list(self.credential_hosts),
         }

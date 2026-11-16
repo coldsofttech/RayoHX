@@ -16,6 +16,7 @@ __version__ = "0.1.0"
 logging.getLogger("rayohx").addHandler(logging.NullHandler())
 
 if TYPE_CHECKING:
+    from rayohx.cancellation import CancellationToken
     from rayohx.enums import (
         ContainerFormat,
         DownloadState,
@@ -54,11 +55,23 @@ if TYPE_CHECKING:
         is_hls_playlist,
         parse_playlist,
     )
+    from rayohx.playlist.inspection import inspect
     from rayohx.stream import StreamSelection, select_stream
 
-_SUBMODULES = frozenset({"config", "errors", "events", "models", "playlist", "stream"})
+_SUBMODULES = frozenset(
+    {
+        "cancellation",
+        "config",
+        "errors",
+        "events",
+        "models",
+        "playlist",
+        "stream",
+    }
+)
 _EXPORTS = {
     "AudioTrack": "rayohx.models",
+    "CancellationToken": "rayohx.cancellation",
     "ContainerFormat": "rayohx.enums",
     "DownloadProgress": "rayohx.models",
     "DownloadRequest": "rayohx.models",
@@ -86,6 +99,7 @@ _EXPORTS = {
     "Variant": "rayohx.models",
     "VideoTrack": "rayohx.models",
     "configure_logging": "rayohx.logs",
+    "inspect": "rayohx.playlist.inspection",
     "inspect_playlist": "rayohx.playlist",
     "is_hls_playlist": "rayohx.playlist",
     "parse_playlist": "rayohx.playlist",
@@ -113,6 +127,7 @@ def __dir__() -> list[str]:
 
 __all__ = [
     "AudioTrack",
+    "CancellationToken",
     "ContainerFormat",
     "DownloadProgress",
     "DownloadRequest",
@@ -141,6 +156,7 @@ __all__ = [
     "VideoTrack",
     "__version__",
     "configure_logging",
+    "inspect",
     "inspect_playlist",
     "is_hls_playlist",
     "parse_playlist",
