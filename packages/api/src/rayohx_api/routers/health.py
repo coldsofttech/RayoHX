@@ -1,8 +1,8 @@
 """Liveness and readiness probes, used by monitors and load balancers."""
 
 from fastapi import APIRouter
-
 from rayohx import __version__
+
 from rayohx_api.schemas import HealthResponse, ReadyResponse
 
 router = APIRouter(tags=["health"])

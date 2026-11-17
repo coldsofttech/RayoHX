@@ -39,11 +39,13 @@ packages = ["src/rayohx_api"]
 
 [dependency-groups]
 dev = [
+  "httpx2>=2.16.2",
   "mypy>=1.13",
   "pytest>=8.3",
   "pytest-cov>=6.0",
   "pytest-xdist>=3.6",
   "ruff>=0.8",
+  "schemathesis>=4.32.7",
 ]
 
 [tool.ruff]
@@ -56,6 +58,7 @@ select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "S603"]  # assert, subprocess and fake passwords are fine in tests
+"scripts/**" = ["T201"]  # scripts print what they did
 
 [tool.mypy]
 strict = true

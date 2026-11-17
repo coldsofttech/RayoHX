@@ -6,4 +6,6 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- The RayoHX HTTP API: look at a stream's qualities and tracks over HTTP, with API-key authentication and a health check.
+- The `rayohx-api` web service, with health and readiness checks and API-key authentication (or none, for local development).
+- Settings through `RAYOHX_API_` environment variables or a `.env` file, JSON logs and consistent error responses.
+- Security headers on every response and a limit on request size.
