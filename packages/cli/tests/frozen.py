@@ -1,8 +1,9 @@
 """Finding the executables PyInstaller built, for the smoke tests in the integration folders.
 
-The tests need ``installer/pyinstaller/cli.spec`` and ``ui.spec`` to have run first (see the specs
-for the commands). Set ``RAYOHX_INSTALLER_DIR`` to test a build somewhere other than
-``build/installer``. Without a build the tests are skipped.
+The tests need a PyInstaller build first: ``packages/cli/scripts/build_installer.py`` for the
+command line, ``packages/ui/scripts/build_installer.py`` for the window. Set
+``RAYOHX_INSTALLER_DIR`` to test a build somewhere other than ``build/installer``. Without a
+build the tests are skipped.
 """
 
 import os
@@ -33,5 +34,5 @@ def locate(folder: str, script: str) -> Path:
     root = Path(os.environ.get("RAYOHX_INSTALLER_DIR", DEFAULT_DIR))
     exe = root / folder / f"{script}{SUFFIX}"
     if not exe.is_file():
-        pytest.skip(f"{exe} is not built; see installer/pyinstaller/*.spec")
+        pytest.skip(f"{exe} is not built; see packages/*/scripts/build_installer.py")
     return exe

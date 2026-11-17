@@ -1,3 +1,5 @@
+"""Numbers as short text for people."""
+
 import pytest
 
 from rayohx_cli import format as fmt

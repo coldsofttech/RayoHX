@@ -1,3 +1,5 @@
+"""The settings file: where it is, how it is read and checked."""
+
 from pathlib import Path
 from types import SimpleNamespace
 

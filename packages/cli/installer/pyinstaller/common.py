@@ -1,7 +1,7 @@
 """Used by cli.spec: where the command line's names, version, icon and dependencies come from.
 
 Everything is read from packages/cli (see ../projectinfo.py), so renaming the command line needs no
-edit here. The window has its own, in the root installer/pyinstaller/common.py.
+edit here. The window has its own, in packages/ui/installer/pyinstaller/common.py.
 """
 
 import importlib.util

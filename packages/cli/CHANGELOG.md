@@ -6,7 +6,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- Choose a stream exactly: `--variant N` (its number in `rayohx info`, from 1), `--resolution 1280x720`, `--bandwidth` and `--variant-name`.
+- The `rayohx` command: `rayohx info URL` shows a stream's qualities and tracks and what a download would pick, and `rayohx download URL` saves it as one file.
+- Choose what to download: a quality (`--quality`, `--max-resolution`, `--max-bitrate`), a stream exactly (`--variant N` from `rayohx info`, counting from 1, `--resolution 1280x720`, `--bandwidth`, `--variant-name`), and audio and subtitle tracks (`--audio`, `--subtitles`, `--video-only`).
+- Choose how to save: `--format` (`auto`, `ts`, `mp4` or one file per segment), `--overwrite` and `--validate`. FFmpeg is optional (`--ffmpeg`, `--remux-backend`).
+- Network options for protected streams: headers, cookies, user agent, referer, origin, a proxy, TLS settings (`--insecure`, `--ca-bundle`), timeouts, retries and a rate limit. Secret values can be read from a file with `@file`, and credentials go only to the stream's own host and the hosts you list.
+- Interrupted downloads continue where they stopped when you run the same command again, and Ctrl-C stops one cleanly.
+- A progress bar (or plain lines), `--json` output for other programs, `--quiet`, `--verbose` and `--no-color`, and `--log-file` with secrets removed.
+- Defaults from a `rayohx.toml` settings file (or `--config`) and `RAYOHX_` environment variables, with exit codes 0, 1, 2 and 130.
 - `--no-space-check` turns off the disk-space check, for drives that report free space wrongly.
-- Linux packages (`.deb` and `.rpm`) are also built for ARM64.
-- The `rayohx` command: `rayohx info URL` shows a stream's qualities and tracks, and `rayohx download URL` saves it, with progress, `--json` output and settings from a file or `RAYOHX_` environment variables.
+- A Windows setup (with an optional `PATH` entry) and a portable zip, and Linux `.deb` and `.rpm` packages for x86_64 and ARM64 with an icon.
+- The command is also available as the `rayohx-cli` package.

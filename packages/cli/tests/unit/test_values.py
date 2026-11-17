@@ -1,3 +1,5 @@
+"""Turning what the user typed into engine settings."""
+
 from pathlib import Path
 
 import pytest
