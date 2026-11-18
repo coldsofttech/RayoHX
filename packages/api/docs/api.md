@@ -25,14 +25,23 @@ Read from `RAYOHX_API_*` environment variables or a `.env` file. List values are
 | `RAYOHX_API_DOCS_ENABLED` | `false` | Serve `/docs`, `/redoc` and `/openapi.json` |
 | `RAYOHX_API_MAX_BODY_BYTES` | `1048576` | Largest request body |
 | `RAYOHX_API_CORS_ORIGINS` | none | Origins allowed by CORS |
+| `RAYOHX_API_DOWNLOAD_DIR` | `~/Downloads/RayoHX` | Folder downloads are saved in (clients choose file names only) |
+| `RAYOHX_API_MAX_ACTIVE_DOWNLOADS` | `2` | Downloads that run at once; the rest queue |
 
 ## Endpoints
 
 | Method and path | Purpose |
 | --- | --- |
 | `GET /health`, `GET /ready` | Liveness and readiness probes, no authentication |
+| `POST /api/v1/inspect` | Variants and tracks of a playlist, without downloading |
+| `GET`/`POST /api/v1/downloads` | List download jobs, or start one (202) |
+| `GET`/`DELETE /api/v1/downloads/{id}` | One job, or forget a finished one |
+| `POST /api/v1/downloads/{id}/pause`, `/resume`, `/cancel` | Control a job |
+| `GET /api/v1/downloads/{id}/events` | Server-sent `job` events until the job ends |
+| `GET`/`PATCH /api/v1/settings` | Defaults (parallel segments, quality, overwrite) for this run |
+| `POST /api/v1/clean` | Remove leftover working folders in the download folder (`dry_run` by default) |
 
-There are no `/api/v1` routes yet. Errors use the problem-details format (`application/problem+json`).
+Jobs live in memory and are lost when the process stops; the engine resumes partial files. Signed-URL tokens are removed from every address returned. Errors use the problem-details format (`application/problem+json`).
 
 ## The contract
 

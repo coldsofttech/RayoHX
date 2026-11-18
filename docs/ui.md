@@ -40,7 +40,7 @@ uv run python -m rayohx_ui --dev           # Vite with hot reload (needs Node)
 
 - Plain JavaScript with JSX. Call Python only through `src/api.js`.
 - Cornea's policy forbids inline scripts and styles, so put styles in CSS files.
-- Add UI kits such as Fluent UI as optional dependencies when you need them; none is included.
+- The interface uses Fluent UI (`@fluentui/react-components`). Colours live in one place, `src/theme.js`, built from the brand slate with an orange accent, red for danger and yellow for warnings. Fluent adds its styles through the browser's style API, which Cornea's `style-src 'self'` policy allows; check this in the window after upgrading Fluent.
 - `npm run lint`, `npm test` (Vitest, Testing Library and an accessibility check) and `npm run build` run in CI.
 
 ## Packaging

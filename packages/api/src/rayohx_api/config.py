@@ -2,6 +2,7 @@
 
 from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 from typing import Self
 
 from pydantic import Field, SecretStr
@@ -26,6 +27,10 @@ class Settings(BaseSettings):
     docs_enabled: bool = False
     max_body_bytes: int = Field(default=1_048_576, ge=1)
     cors_origins: list[str] = []
+    #: Folder downloads are saved in. Clients choose file names, never folders.
+    download_dir: Path = Path.home() / "Downloads" / "RayoHX"
+    #: Downloads that run at once; the rest wait in the queue.
+    max_active_downloads: int = Field(default=2, ge=1, le=16)
 
     auth_mode: AuthMode = AuthMode.API_KEY
     api_keys: list[SecretStr] = []

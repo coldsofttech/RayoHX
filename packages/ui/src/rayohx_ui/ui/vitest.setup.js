@@ -9,3 +9,10 @@ expect.extend(axeMatchers);
 configure({ reactStrictMode: true });
 
 afterEach(() => cleanup());
+
+// jsdom has no ResizeObserver, which Fluent's message bar and tabs use.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
