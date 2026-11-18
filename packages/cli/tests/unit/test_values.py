@@ -8,6 +8,7 @@ from rayohx.errors import ConfigurationError
 
 from rayohx_cli.values import (
     build_config,
+    parse_cookie_file,
     parse_cookies,
     parse_headers,
     parse_size,
@@ -245,3 +246,45 @@ def test_preferences_reach_the_selection() -> None:
 def test_file_keys_are_off_unless_asked() -> None:
     assert build_config().allow_file_keys is False
     assert build_config(allow_file_keys=True).allow_file_keys is True
+
+
+def test_retry_and_redirect_tuning_and_storage_options_reach_the_config() -> None:
+    config = build_config(
+        backoff=2.0, max_redirects=3, reserve_space="1G", keep_state=False, directory=Path("d")
+    )
+    assert config.network.backoff_factor == 2.0
+    assert config.network.max_redirects == 3
+    assert config.storage.reserve_bytes == 1024**3
+    assert config.storage.keep_state_on_failure is False
+    assert config.output.directory == Path("d")
+    assert build_config(reserve_space="0").storage.reserve_bytes == 0
+
+
+def test_proxy_login_can_be_given_separately() -> None:
+    config = build_config(proxy="http://h:1", proxy_username="u", proxy_password="pw")
+    assert config.network.proxy is not None
+    assert config.network.proxy.username == "u"
+    assert "pw" not in str(config.network.as_dict())
+    with pytest.raises(ConfigurationError, match="without a proxy"):
+        build_config(proxy_username="u", proxy_password="p")
+    with pytest.raises(ConfigurationError, match="both"):
+        build_config(proxy="http://h:1", proxy_username="u")
+
+
+def test_a_netscape_cookie_file_is_read(tmp_path: Path) -> None:
+    jar = tmp_path / "cookies.txt"
+    jar.write_text(
+        "# Netscape HTTP Cookie File\n"
+        ".example.com\tTRUE\t/\tTRUE\t0\tsession\tabc\n"
+        "#HttpOnly_.example.com\tTRUE\t/\tTRUE\t0\tsecret\txyz\n"
+        "\n",
+        encoding="utf-8",
+    )
+    assert parse_cookie_file(jar) == {"session": "abc", "secret": "xyz"}
+    config = build_config(cookie_file=jar, cookie=["session=mine"])
+    assert dict(config.network.cookies) == {"session": "mine", "secret": "xyz"}
+    jar.write_text("not a cookie line\n", encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="Netscape"):
+        parse_cookie_file(jar)
+    with pytest.raises(ConfigurationError, match="cannot be read"):
+        parse_cookie_file(tmp_path / "missing.txt")

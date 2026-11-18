@@ -111,6 +111,56 @@ Retries = Annotated[
         rich_help_panel=NETWORK,
     ),
 ]
+Backoff = Annotated[
+    float | None,
+    typer.Option(
+        "--backoff",
+        envvar="RAYOHX_BACKOFF",
+        min=0,
+        help="Back-off factor between retries: the wait is this times 2 to the attempt number "
+        "(default 0.5 seconds).",
+        rich_help_panel=NETWORK,
+    ),
+]
+MaxRedirects = Annotated[
+    int | None,
+    typer.Option(
+        "--max-redirects",
+        envvar="RAYOHX_MAX_REDIRECTS",
+        min=0,
+        help="Most redirects to follow for one request (default 10).",
+        rich_help_panel=NETWORK,
+    ),
+]
+ProxyUsername = Annotated[
+    str | None,
+    typer.Option(
+        "--proxy-username",
+        envvar="RAYOHX_PROXY_USERNAME",
+        help="The proxy user name, if it is not in the --proxy address. Needs --proxy-password.",
+        rich_help_panel=NETWORK,
+    ),
+]
+ProxyPassword = Annotated[
+    str | None,
+    typer.Option(
+        "--proxy-password",
+        envvar="RAYOHX_PROXY_PASSWORD",
+        help="The proxy password. Prefer the environment variable, since command lines can be "
+        "seen by other users.",
+        rich_help_panel=NETWORK,
+    ),
+]
+CookieFile = Annotated[
+    Path | None,
+    typer.Option(
+        "--cookie-file",
+        envvar="RAYOHX_COOKIE_FILE",
+        help="Read cookies from a Netscape-format cookies.txt file (as exported by browsers). "
+        "Domains are not checked: every cookie follows the same rules as --cookie.",
+        rich_help_panel=NETWORK,
+    ),
+]
 RateLimit = Annotated[
     str | None,
     typer.Option(
