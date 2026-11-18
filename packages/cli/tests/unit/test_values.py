@@ -204,7 +204,7 @@ def test_tls_options(tmp_path: Path) -> None:
         ({"rate_limit": "fast"}, "rate limit"),
         ({"buffer_size": "x"}, "buffer size"),
         ({"max_temp_size": "-1"}, "temporary size limit"),
-        ({"proxy": "socks5://h:1"}, "proxy address"),
+        ({"proxy": "ftp://h:1"}, "proxy address"),
         ({"header": ["bad"]}, "Name: value"),
         ({"cookie": ["bad"]}, "name=value"),
         ({"concurrency": 0}, "concurrency"),
@@ -216,3 +216,18 @@ def test_tls_options(tmp_path: Path) -> None:
 def test_bad_values_become_configuration_errors(options: dict[str, object], message: str) -> None:
     with pytest.raises(ConfigurationError, match=message):
         build_config(**options)  # type: ignore[arg-type]
+
+
+def test_network_extras_reach_the_config(tmp_path: Path) -> None:
+    cert = tmp_path / "c.pem"
+    config = build_config(
+        proxy="socks5h://h:1080",
+        env_proxy=True,
+        client_cert=cert,
+        client_key_password="pw",
+    )
+    assert config.network.proxy is not None
+    assert config.network.proxy.url == "socks5h://h:1080"
+    assert config.network.proxy_from_env is True
+    assert config.network.client_cert == cert
+    assert "pw" not in str(config.network.as_dict())

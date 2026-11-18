@@ -45,7 +45,7 @@ def test_a_bad_value_becomes_a_usage_error() -> None:
         (["download", MASTER, "-H", "nocolon"], "Name: value"),
         (["download", MASTER, "--cookie", "x"], "name=value"),
         (["download", MASTER, "--rate-limit", "fast"], "rate limit"),
-        (["download", MASTER, "--proxy", "socks5://h:1"], "proxy address"),
+        (["download", MASTER, "--proxy", "ftp://h:1"], "proxy address"),
         (["info", "ftp://host/x.m3u8"], "absolute http or https"),
         (["info", MASTER, "--max-bitrate", "lots"], "bitrate"),
     ],

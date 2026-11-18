@@ -12,13 +12,13 @@ from rayohx.errors import ConfigurationError
 if TYPE_CHECKING:
     from typing import Any
 
-#: Proxy schemes accepted today. SOCKS can be added here without touching the callers.
-SUPPORTED_PROXY_SCHEMES = frozenset({"http", "https"})
+#: Proxy schemes accepted. ``socks5h`` makes the proxy look up host names; ``socks5`` does it here.
+SUPPORTED_PROXY_SCHEMES = frozenset({"http", "https", "socks5", "socks5h"})
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, repr=False)
 class ProxyConfig:
-    """An HTTP or HTTPS proxy. Credentials go in ``username`` and ``password``, or in the URL."""
+    """An HTTP, HTTPS or SOCKS5 proxy. Credentials go in ``username`` and ``password``, or in the URL."""
 
     url: str
     username: str | None = None
@@ -33,8 +33,10 @@ class ProxyConfig:
             raise ConfigurationError("The proxy address is not valid.") from exc
         if parts.scheme.lower() not in SUPPORTED_PROXY_SCHEMES or not hostname:
             raise ConfigurationError(
-                "The proxy address must look like http://host:port or https://host:port.",
-                hint="SOCKS proxies are not supported yet.",
+                "The proxy address must look like http://host:port, https://host:port or "
+                "socks5://host:port.",
+                hint="SOCKS4 proxies are not supported; use socks5h:// to let the proxy resolve "
+                "host names.",
             )
         if (self.username is None) != (self.password is None):
             raise ConfigurationError("Set both the proxy username and password, or neither.")

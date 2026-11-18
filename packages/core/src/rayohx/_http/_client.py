@@ -22,10 +22,11 @@ from rayohx._http._common import (
     DEFAULT_POOL_SIZE,
     MAX_PLAYLIST_BYTES,
     MAX_RETRY_AFTER,
+    environment_proxies,
     host_of,
     proxy_url,
+    tls_context,
     translate,
-    verify,
 )
 from rayohx._http._response import (
     HttpResponse,
@@ -121,11 +122,32 @@ class HttpClient:
             write=config.read_timeout,
             pool=config.connect_timeout,
         )
+        limits = httpx.Limits(max_connections=pool_size, max_keepalive_connections=pool_size)
+        tls = tls_context(
+            config.verify_tls, config.client_cert, config.client_key, config.client_key_password
+        )
+        mounts: dict[str, httpx.BaseTransport | None] = {}
+        if config.proxy is None and config.proxy_from_env and transport is None:
+            proxies, no_proxy = environment_proxies()
+            for scheme, found in proxies.items():
+                mounts[f"{scheme}://"] = httpx.HTTPTransport(
+                    verify=tls, limits=limits, proxy=proxy_url(found)
+                )
+            if proxies:
+                for entry in no_proxy:
+                    if entry == "*":
+                        mounts["all://"] = None
+                        continue
+                    host = entry.lstrip("*").lstrip(".").split(":")[0]
+                    if host and "/" not in host and "[" not in host:  # no CIDR ranges or IPv6
+                        mounts[f"all://{host}"] = None
+                        mounts[f"all://*.{host}"] = None
         self._client = httpx.Client(
             transport=transport,
+            mounts=mounts or None,
             timeout=timeout,
-            limits=httpx.Limits(max_connections=pool_size, max_keepalive_connections=pool_size),
-            verify=verify(config.verify_tls),
+            limits=limits,
+            verify=tls,
             proxy=proxy_url(config.proxy) if config.proxy else None,
             follow_redirects=False,  # redirects are followed here, hop by hop
             trust_env=False,  # settings come from the config, never from hidden variables

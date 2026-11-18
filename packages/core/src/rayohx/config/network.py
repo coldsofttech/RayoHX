@@ -43,6 +43,14 @@ class NetworkConfig:
     #: path verifies against that CA bundle.
     verify_tls: bool | Path = True
     proxy: ProxyConfig | None = None
+    #: Read proxies from ``HTTP_PROXY``, ``HTTPS_PROXY``, ``ALL_PROXY`` and ``NO_PROXY`` (any
+    #: letter case) when ``proxy`` is not set. Off by default so nothing changes silently.
+    proxy_from_env: bool = False
+    #: A client certificate (PEM) for servers that require mutual TLS, and its private key if
+    #: that is in a separate file.
+    client_cert: Path | None = None
+    client_key: Path | None = None
+    client_key_password: str | None = field(default=None, repr=False)
     #: Cap on download speed in bytes per second across all workers; ``None`` means no cap.
     rate_limit: int | None = None
     #: Hosts, besides the one the download starts from, that may receive credentials
@@ -69,6 +77,11 @@ class NetworkConfig:
                 raise ConfigurationError(f"The cookie {name!r} is not valid.")
         if not self.user_agent.strip() or any(char in self.user_agent for char in "\r\n\0"):
             raise ConfigurationError("The user agent must be a single non-empty line.")
+        if self.client_cert is None and (self.client_key or self.client_key_password):
+            raise ConfigurationError(
+                "A client key was given without a client certificate.",
+                hint="Set client_cert (--client-cert) as well.",
+            )
         check_positive("connect_timeout", self.connect_timeout)
         check_positive("read_timeout", self.read_timeout)
         check_positive("total_timeout", self.total_timeout, allow_none=True)
@@ -108,6 +121,10 @@ class NetworkConfig:
             "max_redirects": self.max_redirects,
             "verify_tls": verify,
             "proxy": self.proxy.as_dict() if self.proxy else None,
+            "proxy_from_env": self.proxy_from_env,
+            "client_cert": str(self.client_cert) if self.client_cert else None,
+            "client_key": str(self.client_key) if self.client_key else None,
+            "client_key_password": REDACTED if self.client_key_password else None,
             "rate_limit": self.rate_limit,
             "credential_hosts": list(self.credential_hosts),
         }

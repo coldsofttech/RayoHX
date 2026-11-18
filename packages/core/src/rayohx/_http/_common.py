@@ -1,6 +1,8 @@
 """Limits and helpers shared by the HTTP client and the response checks."""
 
+import os
 import ssl
+from collections.abc import Mapping
 from pathlib import Path
 from urllib.parse import quote, urlsplit
 
@@ -40,6 +42,64 @@ def verify(value: bool | Path) -> bool | ssl.SSLContext:
                 hint="Give a PEM file of trusted certificate authorities.",
             ) from exc
     return value
+
+
+def tls_context(
+    value: bool | Path,
+    cert: Path | None = None,
+    key: Path | None = None,
+    password: str | None = None,
+) -> bool | ssl.SSLContext:
+    """The ``httpx`` TLS setting, with a client certificate loaded when one is given."""
+    base = verify(value)
+    if cert is None:
+        return base
+    if isinstance(base, ssl.SSLContext):
+        context = base
+    else:
+        context = ssl.create_default_context()
+        if base is False:
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+    try:
+        context.load_cert_chain(
+            certfile=str(cert), keyfile=str(key) if key else None, password=password
+        )
+    except (OSError, ssl.SSLError, ValueError) as exc:
+        raise ConfigurationError(
+            f"The client certificate {cert} cannot be used.",
+            hint="Give a PEM certificate, and its key file if the key is separate. "
+            "Check the key password.",
+        ) from exc
+    return context
+
+
+def environment_proxies(
+    env: Mapping[str, str] | None = None,
+) -> tuple[dict[str, ProxyConfig], tuple[str, ...]]:
+    """Proxies from the environment, by scheme (``http``, ``https``, ``all``), and ``NO_PROXY``.
+
+    Names are matched in lower case first, then upper case, as most tools do. A value that is
+    not a usable proxy address is ignored, so a stray variable never breaks a download.
+    """
+    source = os.environ if env is None else env
+
+    def lookup(name: str) -> str:
+        return (source.get(name.lower()) or source.get(name.upper()) or "").strip()
+
+    found: dict[str, ProxyConfig] = {}
+    for scheme, name in (("http", "http_proxy"), ("https", "https_proxy"), ("all", "all_proxy")):
+        value = lookup(name)
+        if not value:
+            continue
+        if "://" not in value:
+            value = f"http://{value}"
+        try:
+            found[scheme] = ProxyConfig(url=value)
+        except ConfigurationError:
+            continue
+    skip = tuple(part.strip().lower() for part in lookup("no_proxy").split(",") if part.strip())
+    return found, skip
 
 
 def proxy_url(proxy: ProxyConfig) -> str:
