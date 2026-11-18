@@ -54,6 +54,7 @@ def _marks(items: Sequence[object]) -> str:
 
 def _record(row: sqlite3.Row) -> JobRecord:
     progress = row["progress_json"]
+    result = row["result_json"]
     return JobRecord(
         id=row["id"],
         url=row["url"],
@@ -76,6 +77,7 @@ def _record(row: sqlite3.Row) -> JobRecord:
         needs_credentials=bool(row["needs_credentials"]),
         control_request=row["control_request"],
         profile_id=row["profile_id"],
+        result=json.loads(result) if result else None,
         progress=json.loads(progress) if progress else None,
     )
 

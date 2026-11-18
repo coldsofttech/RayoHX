@@ -122,6 +122,11 @@ Options are grouped the same way in `rayohx download --help`.
 |---|---|---|
 | `--output` | `-o` | Where to save (a folder when there are several addresses). A name without an extension gets the right one. By default it is named after the address, in the current folder. |
 | `--directory` | `-d` | The folder for a file that `--output` does not name. Created if missing. |
+| `--verify` | | Check the finished file: `none` (default), `basic`, or `strong` (also ffprobe: streams and length). A file that fails is renamed `.invalid`. |
+| `--checksum` | | The checksum the file must have (md5, sha1, sha256 or sha512, told by its length). A different one fails the download. |
+| `--metadata` | | What to write into the file: `none` (default), `minimal`, `preserve` or `custom`. Needs `--format mkv` or `audio`, or `--remux-backend ffmpeg`. |
+| `--title` | | A title to write in place of the stream's own. |
+| `--name-template` | | Name the file from the stream, such as `'{title} [{date}]'`. Used when `-o` is not given. |
 | `--format` | | `auto` (default), `original`, `ts`, `mp4`, `mkv`, `audio`, or `segments` (one file per segment, in a folder). `mkv` and `audio` need FFmpeg. |
 | `--overwrite` / `--no-overwrite` | | Replace an existing output file. Off by default. |
 | `--validate` / `--no-validate` | | Check the finished file before putting it in place. On by default. |

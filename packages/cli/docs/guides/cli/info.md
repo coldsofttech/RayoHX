@@ -179,3 +179,9 @@ program and a shell script see the same thing.
 A web address that is not found, a playlist that cannot be read and other expected failures exit
 with code `1` and print `Error: <message>` with a hint on stderr; nothing is written to stdout. A
 bad option or setting exits with `2`. See [Exit codes and errors](exit-codes.md).
+
+## Details of the chosen stream
+
+`rayohx info URL --media` adds what a download would take in detail: duration, the container the segments use, encryption, the video's codec, profile, level, resolution, frame rate and bit rate, every audio and subtitle track with the ones a download would pick marked, any title, description, chapters and cover the stream names, and the size. With ffprobe installed the first segment is examined too, which adds the pixel format, channels and sample rate; without it only what the playlist says is shown, and nothing is guessed. The size says whether it is `exact`, an `estimated` (and from what) or `unavailable`.
+
+Add `--format mkv` (or any format) to be told, before downloading, whether the stream can be saved that way and what it would need. With `--json` the details appear under `media` and the notes under `compatibility`.

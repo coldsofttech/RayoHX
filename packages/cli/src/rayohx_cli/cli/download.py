@@ -87,6 +87,11 @@ def download(
     reserve_space: params.ReserveSpace = None,
     keep_state: params.KeepState = True,
     directory: params.Directory = None,
+    verify: params.Verify = None,
+    checksum: params.Checksum = None,
+    metadata: params.Metadata = None,
+    title: params.Title = None,
+    name_template: params.NameTemplate = None,
     allow_file_keys: params.AllowFileKeys = False,
     json_output: params.JsonOutput = False,
     progress: params.ProgressMode = "auto",
@@ -160,6 +165,11 @@ def download(
         keep_state=keep_state,
         directory=directory,
         allow_file_keys=allow_file_keys,
+        verify=verify,
+        checksum=checksum,
+        metadata=metadata,
+        title=title,
+        name_template=name_template,
     )
     if profile:
         config = with_profile(ctx, config, profile)

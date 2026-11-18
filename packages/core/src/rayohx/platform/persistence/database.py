@@ -79,6 +79,9 @@ class Database:
         self._local = threading.local()
         self._connections: list[sqlite3.Connection] = []
         self._lock = threading.Lock()
+        #: Held while a statement or transaction runs, so ``close`` never closes a connection
+        #: that another thread is in the middle of using.
+        self._gate = threading.RLock()
         self._closed = False
         #: Where a damaged database was moved to, if one had to be replaced.
         self.recovered_from: Path | None = None
@@ -211,27 +214,31 @@ class Database:
     @contextlib.contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
         """Run a block as one atomic write. Raises if this thread is already in a transaction."""
-        connection = self.connection()
-        if connection.in_transaction:
-            raise PersistenceError("A transaction is already open on this thread.")
-        connection.execute("BEGIN IMMEDIATE")
-        try:
-            yield connection
-        except BaseException:
-            connection.execute("ROLLBACK")
-            raise
-        else:
-            connection.execute("COMMIT")
+        with self._gate:
+            connection = self.connection()
+            if connection.in_transaction:
+                raise PersistenceError("A transaction is already open on this thread.")
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                yield connection
+            except BaseException:
+                connection.execute("ROLLBACK")
+                raise
+            else:
+                connection.execute("COMMIT")
 
     def execute(self, sql: str, params: Sequence[Any] = ()) -> sqlite3.Cursor:
         """Run one statement outside any explicit transaction."""
-        return self.connection().execute(sql, params)
+        with self._gate:
+            return self.connection().execute(sql, params)
 
     def fetchall(self, sql: str, params: Sequence[Any] = ()) -> list[sqlite3.Row]:
-        return self.connection().execute(sql, params).fetchall()
+        with self._gate:
+            return self.connection().execute(sql, params).fetchall()
 
     def fetchone(self, sql: str, params: Sequence[Any] = ()) -> sqlite3.Row | None:
-        row: sqlite3.Row | None = self.connection().execute(sql, params).fetchone()
+        with self._gate:
+            row: sqlite3.Row | None = self.connection().execute(sql, params).fetchone()
         return row
 
     # --- closing ---------------------------------------------------------------------------
@@ -245,9 +252,10 @@ class Database:
         self._local = threading.local()
 
     def close(self) -> None:
-        """Close every connection. Safe to call more than once."""
-        self._closed = True
-        self._drop_connections()
+        """Close every connection once running statements are done. Safe to call twice."""
+        with self._gate:
+            self._closed = True
+            self._drop_connections()
 
     def __enter__(self) -> Self:
         return self

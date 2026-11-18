@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Any
 
 from rayohx.cancellation import CancellationToken
 from rayohx.downloader import Downloader
-from rayohx.enums import DownloadState
+from rayohx.enums import DownloadState, VerificationStatus
 from rayohx.errors import ConfigurationError, RayoHXError
 from rayohx.platform.errors import QueueError, RunnerLockedError
 from rayohx.platform.events import EventCategory, Severity
@@ -99,6 +99,8 @@ class QueueRunner:
         self._admit = admit
         self._cond = threading.Condition(threading.RLock())
         self._active: dict[str, _Active] = {}
+        #: Every worker thread until it has fully finished, including its last bookkeeping.
+        self._workers: set[threading.Thread] = set()
         self._thread: threading.Thread | None = None
         self._stopping = False
         self._busy = False
@@ -160,9 +162,10 @@ class QueueRunner:
         thread = self._thread
         if thread is not None:
             thread.join(max(0.0, deadline - time.monotonic()))
-        for active in list(self._active.values()):
-            if active.thread is not None:
-                active.thread.join(max(0.0, deadline - time.monotonic()))
+        with self._cond:
+            workers = list(self._workers)
+        for worker in workers:
+            worker.join(max(0.0, deadline - time.monotonic()))
         self._thread = None
         if self._lock is not None:
             self._lock.release()
@@ -284,12 +287,14 @@ class QueueRunner:
         if not claimed:
             return
         active = _Active()
-        with self._cond:
-            self._active[job_id] = active
-            self._busy = True
-        active.thread = threading.Thread(
+        worker = threading.Thread(
             target=self._work, args=(job_id, active), name=f"rayohx-job-{job_id}", daemon=True
         )
+        active.thread = worker
+        with self._cond:
+            self._active[job_id] = active
+            self._workers.add(worker)
+            self._busy = True
         self._changed(job, JobState.PREPARING)
         active.thread.start()
 
@@ -348,6 +353,7 @@ class QueueRunner:
             except Exception:
                 logger.exception("Could not check whether the queue is idle.")
             with self._cond:
+                self._workers.discard(threading.current_thread())
                 self._cond.notify_all()
 
     def _load_config(self, job: JobRecord) -> DownloadConfig | None:
@@ -437,6 +443,7 @@ class QueueRunner:
                 output_size=out.size_bytes if out else None,
                 progress_json=progress,
                 control_request=None,
+                **self._outcome(result),
             )
             self._end_attempt(attempt_id, "completed", None, None)
             self._changed(job, JobState.COMPLETED, severity=Severity.INFO)
@@ -514,8 +521,26 @@ class QueueRunner:
             error_message=message,
             progress_json=progress,
             control_request=None,
+            **self._outcome(result),
         )
         self._changed(job, JobState.FAILED, severity=Severity.ERROR, code=code, error=message)
+
+    @staticmethod
+    def _outcome(result: DownloadResult | None) -> dict[str, Any]:
+        """The verification state and the details of how a run ended, ready to store."""
+        if result is None:
+            return {}
+        report = result.integrity
+        details: dict[str, Any] = {"notes": list(result.notes)}
+        if result.output is not None:
+            details["processing"] = result.output.processing.value
+            details["metadata"] = list(result.output.metadata)
+        if report is not None:
+            details["integrity"] = report.to_dict()
+        return {
+            "verification": (report.status if report else VerificationStatus.NOT_REQUESTED).value,
+            "result_json": json.dumps(details),
+        }
 
     def _end_attempt(
         self, attempt_id: int | None, outcome: str, code: str | None, message: str | None

@@ -52,6 +52,9 @@ class EventType(StrEnum):
     DOWNLOAD_CANCELLED = "download_cancelled"
     DOWNLOAD_PAUSED = "download_paused"
     DOWNLOAD_RESUMED = "download_resumed"
+    VERIFICATION_STARTED = "verification_started"
+    VERIFICATION_COMPLETED = "verification_completed"
+    VERIFICATION_FAILED = "verification_failed"
 
 
 class ContainerFormat(StrEnum):
@@ -150,3 +153,38 @@ class Processing(StrEnum):
     #: One kind of stream (the sound) was taken out.
     EXTRACTED = "extracted"
     TRANSCODED = "transcoded"
+
+
+class VerifyLevel(StrEnum):
+    """How thoroughly a finished download is checked."""
+
+    #: Only what every download does: HTTP status, sizes and segment signatures.
+    NONE = "none"
+    #: Also check the finished file: its container is readable and not empty.
+    BASIC = "basic"
+    #: Also look inside with ffprobe when it is installed: streams, duration, and stricter
+    #: checks of every segment for cut-off data.
+    STRONG = "strong"
+
+
+class VerificationStatus(StrEnum):
+    """Where the verification of a download stands."""
+
+    NOT_REQUESTED = "not_requested"
+    PENDING = "pending"
+    VERIFYING = "verifying"
+    VERIFIED = "verified"
+    FAILED = "failed"
+
+
+class MetadataPolicy(StrEnum):
+    """Which information about the media is written into the output file."""
+
+    #: Write nothing.
+    NONE = "none"
+    #: Only the title and the language.
+    MINIMAL = "minimal"
+    #: Everything the stream tells us: title, description, language, chapters, artwork.
+    PRESERVE = "preserve"
+    #: Only what the settings give (``MetadataConfig.title`` and so on).
+    CUSTOM = "custom"

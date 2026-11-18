@@ -38,6 +38,7 @@ EXPECTED = {
     "UnsupportedCodecError": ("CODEC_UNSUPPORTED", ErrorCategory.REMUX),
     "FinalizationError": ("FINALIZATION_FAILED", ErrorCategory.OUTPUT),
     "CancellationError": ("CANCELLED", ErrorCategory.CANCELLATION),
+    "VerificationError": ("VERIFICATION_FAILED", ErrorCategory.VERIFICATION),
 }
 
 

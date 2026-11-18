@@ -2,27 +2,33 @@
 
 import asyncio
 from collections.abc import AsyncIterator
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from rayohx.capabilities import detect
 from rayohx.enums import OutputFormat
 from rayohx.errors import RayoHXError
+from rayohx.media import check_compatibility, inspect_media
 from rayohx.platform import JobRecord, JobState, QueuePriority, RetryPolicy
 from rayohx.platform.errors import QueueError
 from rayohx.platform.events import EventCategory
 from rayohx.platform.profiles import DownloadProfile, validate
 
 from rayohx_api.auth import authenticate
+from rayohx_api.build import DEFAULT_CONCURRENCY, download_config
 from rayohx_api.config import Settings, get_settings
 from rayohx_api.routers.v1 import _problem, to_job
+from rayohx_api.schemas_v1 import DownloadCreate
 from rayohx_api.schemas_v2 import (
     Attempt,
     BulkOutcome,
     CapabilitiesOut,
+    CompatibilityOut,
     EventList,
     JobDetail,
+    MediaInfoRequest,
+    MediaInfoResponse,
     MoveRequest,
     PlatformEvent,
     ProfileList,
@@ -33,6 +39,7 @@ from rayohx_api.schemas_v2 import (
     QueueList,
     QueueSettings,
     QueueStats,
+    VerificationOut,
 )
 from rayohx_api.service import enqueue, rayo
 
@@ -56,7 +63,27 @@ def to_queue_job(record: JobRecord) -> QueueJob:
         not_before=record.not_before,
         recovered=record.recovered,
         needs_credentials=record.needs_credentials,
+        notes=list(record.result.get("notes", [])) if record.result else [],
     )
+
+
+def _extra(body: QueueAdd) -> dict[str, Any]:
+    """What the request set about verification, metadata and naming, as setting overrides."""
+    extra: dict[str, Any] = {}
+    verify = {
+        "level": body.verify.level,
+        "expected_checksum": body.verify.checksum,
+    }
+    metadata = body.metadata.model_dump()
+    sections = {
+        "verify": {k: v for k, v in verify.items() if v is not None},
+        "metadata": {k: v for k, v in metadata.items() if v is not None},
+        "output": {"name_template": body.name_template} if body.name_template else {},
+    }
+    for name, values in sections.items():
+        if values:
+            extra[name] = values
+    return extra
 
 
 def _stats() -> QueueStats:
@@ -96,6 +123,8 @@ async def add_to_queue(
             priority=QueuePriority.parse(body.priority),
             retry=retry,
             profile=body.profile,
+            platform=True,
+            extra=_extra(body),
         )
     except ValueError as exc:  # an unknown priority or retry value
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
@@ -145,6 +174,15 @@ async def get_job(job_id: str) -> JobDetail:
     return JobDetail(**to_queue_job(record).model_dump(), attempt_history=history)
 
 
+@router.get("/queue/{job_id}/verification", summary="How a finished job was checked")
+async def get_verification(job_id: str) -> VerificationOut:
+    _find(job_id)
+    report = rayo().queue.verification(job_id)
+    if report is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This job was not verified.")
+    return VerificationOut(**report)
+
+
 @router.post("/queue/{job_id}/move", summary="Put a job just before another")
 async def move_job(job_id: str, body: MoveRequest) -> QueueJob:
     _find(job_id)
@@ -153,6 +191,42 @@ async def move_job(job_id: str, body: MoveRequest) -> QueueJob:
     except QueueError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, exc.message) from exc
     return to_queue_job(record)
+
+
+@router.post("/media-info", summary="Everything a stream offers, and what saving it would need")
+async def media_info(
+    body: MediaInfoRequest, settings: Annotated[Settings, Depends(get_settings)]
+) -> MediaInfoResponse:
+    """Codecs, frame rate, tracks, size and metadata; whether a format can be made from it."""
+    address = body.url or body.base_url
+    if address is None or (body.playlist_text is not None and not body.base_url):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Give url, or playlist_text with base_url.",
+        )
+    try:
+        probe_request = DownloadCreate(url=address, network=body.network, selection=body.selection)
+        config = download_config(
+            probe_request,
+            base=settings.download_dir,
+            local=settings.allow_local_paths,
+            concurrency=DEFAULT_CONCURRENCY,
+        )
+        found = await asyncio.to_thread(
+            inspect_media,
+            address,
+            network=config.network,
+            selection=config.selection,
+            playlist_text=body.playlist_text,
+            probe=body.probe,
+        )
+    except RayoHXError as exc:
+        raise _problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
+    notes = check_compatibility(found, OutputFormat(body.format))
+    return MediaInfoResponse(
+        media=found.to_dict(),
+        compatibility=[CompatibilityOut(**n.to_dict()) for n in notes],  # type: ignore[arg-type]
+    )
 
 
 def _profile(profile: DownloadProfile, default_id: str | None) -> ProfileOut:

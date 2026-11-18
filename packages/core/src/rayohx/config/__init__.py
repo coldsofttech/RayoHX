@@ -8,19 +8,23 @@ of ``as_dict``. Each area lives in its own module (``proxy``, ``network``, ``sto
 """
 
 from rayohx.config.download import DownloadConfig
+from rayohx.config.metadata import MetadataConfig
 from rayohx.config.network import NetworkConfig
 from rayohx.config.output import OutputConfig
 from rayohx.config.proxy import ProxyConfig
 from rayohx.config.selection import SelectionConfig
 from rayohx.config.storage import StorageConfig
 from rayohx.config.url import validate_url
+from rayohx.config.verify import VerifyConfig
 
 __all__ = [
     "DownloadConfig",
+    "MetadataConfig",
     "NetworkConfig",
     "OutputConfig",
     "ProxyConfig",
     "SelectionConfig",
     "StorageConfig",
+    "VerifyConfig",
     "validate_url",
 ]

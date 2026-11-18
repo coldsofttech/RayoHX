@@ -287,3 +287,25 @@ def test_a_named_audio_extension_is_respected(tmp_path: Path) -> None:
     assert result.output is not None
     assert result.output.path == tmp_path / "talk.mka"
     assert len(probe(result.output.path)["audio"]) == 1
+
+
+@needs_ffmpeg
+@pytest.mark.parametrize(
+    ("name", "format_name"),
+    [("talk.m4a", "mov,mp4,m4a"), ("talk.mka", "matroska"), ("talk.aac", "aac")],
+)
+def test_the_audio_file_really_is_what_its_extension_says(
+    tmp_path: Path, name: str, format_name: str
+) -> None:
+    site = single_file_site("h264_aac.ts")
+    result = run(site, "show/index.m3u8", tmp_path / name, OutputFormat.AUDIO).run()
+    assert result.success, result.error
+    assert result.output is not None
+    import json
+    import subprocess as sp
+
+    shown = sp.run(
+        ["ffprobe", "-v", "error", "-show_format", "-of", "json", str(result.output.path)],  # noqa: S607
+        capture_output=True, text=True, check=True,
+    )  # fmt: skip
+    assert json.loads(shown.stdout)["format"]["format_name"].startswith(format_name.split(",")[0])

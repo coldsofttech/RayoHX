@@ -213,3 +213,81 @@ def test_the_archive_profile_makes_a_matroska_file_through_the_queue(tmp_path: P
         )["streams"]  # fmt: skip
         assert sorted(s["codec_type"] for s in streams) == ["audio", "video"]
         assert not list((tmp_path / "dl").glob(".*"))  # no leftovers
+
+
+def titled_routes() -> dict[str, Callable[[Seen], Reply]]:
+    """The real media again, behind a master playlist that names it."""
+    routes = real_media_routes()
+    master = (
+        "#EXTM3U\n"
+        '#EXT-X-SESSION-DATA:DATA-ID="com.apple.hls.title",VALUE="Night Train"\n'
+        '#EXT-X-SESSION-DATA:DATA-ID="description",VALUE="A short film."\n'
+        "#EXT-X-STREAM-INF:BANDWIDTH=300000,RESOLUTION=320x240\nindex.m3u8\n"
+    )
+    routes["/real/master.m3u8"] = lambda _s: Reply(body=master.encode())
+    return routes
+
+
+def ffprobe_json(path: Path) -> dict:
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_format", "-show_streams", "-of", "json", str(path)],  # noqa: S607
+        capture_output=True, text=True, check=True,
+    )  # fmt: skip
+    return dict(json.loads(out.stdout))
+
+
+NEEDS_FFMPEG = pytest.mark.skipif(
+    shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None, reason="needs FFmpeg"
+)
+
+
+@NEEDS_FFMPEG
+def test_a_profile_names_labels_and_verifies_a_download(tmp_path: Path) -> None:
+    with LocalServer(titled_routes()) as server, make(tmp_path) as rayo:
+        rayo.profiles.create(
+            "Films", options={"output": {"format": "mkv"}}, naming="{title}", verify="strong"
+        )
+        job = rayo.queue.add(f"{server.url}/real/master.m3u8", profile="Films")
+        assert job.spec.output_name is None
+        rayo.queue.start()
+        assert rayo.queue.wait_idle(60)
+        done = rayo.queue.get(job.id)
+        assert done is not None
+        assert done.state is JobState.COMPLETED, done.error_message
+        path = Path(done.output_path or "")
+        assert path.name == "Night Train.mkv"  # named from the stream's own title
+        assert done.verification.value == "verified"
+        report = rayo.queue.verification(job.id)
+        assert report is not None
+        names = {c["name"]: c["status"] for c in report["checks"]}
+        assert names["duration"] == "passed"
+        assert names["streams"] == "passed"
+        tags = {k.lower(): v for k, v in ffprobe_json(path)["format"]["tags"].items()}
+        assert (tags["title"], tags["description"]) == ("Night Train", "A short film.")
+        kinds = [e.type for e in rayo.event_store.query(job_id=job.id, limit=500)]
+        assert "verification.started" in kinds
+        assert "verification.completed" in kinds
+
+
+@NEEDS_FFMPEG
+def test_a_wrong_checksum_fails_the_job_and_keeps_the_file_aside(tmp_path: Path) -> None:
+    with LocalServer(real_media_routes()) as server, make(tmp_path) as rayo:
+        job = rayo.queue.add(
+            f"{server.url}/real/index.m3u8",
+            options={"output": {"format": "ts"}, "verify": {"expected_checksum": "0" * 64}},
+            output_name="clip",
+        )
+        rayo.queue.start()
+        assert rayo.queue.wait_idle(60)
+        failed = rayo.queue.get(job.id)
+        assert failed is not None
+        assert failed.state is JobState.FAILED
+        assert failed.error_code == "VERIFICATION_FAILED"
+        assert failed.attempts == 1
+        assert failed.verification.value == "failed"
+        report = rayo.queue.verification(job.id)
+        assert report is not None
+        assert report["checksum"]["matches"] is False
+        assert report["invalid_path"] == str(tmp_path / "dl" / "clip.ts.invalid")
+        assert not (tmp_path / "dl" / "clip.ts").exists()
+        assert (tmp_path / "dl" / "clip.ts.invalid").is_file()

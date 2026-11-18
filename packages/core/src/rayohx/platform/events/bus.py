@@ -90,6 +90,13 @@ class EventBus:
         )
 
 
+_VERIFICATION_EVENTS = frozenset(
+    {
+        EventType.VERIFICATION_STARTED,
+        EventType.VERIFICATION_COMPLETED,
+        EventType.VERIFICATION_FAILED,
+    }
+)
 _WARNING_EVENTS = frozenset({EventType.SEGMENT_FAILED, EventType.DOWNLOAD_PAUSED})
 _ERROR_EVENTS = frozenset({EventType.DOWNLOAD_FAILED})
 _DEBUG_EVENTS = frozenset(
@@ -104,7 +111,8 @@ def from_download_event(
 
     Per-segment events are ``DEBUG`` so the bus does not save thousands of them by default.
     """
-    if event.type in _ERROR_EVENTS:
+    verification = event.type in _VERIFICATION_EVENTS
+    if event.type in _ERROR_EVENTS or event.type is EventType.VERIFICATION_FAILED:
         severity = Severity.ERROR
     elif event.type in _WARNING_EVENTS:
         severity = Severity.WARNING
@@ -121,9 +129,14 @@ def from_download_event(
         payload["data"] = dict(event.data)
     if event.progress is not None and event.type is not EventType.DOWNLOAD_PROGRESS:
         payload["downloaded_bytes"] = event.progress.downloaded_bytes
+    name = (
+        f"verification.{event.type.value.removeprefix('verification_')}"
+        if verification
+        else f"download.{event.type.value.removeprefix('download_')}"
+    )
     return PlatformEvent(
-        type=f"download.{event.type.value.removeprefix('download_')}",
-        category=EventCategory.DOWNLOAD,
+        type=name,
+        category=EventCategory.VERIFICATION if verification else EventCategory.DOWNLOAD,
         severity=severity,
         timestamp=event.timestamp,
         job_id=job_id or event.download_id,

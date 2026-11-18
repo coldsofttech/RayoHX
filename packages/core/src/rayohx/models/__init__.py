@@ -23,10 +23,12 @@ from rayohx.models.download import (
 )
 from rayohx.models.playlist import (
     AudioTrack,
+    DateRange,
     MasterPlaylist,
     MediaPlaylist,
     Playlist,
     Resolution,
+    SessionData,
     SubtitleTrack,
     Variant,
     VideoTrack,
@@ -41,6 +43,7 @@ from rayohx.models.segment import (
 
 __all__ = [
     "AudioTrack",
+    "DateRange",
     "DownloadProgress",
     "DownloadRequest",
     "DownloadResult",
@@ -54,6 +57,7 @@ __all__ = [
     "Segment",
     "SegmentData",
     "SegmentRange",
+    "SessionData",
     "StorageMetrics",
     "SubtitleTrack",
     "Variant",

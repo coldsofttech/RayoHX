@@ -106,6 +106,34 @@ A profile (`DownloadProfile`) is a name plus the settings it *changes*, in the s
 
 `OutputFormat` has `AUTO`, `ORIGINAL`, `TS`, `MP4`, `MKV`, `AUDIO` and `SEGMENTS`. The engine always prefers the least destructive route: keep the container (`ORIGINAL`, or `AUTO` for a stream that needs nothing), then copy the streams into another container, and it never re-encodes. `MKV` and `AUDIO` are made by FFmpeg copying the streams (`-c copy`) and fail before any download when FFmpeg is missing. An audio-only download of a stream with a separate audio track fetches only that track. A result's `OutputInfo.processing` says what happened: `copied`, `remuxed`, `muxed` or `extracted`. `rayohx.capabilities.detect()` reports what this machine can do.
 
+## Verification
+
+A download is not finished just because every request succeeded. `VerifyConfig` (and the profile's `verify`) decides how much is checked afterwards:
+
+| Level | What is checked |
+| --- | --- |
+| `none` | Only what every download does: status, sizes, segment signatures, and a spot-check of the finished file. |
+| `basic` | The output exists and holds something, and its container is well formed (transport stream packets line up, MP4 and Matroska structure). |
+| `strong` | Also ffprobe (when installed): the file reads, it has the expected streams, and its length matches the playlist. Segments are checked for being cut off (a packet or MP4 box that stops short), which fails that segment, so it is retried. |
+
+A checksum can be requested on its own (`verify.checksum`) or as an expected value (`verify.expected_checksum`, with the algorithm told from its length). Nothing is hashed unless asked for.
+
+The engine moves a verifying download through `VERIFYING` and returns an `IntegrityReport` with every check, and the checks that could not run (listed as *skipped*, so a report never claims more than was looked at). A file that fails is renamed `<name>.invalid` (or deleted with `keep_invalid: false`) and never left under its proper name; the job fails with `VERIFICATION_FAILED`, which is not retried automatically because a damaged file is not a passing problem.
+
+The queue stores the report: `job.verification` is `not_requested`, `verified` or `failed`, `queue.verification(job_id)` returns the report, and `verification.*` events record it. A job queued with no profile is verified at `basic`; complete settings (`config=`) keep the engine's quiet defaults.
+
+## Metadata
+
+`MetadataConfig` (and the profile's `metadata`) says what to write into the output file: `none`, `minimal` (title and language), `preserve` (everything the stream says: title, description, language, chapters, cover picture, start time and source), or `custom` (only values the settings give). The settings' own `title`, `description` and `language` replace the stream's. The stream's information comes from `EXT-X-SESSION-DATA` (`com.apple.hls.title`, `title`, `description`, `artwork`, `language`), `EXT-X-PROGRAM-DATE-TIME` and `EXT-X-DATERANGE` (chapters, from tags with an `X-TITLE`, placed relative to the first segment's date).
+
+Metadata is written by FFmpeg, so it goes into Matroska and audio files, and into MP4 files made with `remux_backend=ffmpeg`. Files made without FFmpeg (a transport stream, the built-in MP4 remuxer, separate segments) cannot hold it: the result says so in `notes` and nothing is guessed. A cover picture must really be a JPEG or PNG; if it cannot be fetched or is something else, the download goes on without it and says so.
+
+`{title}` and `{language}` can be used in a naming template: the platform fills in what it knows when the job is queued and passes the rest to the engine (`OutputConfig.name_template`), which fills in the title once the stream is read.
+
+## Media information
+
+`rayohx.media.inspect_media(url, ...)` describes a stream without downloading it: duration, segment count and container, encryption, every variant (with the chosen one marked), the video (codec and profile from the playlist's codec string, resolution, frame rate, range), audio and subtitle tracks (with the ones a download would pick marked), the metadata above and a size. With ffprobe installed it also examines the first segment, which fills in the details a playlist does not state (pixel format, channels, sample rate); each value says whether it came from the `playlist` or the `probe`. `size.kind` is `exact` (every byte accounted for), `estimated` (with the basis: average or peak bandwidth times duration) or `unavailable` (a live stream, or no bit rate), and an estimate is never presented as exact. `check_compatibility(info, format)` lists what to know before saving in a format: FFmpeg needed, codecs the built-in MP4 remuxer cannot copy, separate audio that the format cannot hold, live and SAMPLE-AES streams.
+
 ## Migrations so far
 
 | Version | Name | Adds |

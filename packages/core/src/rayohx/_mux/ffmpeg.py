@@ -5,6 +5,8 @@ user gives, and run as a separate program on files already downloaded. It is onl
 *copy* streams (``-c copy``) into an MP4, a Matroska file or an audio file. It does not transcode.
 """
 
+from __future__ import annotations
+
 import logging
 import shutil
 import subprocess
@@ -12,11 +14,15 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from rayohx._mux.fmp4 import language_code
 from rayohx._redaction import redact_text
 from rayohx.cancellation import CancellationToken
 from rayohx.errors import CancellationError, FinalizationError
+
+if TYPE_CHECKING:
+    from rayohx.metadata.ffmpeg import FfmpegMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -65,24 +71,55 @@ def build_command(
     *,
     kind: str = "mp4",
     audio_only: bool = False,
+    metadata: FfmpegMetadata | None = None,
+    target_suffix: str | None = None,
 ) -> list[str]:
     """The command that copies the streams of ``inputs`` into one file.
 
     ``kind`` is ``mp4`` (the default), ``mkv``, or ``audio``, where the container follows the
-    extension of ``output`` and only sound is kept. Streams are only ever copied. The one change
-    made is rewriting the headers of AAC from a transport stream, which does not alter the sound.
+    extension of the final file (``target_suffix``, or ``output``'s when that is not given, since
+    ``output`` is usually a temporary ``.part`` file) and only sound is kept. Streams are only
+    ever copied. The one change made is rewriting the headers of AAC from a transport stream,
+    which does not alter the sound.
     """
     command = [str(executable), "-hide_banner", "-nostdin", "-loglevel", "error", "-y"]
     for item in inputs:
         command += ["-i", str(item.path)]
+    extra = len(inputs)
+    chapters_input = picture_input = None
+    if metadata is not None and metadata.chapters_file is not None:
+        chapters_input = extra
+        command += ["-i", str(metadata.chapters_file)]
+        extra += 1
+    suffix = (target_suffix or output.suffix).lower()
+    matroska = kind == "mkv" or suffix == ".mka"
+    if metadata is not None and metadata.artwork is not None and not matroska:
+        picture_input = extra
+        command += ["-i", str(metadata.artwork)]
     for index in range(len(inputs)):
         if not audio_only:
             command += ["-map", f"{index}:v?"]
         command += ["-map", f"{index}:a?"]
+    if picture_input is not None:
+        command += ["-map", f"{picture_input}:v"]
     command += ["-c", "copy", "-sn", "-dn"]
-    if audio_only:
+    if picture_input is not None:
+        command += [f"-disposition:v:{0 if audio_only else 1}", "attached_pic"]
+    if chapters_input is not None:
+        command += ["-map_chapters", str(chapters_input)]
+    if metadata is not None:
+        for key, value in metadata.tags.items():
+            command += ["-metadata", f"{key}={value}"]
+        if metadata.artwork is not None and matroska:
+            name = metadata.artwork.name.lstrip(".")
+            command += [
+                "-attach", str(metadata.artwork),
+                "-metadata:s:t:0", f"mimetype={metadata.mime}",
+                "-metadata:s:t:0", f"filename={name}",
+            ]  # fmt: skip
+    if audio_only and picture_input is None:
         command += ["-vn"]
-    muxer = AUDIO_MUXERS.get(output.suffix.lower(), "matroska") if audio_only else None
+    muxer = AUDIO_MUXERS.get(suffix, "matroska") if audio_only else None
     fix_aac = not audio_only or muxer in {"mp4", "matroska"}
     audio = 0
     for item in inputs:
@@ -93,6 +130,13 @@ def build_command(
             if item.language and muxer not in {"adts", "mp3", "ac3", "eac3"}:
                 command += [f"-metadata:s:a:{audio}", f"language={language_code(item.language)}"]
             audio += 1
+    if (
+        metadata is not None
+        and metadata.language
+        and not any(item.language for item in inputs)
+        and muxer not in {"adts", "mp3", "ac3", "eac3"}
+    ):
+        command += ["-metadata:s:a:0", f"language={language_code(metadata.language)}"]
     if audio_only:
         if muxer == "mp4":
             command += ["-movflags", "+faststart"]
@@ -113,6 +157,8 @@ def remux(
     cancel: CancellationToken | None = None,
     kind: str = "mp4",
     audio_only: bool = False,
+    metadata: FfmpegMetadata | None = None,
+    target_suffix: str | None = None,
 ) -> None:
     """Run FFmpeg to copy ``inputs`` into ``output`` (see ``build_command``).
 
@@ -120,7 +166,15 @@ def remux(
         FinalizationError: If FFmpeg fails or cannot be started.
         CancellationError: If ``cancel`` fires; FFmpeg is stopped.
     """
-    command = build_command(executable, inputs, output, kind=kind, audio_only=audio_only)
+    command = build_command(
+        executable,
+        inputs,
+        output,
+        kind=kind,
+        audio_only=audio_only,
+        metadata=metadata,
+        target_suffix=target_suffix,
+    )
     try:
         process = subprocess.Popen(  # noqa: S603 - fixed arguments, no shell
             command,

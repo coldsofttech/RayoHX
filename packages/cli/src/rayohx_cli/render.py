@@ -120,3 +120,69 @@ def _media(data: dict[str, Any]) -> None:
     for key, value in rows:
         table.add_row(key, value)
     output.console.print(table)
+
+
+def show_media(media: dict[str, Any], compatibility: list[dict[str, str]]) -> None:
+    """Print the detail ``inspect_media`` found, and anything to know before saving."""
+    output.data("")
+    output.data("Details")
+    rows: list[tuple[str, str]] = []
+    if media.get("title"):
+        rows.append(("Title", str(media["title"])))
+    if media.get("duration") is not None:
+        rows.append(("Duration", fmt.duration(media["duration"])))
+    elif media.get("live"):
+        rows.append(("Duration", "live stream"))
+    rows.append(("Segments", f"{media['segment_count']} ({media.get('container') or 'unknown'})"))
+    if media.get("encryption"):
+        rows.append(("Encryption", str(media["encryption"])))
+    size = media["size"]
+    if size["bytes"] is not None:
+        shown = fmt.size(size["bytes"])
+        rows.append(("Size", f"{shown} ({size['kind']}: {size['basis']})"))
+    else:
+        rows.append(("Size", f"unavailable ({size['basis']})"))
+    video = media.get("video")
+    if video:
+        parts = [video.get("label") or video.get("codec") or "video"]
+        if video.get("width"):
+            parts.append(f"{video['width']}x{video['height']}")
+        if video.get("frame_rate"):
+            parts.append(f"{video['frame_rate']:g} fps")
+        if video.get("bit_rate"):
+            parts.append(fmt.bitrate(video["bit_rate"]))
+        if video.get("pixel_format"):
+            parts.append(video["pixel_format"])
+        rows.append(("Video", ", ".join(parts)))
+    for key, value in rows:
+        output.console.print(Text(f"  {key:10} {value}"), soft_wrap=True)
+    if media["audio"]:
+        table = Table(title="Audio", title_justify="left")
+        for column in ("", "Name", "Language", "Codec", "Channels", "Rate", "Where"):
+            table.add_column(column, no_wrap=True)
+        for track in media["audio"]:
+            table.add_row(
+                "*" if track.get("selected") else "",
+                track.get("name") or "",
+                track.get("language") or "",
+                track.get("label") or track.get("codec") or "",
+                str(track.get("channels") or ""),
+                f"{track['sample_rate']} Hz" if track.get("sample_rate") else "",
+                "separate" if track.get("separate") else "in the video",
+            )
+        output.console.print(table)
+    meta = media.get("metadata") or {}
+    extras = []
+    if meta.get("description"):
+        extras.append(("Description", str(meta["description"])))
+    if meta.get("chapters"):
+        extras.append(("Chapters", ", ".join(c["title"] for c in meta["chapters"])))
+    if meta.get("artwork_url"):
+        extras.append(("Cover", "yes"))
+    for key, value in extras:
+        output.console.print(Text(f"  {key:10} {value}"), soft_wrap=True)
+    for note in compatibility:
+        style = {"error": "bold red", "warning": "yellow"}.get(note["level"], "dim")
+        output.err_console.print(Text(f"{note['level']}: {note['message']}", style=style))
+    for note_text in media.get("notes", []):
+        output.err_console.print(Text(note_text, style="dim"))

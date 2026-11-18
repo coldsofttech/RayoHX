@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import os
 import threading
 import time
 import uuid
@@ -47,8 +48,10 @@ from rayohx.errors import (
     OutputFormatError,
     RayoHXError,
     UnsupportedCodecError,
+    VerificationError,
 )
 from rayohx.events import DownloadEvent, DownloadStateMachine, EventBus
+from rayohx.metadata import MetadataInfo, effective_metadata, extract_metadata
 from rayohx.models import (
     DownloadProgress,
     DownloadResult,
@@ -57,6 +60,7 @@ from rayohx.models import (
 )
 from rayohx.playlist import inspect_playlist, inspect_text
 from rayohx.stream import select_stream
+from rayohx.verify import Expectations, verify_output
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -66,6 +70,7 @@ if TYPE_CHECKING:
     from rayohx._download._output import OutputPlan
     from rayohx.models import MediaPlaylist, SubtitleTrack
     from rayohx.stream import StreamSelection
+    from rayohx.verify import IntegrityReport
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +115,9 @@ class Downloader:
         self._machine = DownloadStateMachine()
         self._progress = DownloadProgress()
         self._ran = False
+        self._integrity: IntegrityReport | None = None
+        self._metadata = MetadataInfo()
+        self._notes: list[str] = []
         #: The error that ended the download, if it failed.
         self.exception: Exception | None = None
         self._bus.subscribe(self._remember_progress)
@@ -202,6 +210,8 @@ class Downloader:
             elapsed_seconds=self._clock() - started,
             progress=self._progress,
             output=output,
+            integrity=self._integrity,
+            notes=tuple(self._notes),
         )
 
     def _execute(self) -> tuple[OutputInfo, DownloadProgress]:
@@ -240,8 +250,16 @@ class Downloader:
                     "Separate audio and subtitle tracks cannot be saved as separate segments.",
                     hint="Set video_only to download just the video.",
                 )
+            audio_tracks = tuple(a.track for a in audios)
+            info = extract_metadata(
+                playlist if isinstance(playlist, MasterPlaylist) else None,
+                media,
+                url=self._url,
+                audio=audio_tracks,
+            )
+            self._metadata = effective_metadata(info, config.metadata)
             plan = plan_output(
-                path=self._output,
+                path=self._chosen_output(info),
                 requested=config.output.format,
                 container=container,
                 url=self._url,
@@ -280,7 +298,14 @@ class Downloader:
                     for a in audios
                 ]
                 summary = delivery.with_ffmpeg(
-                    media, container, plan, variant, audios, ffmpeg_path, video_audio
+                    media,
+                    container,
+                    plan,
+                    variant,
+                    audios,
+                    ffmpeg_path,
+                    video_audio,
+                    self._metadata if not self._metadata.empty else None,
                 )
                 result_container = _FFMPEG_CONTAINER.get(plan.format, ContainerFormat.FMP4)
                 processing = (
@@ -291,17 +316,22 @@ class Downloader:
                     else Processing.REMUXED
                 )
             elif plan.mux:
+                self._note_unwritten_metadata(plan)
                 summary, shift = delivery.native_mux(media, container, plan, variant, audios)
                 result_container = ContainerFormat.FMP4
                 processing = Processing.MUXED if audios else Processing.REMUXED
             else:
+                self._note_unwritten_metadata(plan)
                 summary = delivery.plain(media, container, plan, variant)
                 result_container = container
                 processing = Processing.COPIED
             if subtitles:
                 delivery.subtitles(subtitles, shift or 0.0)
         output = output_info(plan.path, summary, result_container, processing)
+        output = dataclasses.replace(output, metadata=delivery.report.metadata_written)
+        self._notes.extend(delivery.report.notes)
         self._emit(EventType.FINALIZATION_COMPLETED, message=str(output.path))
+        self._verify(output, media, audios, plan, summary.total_segments)
         return output, summary.progress
 
     # --- preparing -------------------------------------------------------------------------
@@ -384,6 +414,97 @@ class Downloader:
             raise UnsupportedCodecError(exc.codec, hint=hint) from exc
         return None
 
+    def _verify(
+        self,
+        output: OutputInfo,
+        media: MediaPlaylist,
+        audios: list[Rendition],
+        plan: OutputPlan,
+        segments: int,
+    ) -> None:
+        """Check the finished output as the settings ask. Raises if it does not pass."""
+        settings = self._config.verify
+        if not settings.requested:
+            return
+        if self._machine.state in {DownloadState.DOWNLOADING, DownloadState.PAUSED}:
+            self._finalizing()  # a path that did not announce finalizing
+        self._move(DownloadState.VERIFYING)
+        self._emit(
+            EventType.VERIFICATION_STARTED,
+            message=settings.level.value,
+            progress=self._progress,
+        )
+        audio_only = plan.format is OutputFormat.AUDIO
+        report = verify_output(
+            output.path,
+            container=output.container,
+            config=settings,
+            expected=Expectations(
+                duration=media.total_duration if media.is_vod and media.segments else None,
+                video=not audio_only,
+                audio=audio_only or bool(audios),
+                segments=segments,
+            ),
+            cancel=self._token,
+        )
+        if not report.verified:
+            report = self._set_aside(output.path, report, keep=settings.keep_invalid)
+        self._integrity = report
+        self._emit(
+            EventType.VERIFICATION_COMPLETED if report.verified else EventType.VERIFICATION_FAILED,
+            message=report.summary(),
+            data=report.to_dict(),
+        )
+        if not report.verified:
+            hint = (
+                f"The file was kept as {report.invalid_path}."
+                if report.invalid_path
+                else "The file was removed."
+            )
+            raise VerificationError(report.summary(), hint=hint)
+
+    @staticmethod
+    def _set_aside(path: Path, report: IntegrityReport, *, keep: bool) -> IntegrityReport:
+        """Never leave a file that failed verification under its proper name."""
+        invalid: Path | None = None
+        try:
+            if path.is_file() and keep:
+                invalid = path.with_name(path.name + ".invalid")
+                os.replace(path, invalid)
+            elif path.is_file():
+                path.unlink()
+        except OSError:
+            logger.warning("The output that failed verification could not be moved aside.")
+            invalid = None
+        return dataclasses.replace(report, invalid_path=str(invalid) if invalid else None)
+
+    def _chosen_output(self, info: MetadataInfo) -> Path | None:
+        """The output path: the one asked for, else one made from the name template."""
+        if self._output is not None:
+            return self._output
+        template = self._config.output.name_template
+        if not template:
+            return None
+        from rayohx.naming import render_template, standard_tokens
+
+        title = self._config.metadata.title or info.title
+        language = self._config.metadata.language or info.language
+        stem = render_template(
+            template, standard_tokens(url=self._url, title=title, language=language)
+        )
+        return (self._config.output.directory or Path.cwd()) / stem
+
+    def _note_unwritten_metadata(self, plan: OutputPlan) -> None:
+        """Say so when metadata was wanted but this way of making the file cannot hold it."""
+        if self._metadata.empty and not self._metadata.description:
+            return
+        if plan.is_directory:
+            return
+        self._notes.append(
+            "Metadata was not written: files made without FFmpeg cannot hold it. "
+            "Use Matroska or audio output, or set the remux backend to ffmpeg."
+        )
+
     def _require_ffmpeg(self, plan: OutputPlan) -> Path:
         """The FFmpeg that Matroska and audio-only output need, or an explanation."""
         what = "Matroska" if plan.format is OutputFormat.MKV else "Audio-only"
@@ -451,6 +572,8 @@ class Downloader:
             elapsed_seconds=self._clock() - started,
             progress=self._progress,
             error=None if state is DownloadState.CANCELLED else join_message(message, hint),
+            integrity=self._integrity,
+            notes=tuple(self._notes),
         )
 
     def _remember_progress(self, event: DownloadEvent) -> None:

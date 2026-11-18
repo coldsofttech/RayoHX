@@ -141,10 +141,13 @@ def result_to_dict(result: DownloadResult) -> dict[str, Any]:
                 "size_bytes": result.output.size_bytes,
                 "container": result.output.container.value,
                 "processing": result.output.processing.value,
+                "metadata": list(result.output.metadata),
             }
             if result.output
             else None
         ),
         "error": result.error,
+        "integrity": result.integrity.to_dict() if result.integrity else None,
+        "notes": list(result.notes),
         "progress": progress_to_dict(result.progress),
     }

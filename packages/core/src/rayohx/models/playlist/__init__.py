@@ -1,5 +1,6 @@
 """Playlists: a master playlist lists streams, a media playlist lists segments."""
 
+from rayohx.models.playlist.extras import DateRange, SessionData
 from rayohx.models.playlist.master import MasterPlaylist
 from rayohx.models.playlist.media import MediaPlaylist
 from rayohx.models.playlist.resolution import Resolution
@@ -11,10 +12,12 @@ Playlist = MasterPlaylist | MediaPlaylist
 
 __all__ = [
     "AudioTrack",
+    "DateRange",
     "MasterPlaylist",
     "MediaPlaylist",
     "Playlist",
     "Resolution",
+    "SessionData",
     "SubtitleTrack",
     "Variant",
     "VideoTrack",

@@ -8,7 +8,7 @@ from enum import IntEnum, StrEnum
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
-from rayohx.enums import DownloadState
+from rayohx.enums import DownloadState, VerificationStatus
 from rayohx.platform.jobs.retry import RetryPolicy
 
 if TYPE_CHECKING:
@@ -73,12 +73,8 @@ class QueuePriority(IntEnum):
         return cls(value)
 
 
-class VerificationState(StrEnum):
-    NOT_REQUESTED = "not_requested"
-    PENDING = "pending"
-    VERIFYING = "verifying"
-    VERIFIED = "verified"
-    FAILED = "failed"
+#: How the verification of a job stands; the same states the engine reports.
+VerificationState = VerificationStatus
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -145,6 +141,9 @@ class JobRecord:
     control_request: str | None = None
     #: The profile the job's settings came from (a snapshot: later edits do not change the job).
     profile_id: str | None = None
+    #: How the job ended beyond the file: ``integrity`` (the verification report), ``notes``,
+    #: ``processing`` and the ``metadata`` written.
+    result: Mapping[str, Any] | None = None
     #: The latest progress snapshot (live while the job runs in this process).
     progress: Mapping[str, Any] | None = None
 
@@ -171,6 +170,7 @@ class JobRecord:
             "recovered": self.recovered,
             "needs_credentials": self.needs_credentials,
             "profile": self.profile_id,
+            "notes": list((self.result or {}).get("notes", [])),
             "progress": dict(self.progress) if self.progress else None,
         }
 

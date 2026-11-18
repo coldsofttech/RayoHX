@@ -318,11 +318,14 @@ def test_the_default_profile_applies_and_secrets_stay_out(client: TestClient) ->
     assert "HUSH" not in client.get("/api/v2/queue").text
 
 
-def test_no_profile_keeps_the_saved_defaults_behavior(client: TestClient) -> None:
+def test_v1_keeps_the_saved_defaults_and_v2_uses_profiles(client: TestClient) -> None:
     client.put("/api/v1/settings/defaults", json={"selection": {"quality": "720p"}})
-    job = add(client, "legacy")
-    assert job["profile"] is None
-    assert queued_options(client, job["id"])["selection"]["quality"] == "720p"
+    legacy = client.post("/api/v1/downloads", json={"url": URL.format("legacy")}).json()["items"][0]
+    assert queued_options(client, legacy["id"])["selection"]["quality"] == "720p"
+    assert queued_options(client, legacy["id"])["verify"]["level"] == "none"  # exactly as before
+    modern = add(client, "modern")
+    assert modern["profile"] is None
+    assert queued_options(client, modern["id"])["selection"]["quality"] == "best"
 
 
 def test_profile_errors_are_422(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -350,3 +353,112 @@ def test_the_new_output_formats_are_accepted(client: TestClient) -> None:
         ).status_code
         == 422
     )
+
+
+# --- verification, metadata, media information -------------------------------------------------
+
+MEDIA = """#EXTM3U
+#EXT-X-TARGETDURATION:4
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXTINF:4,
+seg0.ts
+#EXTINF:4,
+seg1.ts
+#EXT-X-ENDLIST
+"""
+
+
+def test_the_queue_checks_and_labels_by_default(client: TestClient) -> None:
+    job = add(client, "plain")
+    options = queued_options(client, job["id"])
+    assert options["verify"]["level"] == "basic"
+    assert options["metadata"]["policy"] == "preserve"
+    assert job["verification"] == "not_requested"
+    assert job["notes"] == []
+
+
+def test_a_request_can_set_verification_metadata_and_naming(client: TestClient) -> None:
+    job = add(
+        client, "set", profile="mobile",
+        verify={"level": "strong", "checksum": "ab" * 32},
+        metadata={"policy": "minimal", "title": "My film"},
+        name_template="{title} [{date}]",
+    )  # fmt: skip
+    options = queued_options(client, job["id"])
+    assert options["verify"]["level"] == "strong"
+    assert options["verify"]["expected_checksum"] == "ab" * 32
+    assert options["metadata"]["policy"] == "minimal"
+    assert options["metadata"]["title"] == "My film"
+    assert options["output"]["name_template"] == "{title} [{date}]"
+
+
+def test_bad_verification_requests_are_422(client: TestClient) -> None:
+    for body in (
+        {"verify": {"level": "paranoid"}},
+        {"verify": {"checksum": "xyz"}},
+        {"verify": {"checksum": "abcd"}},
+        {"metadata": {"policy": "everything"}},
+        {"name_template": "{nope}"},
+        {"name_template": "a/b"},
+    ):
+        response = client.post("/api/v2/queue", json={"url": URL.format("a"), **body})
+        assert response.status_code == 422, body
+    assert client.get("/api/v2/queue").json()["items"] == []
+
+
+def test_the_verification_report_is_available_once_a_job_has_one(client: TestClient) -> None:
+    import json
+
+    from rayohx_api.service import rayo
+
+    job = add(client, "v")
+    assert client.get(f"/api/v2/queue/{job['id']}/verification").status_code == 404
+    assert client.get("/api/v2/queue/ghost/verification").status_code == 404
+    report = {
+        "status": "verified", "level": "strong", "segments_checked": 2,
+        "checks": [{"name": "streams", "status": "passed", "detail": "1 video, 1 audio"}],
+        "checksum": {"algorithm": "sha256", "value": "ab", "expected": None, "matches": None},
+        "media": None, "elapsed_seconds": 0.1, "invalid_path": None, "notes": [],
+    }  # fmt: skip
+    result = {"integrity": report, "notes": ["Metadata was not written."]}
+    rayo().jobs.update(
+        job["id"], verification="verified", result_json=json.dumps(result), state="completed"
+    )
+    shown = client.get(f"/api/v2/queue/{job['id']}/verification").json()
+    assert shown["status"] == "verified"
+    assert shown["checks"][0]["name"] == "streams"
+    detail = client.get(f"/api/v2/queue/{job['id']}").json()
+    assert detail["verification"] == "verified"
+    assert detail["notes"] == ["Metadata was not written."]
+
+
+def test_media_info_describes_a_stream_and_checks_a_format(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from rayohx.capabilities import Capabilities
+
+    monkeypatch.setattr("rayohx.media.info.detect", lambda _p=None: Capabilities())
+    body = {
+        "playlist_text": MEDIA,
+        "base_url": "https://cdn.example.com/a/index.m3u8?token=SECRET",
+        "probe": False,
+        "format": "mkv",
+    }
+    response = client.post("/api/v2/media-info", json=body)
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["media"]["segment_count"] == 2
+    assert data["media"]["duration"] == 8.0
+    assert data["media"]["container"] == "MPEG-TS"
+    assert data["media"]["size"]["kind"] == "unavailable"
+    assert "SECRET" not in response.text
+    assert data["compatibility"][0]["level"] == "error"
+    assert "needs FFmpeg" in data["compatibility"][0]["message"]
+    fine = client.post("/api/v2/media-info", json={**body, "format": "ts"}).json()
+    assert fine["compatibility"] == []
+
+
+def test_media_info_asks_for_a_source(client: TestClient) -> None:
+    assert client.post("/api/v2/media-info", json={}).status_code == 422
+    assert client.post("/api/v2/media-info", json={"playlist_text": MEDIA}).status_code == 422
+    assert client.post("/api/v2/media-info", json={"url": "ftp://x"}).status_code == 422

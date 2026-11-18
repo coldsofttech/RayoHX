@@ -284,3 +284,10 @@ class CancellationError(RayoHXError):
 
     error_code: ClassVar[str] = "CANCELLED"
     category: ClassVar[ErrorCategory] = ErrorCategory.CANCELLATION
+
+
+class VerificationError(OutputError):
+    """The finished download did not pass verification."""
+
+    error_code: ClassVar[str] = "VERIFICATION_FAILED"
+    category: ClassVar[ErrorCategory] = ErrorCategory.VERIFICATION

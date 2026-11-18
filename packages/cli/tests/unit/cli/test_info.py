@@ -1,6 +1,7 @@
 """The ``info`` command: what a stream offers, and what the options would pick."""
 
 import httpx
+import pytest
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
@@ -164,3 +165,39 @@ def test_a_choice_that_matches_nothing_is_explained(runner: CliRunner, serve: Se
     assert result.exit_code == 2
     assert "No stream has size 800x600" in result.stderr
     assert "1: 640x360" in result.stderr
+
+
+def test_info_media_shows_the_details_and_what_a_format_needs(
+    runner: CliRunner, serve: Serve, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from rayohx.capabilities import Capabilities
+
+    serve(hls_site("ts", "ts"))
+    monkeypatch.setattr("rayohx.media.info.detect", lambda _p=None: Capabilities(), raising=True)
+    result = runner.invoke(app, ["info", MASTER, "--media", "--format", "mkv"])
+    assert result.exit_code == 0, result.stderr
+    assert "Details" in result.stdout
+    assert "Segments" in result.stdout
+    assert "MPEG-TS" in result.stdout
+    assert "Audio" in result.stdout
+    assert "audio_1" in result.stdout
+    assert "mkv output needs FFmpeg" in result.stderr
+
+
+def test_info_media_json_adds_the_details(runner: CliRunner, serve: Serve) -> None:
+    serve(hls_site("ts", "ts"))
+    result = runner.invoke(app, ["info", MASTER, "--media", "--json"])
+    assert result.exit_code == 0, result.stderr
+    data = parsed(result.stdout)
+    assert data["type"] == "master"  # the playlist view is unchanged
+    assert data["media"]["kind"] == "master"
+    assert data["media"]["segment_count"] == 2
+    assert data["media"]["size"]["kind"] in {"estimated", "unavailable"}
+    assert data["media"]["audio"][0]["selected"] is True
+    assert isinstance(data["compatibility"], list)
+
+
+def test_info_without_media_is_unchanged(runner: CliRunner, serve: Serve) -> None:
+    serve(hls_site("ts", "ts"))
+    result = runner.invoke(app, ["info", MASTER, "--json"])
+    assert "media" not in parsed(result.stdout)

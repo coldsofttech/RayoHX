@@ -22,3 +22,5 @@ class OutputInfo:
     size_bytes: int
     #: What was done to the data on its way to this file.
     processing: Processing = Processing.COPIED
+    #: The metadata written into the file, by name (``title``, ``chapters``, ``artwork`` ...).
+    metadata: tuple[str, ...] = ()

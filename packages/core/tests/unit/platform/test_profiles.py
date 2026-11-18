@@ -126,7 +126,7 @@ def test_plain_headers_are_fine() -> None:
 def test_other_settings_are_checked_too() -> None:
     assert errors(DownloadProfile(id="x", name="X", metadata="maybe"))[0].field == "metadata"
     assert errors(DownloadProfile(id="x", name="X", verify="paranoid"))[0].field == "verify"
-    assert errors(DownloadProfile(id="x", name="X", naming="{title}"))[0].field == "naming"
+    assert errors(DownloadProfile(id="x", name="X", naming="{nope}"))[0].field == "naming"
     assert errors(DownloadProfile(id="x", name="X", schema_version=99))[0].field == "schema_version"
     with pytest.raises(ConfigurationError, match="needs a name"):
         DownloadProfile(id="x", name="  ")
@@ -177,7 +177,7 @@ def test_names_are_deterministic() -> None:
 
 
 @pytest.mark.parametrize(
-    "template", ["", "  ", "{title}", "{name", "name}", "{{name}}", "a/b", "a\\b"]
+    "template", ["", "  ", "{nope}", "{name", "name}", "{{name}}", "a/b", "a\\b"]
 )
 def test_bad_templates_are_refused(template: str) -> None:
     with pytest.raises(ConfigurationError):
@@ -490,3 +490,54 @@ def test_a_profile_job_runs_with_the_profiles_settings(make_rayo: Callable[..., 
     rayo.queue.start()
     wait_state(rayo, job.id, JobState.COMPLETED)
     assert seen == [("480p", OutputFormat.MP4)]
+
+
+# --- verification, metadata and naming in profiles ---------------------------------------------
+
+
+def test_a_profile_sets_how_a_job_is_verified_and_labelled(rayo: Rayo) -> None:
+    strong = rayo.queue.add(URL, profile="archive")
+    assert strong.spec.options["verify"]["level"] == "strong"
+    assert strong.spec.options["metadata"]["policy"] == "preserve"
+    quick = rayo.queue.add(URL, profile="mobile")
+    assert quick.spec.options["verify"]["level"] == "basic"
+    off = rayo.profiles.create("Quiet", verify="none", metadata="none")
+    plain = rayo.queue.add(URL, profile=off.id)
+    assert plain.spec.options["verify"]["level"] == "none"
+    assert plain.spec.options["metadata"]["policy"] == "none"
+
+
+def test_without_a_profile_the_platform_verifies_and_keeps_metadata(rayo: Rayo) -> None:
+    job = rayo.queue.add(URL)
+    assert job.spec.options["verify"]["level"] == "basic"
+    assert job.spec.options["metadata"]["policy"] == "preserve"
+    # Complete settings are used exactly as given: the engine's own defaults stay quiet.
+    from rayohx.config import DownloadConfig
+
+    exact = rayo.queue.add(URL, config=DownloadConfig())
+    assert exact.spec.options["verify"]["level"] == "none"
+    assert exact.spec.options["metadata"]["policy"] == "none"
+
+
+def test_overrides_can_ask_for_a_checksum_or_a_policy(rayo: Rayo) -> None:
+    job = rayo.queue.add(
+        URL,
+        profile="mobile",
+        overrides={"verify": {"expected_checksum": "ab" * 32}, "metadata": {"policy": "minimal"}},
+    )
+    assert job.spec.options["verify"]["expected_checksum"] == "ab" * 32
+    assert job.spec.options["metadata"]["policy"] == "minimal"
+    with pytest.raises(ConfigurationError):
+        rayo.queue.add(URL, profile="mobile", overrides={"verify": {"expected_checksum": "nothex"}})
+
+
+def test_a_title_in_the_name_template_waits_for_the_stream(rayo: Rayo) -> None:
+    mine = rayo.profiles.create("Titled", naming="{title} - {profile} - {name}")
+    job = rayo.queue.add(URL, profile=mine.id)
+    assert job.spec.output_name is None
+    assert job.spec.options["output"]["name_template"] == "{title} - Titled - show"
+    fixed = rayo.profiles.create("Fixed", naming="{name} {profile}")
+    plain = rayo.queue.add(URL, profile=fixed.id)
+    assert plain.spec.output_name == "show Fixed"
+    assert plain.spec.options["output"]["name_template"] is None
+    assert rayo.queue.add(URL, profile=mine.id, output_name="own.ts").spec.output_name == "own.ts"

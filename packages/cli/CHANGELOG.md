@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `--verify`, `--checksum`, `--metadata`, `--title` and `--name-template` on `download` and `queue add`; `queue verification`; and `info --media` for the details of a stream and whether it can be saved in a format.
 - `rayohx profile` (list, show, create, edit, duplicate, rename, delete, default, validate, export, import) and `--profile` on `download` and `queue add`. Options you give win over the profile.
 - `--format original`, `mkv` and `audio`.
 - `rayohx queue`: a download queue that survives restarts (`add`, `list`, `show`, `stats`, `pause`, `resume`, `cancel`, `retry`, `remove`, `clear`, `priority`, `move`, `export`, `import`, `run`).

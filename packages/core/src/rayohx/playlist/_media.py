@@ -8,12 +8,20 @@ from typing import TYPE_CHECKING
 from rayohx.errors import InvalidPlaylistError
 from rayohx.playlist._lines import tag_name, tag_value
 from rayohx.playlist._values import byte_range, date_time, resolve, whole_tag_number
+from rayohx.playlist.attributes import parse_attribute_list
 
 if TYPE_CHECKING:
     from datetime import datetime
 
     from rayohx.enums import ContainerFormat
-    from rayohx.models import EncryptionInfo, InitMap, MediaPlaylist, Segment, SegmentRange
+    from rayohx.models import (
+        DateRange,
+        EncryptionInfo,
+        InitMap,
+        MediaPlaylist,
+        Segment,
+        SegmentRange,
+    )
     from rayohx.playlist._lines import Line
 
 _EXTINF = re.compile(r"^(\d+(?:\.\d+)?|\.\d+)\s*(?:,(.*))?$")
@@ -27,6 +35,7 @@ def parse_media(lines: list[Line], base: str) -> MediaPlaylist:
     from rayohx.models import MediaPlaylist, Segment, SegmentRange
 
     segments: list[Segment] = []
+    date_ranges: list[DateRange] = []
     target_duration: float | None = None
     media_sequence = 0
     end_list = False
@@ -110,6 +119,10 @@ def parse_media(lines: list[Line], base: str) -> MediaPlaylist:
             discontinuity = True
         elif name == "EXT-X-BYTERANGE":
             pending_range = byte_range(tag_value(content), number)
+        elif name == "EXT-X-DATERANGE":
+            item = read_date_range(content, number)
+            if item is not None:
+                date_ranges.append(item)
         elif name == "EXT-X-PROGRAM-DATE-TIME":
             program_date_time = date_time(tag_value(content).strip(), number)
         elif name == "EXT-X-KEY":
@@ -135,6 +148,32 @@ def parse_media(lines: list[Line], base: str) -> MediaPlaylist:
         version=version,
         playlist_type=playlist_type,
         container=detect_container(tuple(segments)),
+        date_ranges=tuple(date_ranges),
+    )
+
+
+def read_date_range(content: str, line: int) -> DateRange | None:
+    """One ``EXT-X-DATERANGE`` tag. A malformed one is skipped: it is only descriptive."""
+    from datetime import datetime
+
+    from rayohx.models import DateRange
+
+    try:
+        attributes = parse_attribute_list(tag_value(content), line=line)
+        start = datetime.fromisoformat(attributes["START-DATE"].replace("Z", "+00:00"))
+        end_text = attributes.get("END-DATE")
+        end = datetime.fromisoformat(end_text.replace("Z", "+00:00")) if end_text else None
+        duration = float(attributes["DURATION"]) if "DURATION" in attributes else None
+    except (InvalidPlaylistError, KeyError, ValueError):
+        return None
+    known = {"ID", "CLASS", "START-DATE", "END-DATE", "DURATION"}
+    return DateRange(
+        id=attributes.get("ID", ""),
+        start=start,
+        end=end,
+        duration=duration,
+        kind=attributes.get("CLASS"),
+        attributes={k: v for k, v in attributes.items() if k not in known},
     )
 
 

@@ -236,3 +236,31 @@ def test_settings_round_trip(tmp_path: Path) -> None:
         store.set("kept", True)
     with Database(path) as db:
         assert SettingsStore(db).all() == {"kept": True}
+
+
+def test_closing_while_other_threads_work_never_crashes(tmp_path: Path) -> None:
+    db = Database(tmp_path / "x.db")
+    stop = threading.Event()
+    problems: list[BaseException] = []
+
+    def hammer() -> None:
+        while not stop.is_set():
+            try:
+                db.fetchall("SELECT * FROM settings")
+                with db.transaction() as c:
+                    c.execute("INSERT OR REPLACE INTO settings VALUES ('k', '1', 0)")
+            except PersistenceError:
+                return  # closed: the right answer
+            except BaseException as exc:
+                problems.append(exc)
+                return
+
+    threads = [threading.Thread(target=hammer) for _ in range(6)]
+    for t in threads:
+        t.start()
+    db.close()
+    stop.set()
+    for t in threads:
+        t.join(10)
+    assert not problems
+    assert not any(t.is_alive() for t in threads)

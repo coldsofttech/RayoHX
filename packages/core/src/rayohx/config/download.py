@@ -5,10 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from rayohx.config.metadata import MetadataConfig
 from rayohx.config.network import NetworkConfig
 from rayohx.config.output import OutputConfig
 from rayohx.config.selection import SelectionConfig
 from rayohx.config.storage import StorageConfig
+from rayohx.config.verify import VerifyConfig
 from rayohx.errors import ConfigurationError
 
 if TYPE_CHECKING:
@@ -30,6 +32,8 @@ class DownloadConfig:
     storage: StorageConfig = field(default_factory=StorageConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     selection: SelectionConfig = field(default_factory=SelectionConfig)
+    verify: VerifyConfig = field(default_factory=VerifyConfig)
+    metadata: MetadataConfig = field(default_factory=MetadataConfig)
     #: Your own way to get an AES-128 key. Called with the key's address from the playlist
     #: (any scheme) and returns the 16 key bytes. Use it when the key comes from somewhere the
     #: HTTP layer cannot reach. It replaces every other way of fetching keys. It is a hook for
@@ -52,6 +56,8 @@ class DownloadConfig:
             "storage": self.storage.as_dict(),
             "output": self.output.as_dict(),
             "selection": self.selection.as_dict(),
+            "verify": self.verify.as_dict(),
+            "metadata": self.metadata.as_dict(),
             "key_fetcher": self.key_fetcher is not None,
             "allow_file_keys": self.allow_file_keys,
         }

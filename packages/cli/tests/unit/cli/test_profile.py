@@ -94,7 +94,7 @@ def test_invalid_profiles_are_refused_with_a_reason(runner: CliRunner) -> None:
         (["create", "A", "--set", "selection.quality=hd"], "quality"),
         (["create", "A", "--set", "nonsense.key=1"], "not a setting"),
         (["create", "A", "--set", "network.cookies=x"], "secrets"),
-        (["create", "A", "--naming", "{title}"], "naming token"),
+        (["create", "A", "--naming", "{nope}"], "naming token"),
         (["create", "A", "--verify", "maybe"], "verification"),
         (["create", "A", "--set", "novalue"], "KEY=VALUE"),
         (["create", "Mobile"], "already exists"),
@@ -251,3 +251,65 @@ def test_download_with_an_unknown_profile_stops_before_downloading(
     result = invoke(runner, "download", MASTER, "--profile", "ghost", ok=False)
     assert result.exit_code == 2
     assert len(fake_downloader.instances) == before
+
+
+# --- verification, metadata and details --------------------------------------------------------
+
+
+def test_queue_add_takes_verification_and_metadata_options(runner: CliRunner) -> None:
+    job = invoke(
+        runner, "queue", "add", URL, "--profile", "mobile", "--verify", "strong",
+        "--checksum", "ab" * 32, "--metadata", "minimal", "--title", "My title",
+        "--name-template", "{title} [{date}]",
+    ).stdout.strip()  # fmt: skip
+    options = job_options(runner, job)
+    assert options["verify"]["level"] == "strong"
+    assert options["verify"]["expected_checksum"] == "ab" * 32
+    assert options["metadata"]["policy"] == "minimal"
+    assert options["metadata"]["title"] == "My title"
+    assert options["output"]["name_template"] == "{title} [{date}]"
+
+
+def test_the_platform_default_applies_without_the_options(runner: CliRunner) -> None:
+    job = invoke(runner, "queue", "add", URL).stdout.strip()
+    options = job_options(runner, job)
+    assert options["verify"]["level"] == "basic"
+    assert options["metadata"]["policy"] == "preserve"
+
+
+def test_a_title_alone_means_custom_metadata(runner: CliRunner) -> None:
+    job = invoke(runner, "queue", "add", URL, "--title", "Only").stdout.strip()
+    metadata = job_options(runner, job)["metadata"]
+    assert metadata["title"] == "Only"  # replaces the stream's own title
+    assert metadata["policy"] == "preserve"  # the policy is the profile's or the default
+
+
+def test_bad_verification_options_are_usage_errors(runner: CliRunner) -> None:
+    for args in (["--verify", "paranoid"], ["--checksum", "nothex"], ["--metadata", "all"]):
+        result = invoke(runner, "queue", "add", URL, *args, ok=False)
+        assert result.exit_code == 2, args
+    assert queued(runner) == []
+
+
+def test_download_with_verification_flags(
+    runner: CliRunner, fake_downloader: type[FakeDownloader]
+) -> None:
+    config = run_with(
+        runner, fake_downloader,
+        [
+            "download", MASTER, "--verify", "strong", "--checksum", "cd" * 32,
+            "--metadata", "preserve",
+        ],
+    )  # fmt: skip
+    assert config.verify.level.value == "strong"
+    assert config.verify.expected_checksum == "cd" * 32
+    assert config.metadata.policy.value == "preserve"
+    plain = run_with(runner, fake_downloader, ["download", MASTER])
+    assert not plain.verify.requested
+    assert not plain.metadata.writes_anything
+
+
+def test_the_queue_shows_how_a_job_was_checked(runner: CliRunner) -> None:
+    job = invoke(runner, "queue", "add", URL).stdout.strip()
+    assert "not verified" in invoke(runner, "queue", "verification", job).stderr
+    assert invoke(runner, "queue", "verification", "ghost", ok=False).exit_code == 1

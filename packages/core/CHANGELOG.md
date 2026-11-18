@@ -16,8 +16,16 @@ The platform is the new `rayohx.platform` package: persistent services around th
 - Download profiles (`rayo.profiles`): five built in (Best Quality, 1080p, Mobile, Archive, Custom) and your own, with validation, a default profile, file name templates, import and export. `rayo.queue.add(url, profile=..., overrides=...)` copies the settings into the job.
 - `DownloadConfig` can be saved as plain data and rebuilt (`rayohx.platform.jobs.config_to_options`, `config_from_options`).
 
+### Fixed
+
+- Audio-only output made by FFmpeg now really is the container its extension says (an `.m4a` was a Matroska file).
+
 ### Added
 
+- Verification: `VerifyConfig` (`none`, `basic`, `strong`, an optional checksum or expected checksum) checks the finished file. A download goes through `VERIFYING`, returns an `IntegrityReport` (every check, and what could not be done), and a file that fails is renamed `.invalid` and fails the download with `VERIFICATION_FAILED`. Segments cut off mid-packet or mid-box are refused in `strong`. Nothing is hashed unless asked.
+- `rayohx.media`: `inspect_media` (codecs, profile and level, frame rate, tracks, size as exact, estimated or unavailable, and metadata), `check_compatibility`, and `probe_file` (ffprobe).
+- Metadata: `MetadataConfig` (`none`, `minimal`, `preserve`, `custom`) writes the title, description, language, chapters and cover picture into Matroska, audio and FFmpeg-made MP4 files, and says when a file cannot hold them. The playlist parser reads `EXT-X-SESSION-DATA` and `EXT-X-DATERANGE`.
+- `OutputConfig.name_template` names a file from the stream (`{title}`, `{language}`, `{name}`, `{date}`, `{time}`, `{host}`).
 - Output formats `original` (the stream's own container, untouched), `mkv` (Matroska) and `audio` (only the sound, as `.m4a`, `.mp3`, `.ac3`, `.eac3` or `.mka` to suit the codec). `mkv` and `audio` need FFmpeg, which only copies the streams, and are refused before any download when it is missing. Audio-only from a separate audio track never fetches the video.
 - `OutputInfo.processing` (`copied`, `remuxed`, `muxed`, `extracted`) and `rayohx.capabilities` to find out what this machine can do.
 - `audio_languages=("*",)` and `subtitle_languages=("*",)` select every audio or subtitle track.

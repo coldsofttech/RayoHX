@@ -11,6 +11,7 @@ from rayohx.enums import DownloadState
 if TYPE_CHECKING:
     from rayohx.models.download.output import OutputInfo
     from rayohx.models.download.progress import DownloadProgress
+    from rayohx.verify.report import IntegrityReport
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -24,6 +25,10 @@ class DownloadResult:
     progress: DownloadProgress
     output: OutputInfo | None = None
     error: str | None = None
+    #: What verification found, when it was asked for.
+    integrity: IntegrityReport | None = None
+    #: Things worth knowing, such as metadata that could not be written.
+    notes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.state.is_terminal:

@@ -14,7 +14,7 @@ import dataclasses
 import logging
 import os
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from rayohx._download._containers import validate_fmp4_file
@@ -30,6 +30,8 @@ from rayohx.config import DownloadConfig
 from rayohx.enums import ContainerFormat, OutputFormat
 from rayohx.errors import FinalizationError, OutputExistsError, OutputFormatError
 from rayohx.events import EventBus
+from rayohx.metadata.ffmpeg import prepare as prepare_metadata
+from rayohx.metadata.model import MetadataInfo
 from rayohx.models import AudioTrack, MediaPlaylist, SubtitleTrack, Variant
 
 logger = logging.getLogger(__name__)
@@ -48,6 +50,16 @@ class Rendition:
     codecs: tuple[str, ...] = ()
 
 
+@dataclass(slots=True)
+class DeliveryNotes:
+    """What a delivery has to say about how it went, beyond the file itself."""
+
+    #: The metadata fields that were written into the output.
+    metadata_written: tuple[str, ...] = ()
+    #: Things the person should know, such as metadata that could not be written.
+    notes: list[str] = field(default_factory=list)
+
+
 @dataclass(frozen=True, slots=True)
 class Delivery:
     """Everything a delivery needs from the running download."""
@@ -58,6 +70,7 @@ class Delivery:
     download_id: str
     cancel: CancellationToken
     on_finalizing: Callable[[], None]
+    report: DeliveryNotes = field(default_factory=DeliveryNotes)
 
     def _media_download(
         self,
@@ -158,6 +171,7 @@ class Delivery:
         audios: list[Rendition],
         executable: Path,
         video_audio: tuple[str, ...] = (),
+        metadata: MetadataInfo | None = None,
     ) -> DownloadSummary:
         """Download the pieces to files, then have FFmpeg copy them into one file.
 
@@ -199,9 +213,33 @@ class Delivery:
                     inputs.append(ffmpeg.FfmpegInput(path, audio.codecs, audio.track.language))
             self.on_finalizing()
             self._check_free(plan.path)
-            ffmpeg.remux(
-                executable, inputs, part, cancel=self.cancel, kind=kind, audio_only=audio_only
+            extras = (
+                prepare_metadata(
+                    metadata,
+                    plan.path,
+                    client=self.client,
+                    total_duration=media.total_duration if media.is_vod else None,
+                )
+                if metadata is not None
+                else None
             )
+            if extras is not None:
+                self.report.metadata_written = tuple(extras.written)
+                self.report.notes.extend(extras.notes)
+            try:
+                ffmpeg.remux(
+                    executable,
+                    inputs,
+                    part,
+                    cancel=self.cancel,
+                    kind=kind,
+                    audio_only=audio_only,
+                    metadata=extras,
+                    target_suffix=plan.path.suffix,
+                )
+            finally:
+                if extras is not None:
+                    extras.cleanup()
             if plan.format is OutputFormat.MP4:
                 validate_fmp4_file(part)
             elif not part.is_file() or part.stat().st_size == 0:

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from rayohx.models.playlist.extras import SessionData
     from rayohx.models.playlist.tracks.audio import AudioTrack
     from rayohx.models.playlist.tracks.subtitle import SubtitleTrack
     from rayohx.models.playlist.tracks.video import VideoTrack
@@ -27,6 +28,8 @@ class MasterPlaylist:
     version: int | None = None
     #: Variables the playlist defined with ``EXT-X-DEFINE``. Media playlists may import them.
     variables: Mapping[str, str] = field(default_factory=dict, repr=False)
+    #: Information the playlist gives about the stream (``EXT-X-SESSION-DATA``).
+    session_data: tuple[SessionData, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "variables", MappingProxyType(dict(self.variables)))
@@ -34,6 +37,7 @@ class MasterPlaylist:
         object.__setattr__(self, "video_tracks", tuple(self.video_tracks))
         object.__setattr__(self, "audio_tracks", tuple(self.audio_tracks))
         object.__setattr__(self, "subtitle_tracks", tuple(self.subtitle_tracks))
+        object.__setattr__(self, "session_data", tuple(self.session_data))
 
     def audio_group(self, group_id: str) -> tuple[AudioTrack, ...]:
         """The audio tracks of one group."""

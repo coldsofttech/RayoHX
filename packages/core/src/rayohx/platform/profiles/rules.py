@@ -36,6 +36,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+#: What a download gets when no profile says otherwise.
+DEFAULT_VERIFY = "basic"
+DEFAULT_METADATA = "preserve"
 #: Network settings that only ever hold secrets; they are stored apart from options.
 SECRET_SETTINGS = frozenset({"cookies", "client_key_password", "proxy_username", "proxy_password"})
 
@@ -247,6 +250,10 @@ def resolve_options(
 ) -> dict[str, Any]:
     """The full settings: the defaults, then the profile's, then the caller's."""
     merged = default_options()
+    # The platform checks and labels what it downloads unless told not to; the engine's own
+    # defaults (used by complete settings) stay quiet.
+    merged["verify"]["level"] = profile.verify if profile else DEFAULT_VERIFY
+    merged["metadata"]["policy"] = profile.metadata if profile else DEFAULT_METADATA
     if profile is not None:
         merged = deep_merge(merged, profile.options)
     if overrides:

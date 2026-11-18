@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from rayohx_api.schemas_v1 import DownloadCreate, Job
+from rayohx_api.schemas_v1 import DownloadCreate, Job, Network, Selection
 
 Priority = Literal["low", "normal", "high"]
 
@@ -18,6 +18,33 @@ class Retry(BaseModel):
     max_delay: float = Field(default=600, ge=0, le=86400, description="Seconds.")
 
 
+class VerifyOptions(BaseModel):
+    """How the finished file is checked."""
+
+    level: Literal["none", "basic", "strong"] | None = Field(
+        default=None, description="Default: the profile's, else basic."
+    )
+    checksum: str | None = Field(
+        default=None,
+        max_length=128,
+        pattern=r"^[0-9a-fA-F]+$",
+        description="The checksum the file must have (md5, sha1, sha256 or sha512, by length).",
+    )
+
+
+class MetadataOptions(BaseModel):
+    """What is written into the file."""
+
+    policy: Literal["none", "minimal", "preserve", "custom"] | None = Field(
+        default=None, description="Default: the profile's, else preserve."
+    )
+    title: str | None = Field(default=None, max_length=500, description="Replaces the stream's.")
+    description: str | None = Field(default=None, max_length=2000)
+    language: str | None = Field(default=None, max_length=35)
+    artwork: bool | None = None
+    chapters: bool | None = None
+
+
 class QueueAdd(DownloadCreate):
     profile: str | None = Field(
         default=None,
@@ -29,6 +56,15 @@ class QueueAdd(DownloadCreate):
     )
     priority: Priority = "normal"
     retry: Retry = Field(default_factory=Retry)
+    verify: VerifyOptions = Field(default_factory=VerifyOptions)
+    metadata: MetadataOptions = Field(default_factory=MetadataOptions)
+    name_template: str | None = Field(
+        default=None,
+        max_length=200,
+        description=(
+            "Name the file from the stream: {name} {title} {language} {date} {time} {host}."
+        ),
+    )
 
 
 class QueueJob(Job):
@@ -46,6 +82,7 @@ class QueueJob(Job):
     not_before: float | None = Field(default=None, description="A retry waits until this time.")
     recovered: bool = Field(description="Found half way after a crash and put back in the queue.")
     needs_credentials: bool = Field(description="Its secrets were lost; supply them to go on.")
+    notes: list[str] = Field(description="Things worth knowing, such as metadata not written.")
 
 
 class QueueStats(BaseModel):
@@ -133,3 +170,47 @@ class CapabilitiesOut(BaseModel):
     formats: dict[str, bool] = Field(
         description="Output format to whether this server can make it."
     )
+
+
+class CheckOut(BaseModel):
+    name: str
+    status: Literal["passed", "failed", "skipped"]
+    detail: str
+
+
+class VerificationOut(BaseModel):
+    """How a finished download was checked, and everything that could not be."""
+
+    status: Literal["not_requested", "pending", "verifying", "verified", "failed"]
+    level: Literal["none", "basic", "strong"]
+    checks: list[CheckOut]
+    segments_checked: int
+    checksum: dict[str, Any] | None = None
+    media: dict[str, Any] | None = Field(default=None, description="What ffprobe found.")
+    elapsed_seconds: float
+    invalid_path: str | None = Field(
+        default=None, description="Where a file that failed was kept, if it was."
+    )
+    notes: list[str]
+
+
+class MediaInfoRequest(BaseModel):
+    url: str | None = Field(default=None, max_length=4096)
+    playlist_text: str | None = Field(default=None, max_length=1_000_000)
+    base_url: str | None = Field(default=None, max_length=4096)
+    network: Network = Field(default_factory=Network)
+    selection: Selection = Field(default_factory=Selection)
+    probe: bool = Field(default=True, description="Also examine the first segment (needs ffprobe).")
+    format: Literal["auto", "original", "ts", "mp4", "mkv", "audio", "segments"] = Field(
+        default="auto", description="Say whether the stream can be saved in this format."
+    )
+
+
+class CompatibilityOut(BaseModel):
+    level: Literal["error", "warning", "info"]
+    message: str
+
+
+class MediaInfoResponse(BaseModel):
+    media: dict[str, Any]
+    compatibility: list[CompatibilityOut]

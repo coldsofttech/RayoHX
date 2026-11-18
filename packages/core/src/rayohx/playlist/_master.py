@@ -1,7 +1,14 @@
 """Reading master playlists."""
 
-from rayohx.errors import InvalidPlaylistError
-from rayohx.models import AudioTrack, MasterPlaylist, SubtitleTrack, Variant, VideoTrack
+from rayohx.errors import InvalidPlaylistError, UnsupportedPlaylistError
+from rayohx.models import (
+    AudioTrack,
+    MasterPlaylist,
+    SessionData,
+    SubtitleTrack,
+    Variant,
+    VideoTrack,
+)
 from rayohx.playlist._lines import Line, is_comment, tag_name, tag_value
 from rayohx.playlist._values import (
     decimal,
@@ -20,6 +27,7 @@ def parse_master(lines: list[Line], base: str) -> MasterPlaylist:
     audio: list[AudioTrack] = []
     subtitles: list[SubtitleTrack] = []
     version: int | None = None
+    session_data: list[SessionData] = []
 
     index = 1
     while index < len(lines):
@@ -28,6 +36,10 @@ def parse_master(lines: list[Line], base: str) -> MasterPlaylist:
         name = tag_name(content) if content.startswith("#EXT") else ""
         if name == "EXT-X-VERSION":
             version = whole_tag_number(content, number)
+        elif name == "EXT-X-SESSION-DATA":
+            item = session_item(content, number, base)
+            if item is not None:
+                session_data.append(item)
         elif name == "EXT-X-MEDIA":
             read_media_tag(content, number, base, video, audio, subtitles)
         elif name == "EXT-X-STREAM-INF":
@@ -49,6 +61,26 @@ def parse_master(lines: list[Line], base: str) -> MasterPlaylist:
         audio_tracks=tuple(audio),
         subtitle_tracks=tuple(subtitles),
         version=version,
+        session_data=tuple(session_data),
+    )
+
+
+def session_item(content: str, line: int, base: str) -> SessionData | None:
+    """One ``EXT-X-SESSION-DATA`` tag. A malformed one is skipped: it is only descriptive."""
+    try:
+        attributes = parse_attribute_list(tag_value(content), line=line)
+    except InvalidPlaylistError:
+        return None
+    data_id = attributes.get("DATA-ID")
+    if not data_id:
+        return None
+    raw_uri = attributes.get("URI")
+    try:
+        uri = resolve(base, raw_uri, line) if raw_uri else None
+    except (InvalidPlaylistError, UnsupportedPlaylistError):
+        uri = None
+    return SessionData(
+        data_id=data_id, value=attributes.get("VALUE"), uri=uri, language=attributes.get("LANGUAGE")
     )
 
 

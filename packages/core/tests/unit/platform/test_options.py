@@ -5,11 +5,13 @@ import pytest
 
 from rayohx.config import (
     DownloadConfig,
+    MetadataConfig,
     NetworkConfig,
     OutputConfig,
     ProxyConfig,
     SelectionConfig,
     StorageConfig,
+    VerifyConfig,
 )
 from rayohx.enums import OutputFormat, RemuxBackend, StorageStrategy
 from rayohx.errors import ConfigurationError
@@ -57,6 +59,21 @@ def rich_config(tmp_path: Path) -> DownloadConfig:
             validate=False,
             remux_backend=RemuxBackend.FFMPEG,
             ffmpeg_path=tmp_path / "ffmpeg",
+            name_template="{title} [{date}]",
+        ),
+        verify=VerifyConfig(
+            level="strong",
+            expected_checksum="ab" * 32,
+            keep_invalid=False,
+            ffprobe_path=tmp_path / "ffprobe",
+        ),
+        metadata=MetadataConfig(
+            policy="custom",
+            title="T",
+            description="D",
+            language="en",
+            artwork=False,
+            chapters=False,
         ),
         selection=SelectionConfig(
             quality="720p",

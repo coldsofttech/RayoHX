@@ -38,7 +38,7 @@ from rayohx.platform.profiles import (
     render_name,
     resolve_options,
 )
-from rayohx.platform.profiles.naming import tokens_for
+from rayohx.platform.profiles.naming import is_late, render_partial, tokens_for
 from rayohx.platform.queue.runner import CANCEL, PAUSE
 from rayohx.redaction import redact_url
 from rayohx.storage import FileLock
@@ -157,10 +157,17 @@ class Queue:
 
         job_id = uuid.uuid4().hex[:12]
         if name is None and chosen is not None and chosen.naming:
-            name = render_name(
-                chosen.naming,
-                tokens_for(url=address, job_id=job_id, profile=chosen.name, moment=self._clock()),
+            tokens = tokens_for(
+                url=address, job_id=job_id, profile=chosen.name, moment=self._clock()
             )
+            if is_late(chosen.naming):
+                # The title comes from the stream: the engine fills it in when the download starts.
+                stored["output"] = {
+                    **stored.get("output", {}),
+                    "name_template": render_partial(chosen.naming, tokens),
+                }
+            else:
+                name = render_name(chosen.naming, tokens)
         if retry is None:
             retry = (chosen.retry if chosen else None) or RetryPolicy()
         ref = None
@@ -258,6 +265,14 @@ class Queue:
             if self._runner.running
             else ("another process" if self._runner_elsewhere() else "none"),
         }
+
+    def verification(self, job_id: str) -> dict[str, Any] | None:
+        """The verification report of a job, as plain data, or ``None`` if it has none."""
+        record = self._repo.get(job_id)
+        if record is None or not record.result:
+            return None
+        report = record.result.get("integrity")
+        return dict(report) if report else None
 
     def attempts(self, job_id: str) -> DictList:
         """The runs of a job, with how each one ended."""

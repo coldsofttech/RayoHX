@@ -137,6 +137,11 @@ def add(
     format_: params.Format = OutputFormat.AUTO,
     overwrite: params.Overwrite = False,
     directory: params.Directory = None,
+    verify: params.Verify = None,
+    checksum: params.Checksum = None,
+    metadata: params.Metadata = None,
+    title: params.Title = None,
+    name_template: params.NameTemplate = None,
     header: params.Header = None,
     cookie: params.Cookie = None,
     user_agent: params.UserAgent = None,
@@ -171,6 +176,11 @@ def add(
         format=format_,
         overwrite=overwrite,
         directory=directory,
+        verify=verify,
+        checksum=checksum,
+        metadata=metadata,
+        title=title,
+        name_template=name_template,
         header=header or [],
         cookie=cookie or [],
         user_agent=user_agent,
@@ -263,6 +273,37 @@ def show(job: str, json_output: params.JsonOutput = False, home: Home = None) ->
         output.console.print(
             f"  run {run['attempt']}: {run['outcome'] or 'running'} {run['error_code'] or ''}"
         )
+
+
+@queue_app.command("verification")
+def verification(job: str, json_output: params.JsonOutput = False, home: Home = None) -> None:
+    """Show how a finished job was checked: every check, and what could not be done."""
+    rayo = open_platform(home)
+    try:
+        record = rayo.queue.get(job)
+        report = rayo.queue.verification(job)
+    finally:
+        rayo.close()
+    if record is None:
+        output.error(f"No job {job}.")
+        raise typer.Exit(EXIT_FAILED)
+    if report is None:
+        output.message("This job was not verified.")
+        return
+    if json_output:
+        output.print_json(report)
+        return
+    output.console.print(f"[bold]{report['status']}[/bold] ({report['level']} verification)")
+    for check in report["checks"]:
+        detail = f": {check['detail']}" if check["detail"] else ""
+        output.console.print(f"  {check['status']:8} {check['name']}{detail}")
+    if report.get("checksum"):
+        sums = report["checksum"]
+        output.console.print(f"  {sums['algorithm']} {sums['value']}")
+    if report.get("invalid_path"):
+        output.console.print(f"  The file was kept as {report['invalid_path']}")
+    if report["status"] == "failed":
+        raise typer.Exit(EXIT_FAILED)
 
 
 @queue_app.command("stats")

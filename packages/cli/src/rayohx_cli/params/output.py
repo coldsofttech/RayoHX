@@ -78,3 +78,58 @@ Ffmpeg = Annotated[
         rich_help_panel=OUTPUT,
     ),
 ]
+
+Verify = Annotated[
+    str | None,
+    typer.Option(
+        "--verify",
+        envvar="RAYOHX_VERIFY",
+        help=(
+            "Check the finished file: none, basic (its structure), or strong (also look inside "
+            "with ffprobe and compare the length)."
+        ),
+        rich_help_panel=OUTPUT,
+    ),
+]
+Checksum = Annotated[
+    str | None,
+    typer.Option(
+        "--checksum",
+        envvar="RAYOHX_CHECKSUM",
+        help="The checksum the file must have (md5, sha1, sha256 or sha512, told by its length).",
+        rich_help_panel=OUTPUT,
+    ),
+]
+Metadata = Annotated[
+    str | None,
+    typer.Option(
+        "--metadata",
+        envvar="RAYOHX_METADATA",
+        help=(
+            "What to write into the file: none, minimal (title, language), preserve (everything "
+            "the stream says) or custom. Only Matroska and audio files, and MP4 made with "
+            "--remux-backend ffmpeg, can hold it."
+        ),
+        rich_help_panel=OUTPUT,
+    ),
+]
+Title = Annotated[
+    str | None,
+    typer.Option(
+        "--title",
+        help="A title to write into the file in place of the stream's own.",
+        rich_help_panel=OUTPUT,
+    ),
+]
+NameTemplate = Annotated[
+    str | None,
+    typer.Option(
+        "--name-template",
+        envvar="RAYOHX_NAME_TEMPLATE",
+        help=(
+            "Name the file from the stream, such as '{title} [{date}]'. Tokens: {name} {title} "
+            "{language} {date} {time} {host}. Used when --output is not given."
+        ),
+        rich_help_panel=OUTPUT,
+    ),
+]

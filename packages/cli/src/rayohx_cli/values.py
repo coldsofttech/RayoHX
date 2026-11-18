@@ -7,11 +7,13 @@ from pathlib import Path
 from rayohx import OutputFormat, RemuxBackend, StorageStrategy
 from rayohx.config import (
     DownloadConfig,
+    MetadataConfig,
     NetworkConfig,
     OutputConfig,
     ProxyConfig,
     SelectionConfig,
     StorageConfig,
+    VerifyConfig,
 )
 from rayohx.errors import ConfigurationError
 
@@ -178,6 +180,11 @@ def build_config(
     validate: bool = True,
     remux_backend: RemuxBackend = RemuxBackend.AUTO,
     ffmpeg: Path | None = None,
+    verify: str | None = None,
+    checksum: str | None = None,
+    metadata: str | None = None,
+    title: str | None = None,
+    name_template: str | None = None,
 ) -> DownloadConfig:
     """Build the engine's settings from the command line's options.
 
@@ -278,6 +285,15 @@ def build_config(
             validate=validate,
             remux_backend=remux_backend,
             ffmpeg_path=ffmpeg,
+            name_template=name_template,
+        ),
+        verify=VerifyConfig(
+            level=(verify or "none").lower(),  # type: ignore[arg-type]
+            expected_checksum=checksum,
+        ),
+        metadata=MetadataConfig(
+            policy=(metadata or ("custom" if title else "none")).lower(),  # type: ignore[arg-type]
+            title=title,
         ),
         selection=SelectionConfig(**selection_options),  # type: ignore[arg-type]
         **config_options,  # type: ignore[arg-type]

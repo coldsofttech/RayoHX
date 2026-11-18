@@ -34,7 +34,7 @@ from rayohx._http import HttpClient
 from rayohx._redaction import redact_url
 from rayohx.cancellation import CancellationToken
 from rayohx.config import DownloadConfig
-from rayohx.enums import ContainerFormat, DownloadState, StorageStrategy
+from rayohx.enums import ContainerFormat, DownloadState, StorageStrategy, VerifyLevel
 from rayohx.errors import DownloadError, FinalizationError, UnsupportedPlaylistError
 from rayohx.events import EventBus
 from rayohx.models import DownloadProgress, MediaPlaylist, StorageMetrics, Variant
@@ -213,6 +213,7 @@ class MediaDownload:
                 allow_file_keys=config.allow_file_keys,
             ),
             container=self._container,
+            strict=config.verify.level is VerifyLevel.STRONG,
         )
         pipeline = SegmentPipeline(
             segments=segments,

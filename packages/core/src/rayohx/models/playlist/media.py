@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from rayohx.enums import ContainerFormat
 
 if TYPE_CHECKING:
+    from rayohx.models.playlist.extras import DateRange
     from rayohx.models.segment import Segment
 
 
@@ -23,9 +24,12 @@ class MediaPlaylist:
     version: int | None = None
     playlist_type: str | None = None
     container: ContainerFormat = ContainerFormat.UNKNOWN
+    #: Named stretches of the stream (``EXT-X-DATERANGE``), such as chapters.
+    date_ranges: tuple[DateRange, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "segments", tuple(self.segments))
+        object.__setattr__(self, "date_ranges", tuple(self.date_ranges))
         if self.target_duration < 0:
             raise ValueError("target_duration must not be negative")
 

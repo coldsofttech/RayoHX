@@ -1,8 +1,18 @@
 """The ``info`` command: show what a stream offers without downloading it."""
 
+from typing import Annotated, Any
+
 import typer
-from rayohx import MasterPlaylist, inspect, inspect_text, playlist_to_dict, select_stream
+from rayohx import (
+    MasterPlaylist,
+    OutputFormat,
+    inspect,
+    inspect_text,
+    playlist_to_dict,
+    select_stream,
+)
 from rayohx.errors import ConfigurationError, RayoHXError
+from rayohx.media import check_compatibility, inspect_media
 
 from rayohx_cli import output, params, render
 from rayohx_cli.cli.common import EXIT_FAILED, make_config, open_source, usage_error
@@ -50,6 +60,22 @@ def info(
     timeout: params.Timeout = None,
     retries: params.Retries = None,
     credential_host: params.CredentialHost = None,
+    media: Annotated[
+        bool,
+        typer.Option(
+            "--media",
+            help="Also show details of the chosen stream: codecs, frame rate, tracks, size, "
+            "metadata. Reads the first segment (with ffprobe, if installed).",
+        ),
+    ] = False,
+    format_: Annotated[
+        OutputFormat,
+        typer.Option(
+            "--format",
+            case_sensitive=False,
+            help="With --media: say whether the stream can be saved in this format.",
+        ),
+    ] = OutputFormat.AUTO,
     json_output: params.JsonOutput = False,
 ) -> None:
     """Show what a stream offers, without downloading it.
@@ -114,7 +140,28 @@ def info(
         output.error_from(exc)
         raise typer.Exit(EXIT_FAILED) from exc
     data = playlist_to_dict(playlist, selection)
+    details: dict[str, Any] | None = None
+    notes: list[dict[str, str]] = []
+    if media:
+        try:
+            found = inspect_media(
+                source.url,
+                network=config.network,
+                selection=config.selection,
+                playlist_text=source.text,
+            )
+        except ConfigurationError as exc:
+            usage_error(exc)
+        except RayoHXError as exc:
+            output.error_from(exc)
+            raise typer.Exit(EXIT_FAILED) from exc
+        details = found.to_dict()
+        notes = [n.to_dict() for n in check_compatibility(found, format_)]
     if json_output:
+        if details is not None:
+            data = {**data, "media": details, "compatibility": notes}
         output.print_json(data)
     else:
         render.show(data)
+        if details is not None:
+            render.show_media(details, notes)

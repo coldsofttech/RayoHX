@@ -26,10 +26,12 @@ class HlsSegmentFetcher:
         segments: Sequence[Segment],
         keys: KeyProvider | None = None,
         container: ContainerFormat | None = None,
+        strict: bool = False,
     ) -> None:
         import threading
 
         self._container = container
+        self._strict = strict
         self._client = client
         self._segments = segments
         self._keys = keys if keys is not None else KeyProvider(client)
@@ -66,7 +68,7 @@ class HlsSegmentFetcher:
         except (NetworkError, DownloadError) as exc:
             raise SegmentDownloadError(index, segment.uri, exc.message, hint=exc.hint) from exc
         if self._container is not None:
-            problem = check_segment(self._container, media)
+            problem = check_segment(self._container, media, strict=self._strict)
             if problem is None and init:
                 problem = check_segment(self._container, init, is_init=True)
             if problem is not None:

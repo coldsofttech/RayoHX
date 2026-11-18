@@ -616,3 +616,60 @@ def test_hundreds_of_jobs_are_cheap_to_queue_list_and_run(make_rayo: Callable[..
     assert rayo.queue.wait_idle(60)
     assert {j.state for j in rayo.queue.list()} == {JobState.COMPLETED}
     assert len({j.id for j in jobs}) == 300
+
+
+# --- verification and notes --------------------------------------------------------------------
+
+
+def test_a_verified_download_records_its_report(make_rayo: Callable[..., Rayo]) -> None:
+    rayo = make_rayo()
+    fakes.FakeDownloader.scripts["*"] = fakes.verified
+    job = rayo.queue.add(u("v"))
+    assert job.verification.value == "not_requested"
+    rayo.queue.start()
+    assert rayo.queue.wait_idle(5)
+    done = rayo.queue.get(job.id)
+    assert done is not None
+    assert done.state is JobState.COMPLETED
+    assert done.verification.value == "verified"
+    report = rayo.queue.verification(job.id)
+    assert report is not None
+    assert (report["status"], report["segments_checked"]) == ("verified", 3)
+    assert report["checks"][0]["name"] == "container structure"
+    assert done.to_dict()["notes"] == [
+        "Metadata was not written: files made without FFmpeg cannot hold it."
+    ]
+    assert done.to_dict()["verification"] == "verified"
+    events = [
+        e for e in rayo.event_store.query(job_id=job.id) if e.category.value == "verification"
+    ]
+    assert [e.type for e in events] == ["verification.started"]
+
+
+def test_a_failed_verification_fails_the_job_without_retrying(
+    make_rayo: Callable[..., Rayo],
+) -> None:
+    rayo = make_rayo()
+    fakes.FakeDownloader.scripts["*"] = fakes.verification_fails
+    job = rayo.queue.add(u("bad"), retry=FAST)
+    rayo.queue.start()
+    assert rayo.queue.wait_idle(5)
+    failed = rayo.queue.get(job.id)
+    assert failed is not None
+    assert (failed.state, failed.attempts) == (JobState.FAILED, 1)  # a damaged file is not retried
+    assert failed.error_code == "VERIFICATION_FAILED"
+    assert failed.verification.value == "failed"
+    report = rayo.queue.verification(job.id)
+    assert report is not None
+    assert report["status"] == "failed"
+    assert report["checks"][0]["detail"] == "bad"
+
+
+def test_a_job_without_verification_has_no_report(make_rayo: Callable[..., Rayo]) -> None:
+    rayo = make_rayo()
+    job = rayo.queue.add(u("plain"))
+    rayo.queue.start()
+    assert rayo.queue.wait_idle(5)
+    assert rayo.queue.get(job.id).verification.value == "not_requested"  # type: ignore[union-attr]
+    assert rayo.queue.verification(job.id) is None
+    assert rayo.queue.verification("ghost") is None

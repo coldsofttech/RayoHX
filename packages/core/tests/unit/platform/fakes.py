@@ -8,10 +8,17 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from rayohx.cancellation import CancellationToken
-from rayohx.enums import ContainerFormat, DownloadState, EventType
-from rayohx.errors import NetworkConnectionError, RayoHXError
+from rayohx.enums import (
+    ContainerFormat,
+    DownloadState,
+    EventType,
+    VerificationStatus,
+    VerifyLevel,
+)
+from rayohx.errors import NetworkConnectionError, RayoHXError, VerificationError
 from rayohx.events import DownloadEvent, EventBus
 from rayohx.models import DownloadProgress, DownloadResult, OutputInfo
+from rayohx.verify import Check, CheckStatus, IntegrityReport
 
 Script = Callable[["FakeDownloader"], DownloadResult]
 
@@ -46,7 +53,14 @@ class FakeDownloader:
         kw.setdefault("progress", DownloadProgress(state=state))
         self.events.emit(DownloadEvent(type=kind, download_id=self.download_id, state=state, **kw))
 
-    def result(self, state: DownloadState, *, error: str | None = None) -> DownloadResult:
+    def result(
+        self,
+        state: DownloadState,
+        *,
+        error: str | None = None,
+        integrity: IntegrityReport | None = None,
+        notes: tuple[str, ...] = (),
+    ) -> DownloadResult:
         out = None
         if state is DownloadState.COMPLETED:
             path = self.output or Path(self.config.output.directory) / "fake.ts"
@@ -61,6 +75,8 @@ class FakeDownloader:
             progress=DownloadProgress(state=state),
             output=out,
             error=error,
+            integrity=integrity,
+            notes=notes,
         )
 
     def run(self) -> DownloadResult:
@@ -75,6 +91,40 @@ def ok(d: FakeDownloader) -> DownloadResult:
     d.emit(EventType.STREAM_SELECTED, DownloadState.PREPARING)
     d.emit(EventType.DOWNLOAD_PROGRESS, DownloadState.DOWNLOADING)
     return d.result(DownloadState.COMPLETED)
+
+
+def report(status: VerificationStatus, *, detail: str = "") -> IntegrityReport:
+    failed = status is VerificationStatus.FAILED
+    return IntegrityReport(
+        status=status,
+        level=VerifyLevel.STRONG,
+        checks=(
+            Check(
+                "container structure", CheckStatus.FAILED if failed else CheckStatus.PASSED, detail
+            ),
+        ),
+        segments_checked=3,
+    )
+
+
+def verified(d: FakeDownloader) -> DownloadResult:
+    d.emit(EventType.DOWNLOAD_STARTED, DownloadState.INSPECTING)
+    d.emit(EventType.VERIFICATION_STARTED, DownloadState.VERIFYING)
+    return d.result(
+        DownloadState.COMPLETED,
+        integrity=report(VerificationStatus.VERIFIED),
+        notes=("Metadata was not written: files made without FFmpeg cannot hold it.",),
+    )
+
+
+def verification_fails(d: FakeDownloader) -> DownloadResult:
+    d.emit(EventType.DOWNLOAD_STARTED, DownloadState.INSPECTING)
+    d.exception = VerificationError("Verification failed: bad", hint="Kept as x.invalid.")
+    return d.result(
+        DownloadState.FAILED,
+        error="Verification failed: bad",
+        integrity=report(VerificationStatus.FAILED, detail="bad"),
+    )
 
 
 def fail_with(exc: Exception) -> Script:

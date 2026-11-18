@@ -6,6 +6,7 @@ platform's database, so they survive a restart of the API.
 
 import logging
 import threading
+from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,7 @@ from rayohx.errors import ConfigurationError
 from rayohx.platform import JobRecord, QueuePriority, RetryPolicy
 from rayohx.platform.errors import RunnerLockedError
 from rayohx.platform.jobs import NO_RETRY, config_to_options, safe_filename
+from rayohx.platform.profiles import deep_merge
 
 from rayohx_api.build import DEFAULT_CONCURRENCY, download_config, sources
 from rayohx_api.config import Settings, get_settings
@@ -163,6 +165,8 @@ def enqueue(
     priority: QueuePriority = QueuePriority.NORMAL,
     retry: RetryPolicy | None = NO_RETRY,
     profile: str | None = None,
+    platform: bool = False,
+    extra: Mapping[str, Any] | None = None,
 ) -> list[JobRecord]:
     """Queue one job for each address in the request.
 
@@ -170,8 +174,10 @@ def enqueue(
     request set itself is laid over them. Without one, the saved default options are merged in.
     """
     chosen = rayo().profiles.require(profile) if profile else rayo().profiles.default()
-    if chosen is not None:
-        return _enqueue_with_profile(body, settings, chosen.id, priority, retry)
+    if chosen is not None or platform:
+        return _enqueue_with_profile(
+            body, settings, chosen.id if chosen else None, priority, retry, extra
+        )
     merged = merge(store().get(), body.model_dump(exclude_unset=True))
     request = DownloadCreate.model_validate(merged)
     urls = sources(request)
@@ -211,9 +217,10 @@ def enqueue(
 def _enqueue_with_profile(
     body: DownloadCreate,
     settings: Settings,
-    profile_id: str,
+    profile_id: str | None,
     priority: QueuePriority,
     retry: RetryPolicy | None,
+    extra: Mapping[str, Any] | None = None,
 ) -> list[JobRecord]:
     request = DownloadCreate.model_validate(body.model_dump(exclude_unset=True))
     urls = sources(request)
@@ -225,6 +232,8 @@ def _enqueue_with_profile(
         request, base=base, local=settings.allow_local_paths, concurrency=DEFAULT_CONCURRENCY
     )
     overrides, secrets = _given_overrides(request, config)
+    if extra:
+        overrides = deep_merge(overrides, extra)
     for address in urls:
         validate_url(address)
     jobs = [

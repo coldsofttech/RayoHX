@@ -27,8 +27,15 @@ class OutputConfig:
     remux_backend: RemuxBackend = RemuxBackend.AUTO
     #: Path of an FFmpeg program to use when the backend is ``FFMPEG`` or ``AUTO`` needs it.
     ffmpeg_path: Path | None = None
+    #: Names an output that is not named with ``path``, from tokens such as ``{title}`` (see
+    #: ``rayohx.naming``). ``None`` names it after the address.
+    name_template: str | None = None
 
     def __post_init__(self) -> None:
+        if self.name_template is not None:
+            from rayohx.naming import validate_template
+
+            validate_template(self.name_template)
         if self.path is not None:
             text = str(self.path)
             if not text.strip() or text == ".":
@@ -46,4 +53,5 @@ class OutputConfig:
             "validate": self.validate,
             "remux_backend": self.remux_backend.value,
             "ffmpeg_path": str(self.ffmpeg_path) if self.ffmpeg_path else None,
+            "name_template": self.name_template,
         }

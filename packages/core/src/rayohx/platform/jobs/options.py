@@ -17,11 +17,13 @@ from typing import TYPE_CHECKING, Any
 
 from rayohx.config import (
     DownloadConfig,
+    MetadataConfig,
     NetworkConfig,
     OutputConfig,
     ProxyConfig,
     SelectionConfig,
     StorageConfig,
+    VerifyConfig,
 )
 from rayohx.enums import OutputFormat, RemuxBackend, StorageStrategy
 from rayohx.errors import ConfigurationError
@@ -106,6 +108,22 @@ def config_to_options(config: DownloadConfig) -> tuple[dict[str, Any], dict[str,
             "validate": config.output.validate,
             "remux_backend": config.output.remux_backend.value,
             "ffmpeg_path": _path(config.output.ffmpeg_path),
+            "name_template": config.output.name_template,
+        },
+        "verify": {
+            "level": config.verify.level.value,
+            "checksum": config.verify.checksum,
+            "expected_checksum": config.verify.expected_checksum,
+            "keep_invalid": config.verify.keep_invalid,
+            "ffprobe_path": _path(config.verify.ffprobe_path),
+        },
+        "metadata": {
+            "policy": config.metadata.policy.value,
+            "title": config.metadata.title,
+            "description": config.metadata.description,
+            "language": config.metadata.language,
+            "artwork": config.metadata.artwork,
+            "chapters": config.metadata.chapters,
         },
         "selection": {
             "quality": config.selection.quality,
@@ -200,6 +218,7 @@ def _build(
     directory = _opt_path(output.get("directory")) or default_directory
     out_kwargs = _pick(output, ("overwrite", "validate"))
     out_kwargs.update(
+        name_template=output.get("name_template"),
         directory=directory,
         format=OutputFormat(output.get("format", "auto")),
         remux_backend=RemuxBackend(output.get("remux_backend", "auto")),
@@ -226,8 +245,17 @@ def _build(
         sel_kwargs[name] = tuple(selection.get(name) or ())
 
     top = _pick(options, ("concurrency", "resume", "allow_file_keys"))
+    verify = options.get("verify") or {}
+    meta = options.get("metadata") or {}
     return DownloadConfig(
         **top,
+        verify=VerifyConfig(
+            **_pick(verify, ("level", "checksum", "expected_checksum", "keep_invalid")),
+            ffprobe_path=_opt_path(verify.get("ffprobe_path")),
+        ),
+        metadata=MetadataConfig(
+            **_pick(meta, ("policy", "title", "description", "language", "artwork", "chapters"))
+        ),
         network=NetworkConfig(**network),
         storage=StorageConfig(**storage_kwargs),
         output=OutputConfig(**out_kwargs),

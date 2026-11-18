@@ -19,6 +19,7 @@ A queue lives in a small database in your data folder (`RAYOHX_HOME` moves it). 
 | `queue add URL...` | Add one job for each address. Takes `--input-file`, `--priority`, `--name`, `--max-attempts` and the common stream options (`--quality`, `--audio`, `--header`, `--cookie`, `--proxy`, `--directory`, ...). Prints each job id. |
 | `queue list` | Jobs in the order they will run. `--state` filters, `--json` is for programs. |
 | `queue show JOB` | One job with every run it has had. |
+| `queue verification JOB` | How a finished job was checked: every check, and what could not be done. |
 | `queue stats` | Counts by state and who is running the queue. |
 | `queue pause JOB...` | Stop a job and keep what it downloaded. A running job gives up its place. |
 | `queue resume JOB...` | Queue a paused job again. It continues where it stopped. |
@@ -32,6 +33,8 @@ A queue lives in a small database in your data folder (`RAYOHX_HOME` moves it). 
 | `queue run` | Run the queue. `--max-active N` jobs at a time (default 2), `--until-empty` to stop when nothing is left, `--events` for JSON lines. |
 
 Finished files go to `~/Downloads/RayoHX`, or the folder in `RAYOHX_DOWNLOAD_DIR`, unless a job sets `--directory`.
+
+Jobs are checked (`basic`) and labelled (`preserve`) unless a profile or `--verify`/`--metadata` says otherwise. `queue add` takes the same `--verify`, `--checksum`, `--metadata`, `--title` and `--name-template` options as `download`.
 
 ## Order
 
