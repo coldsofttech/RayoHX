@@ -6,7 +6,7 @@ audio and subtitle tracks, and which of them a download with the same options wo
 [Back to the command line guide](../cli.md)
 
 ```bash
-rayohx info URL [OPTIONS]
+rayohx info URL_OR_FILE [OPTIONS]
 ```
 
 ```bash
@@ -92,6 +92,9 @@ These only decide which stream is marked with `*`; nothing is downloaded.
 | `--origin` | | The `Origin` to send. |
 | `--proxy` | | An `http://`, `https://`, `socks5://` or `socks5h://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable. |
 | `--insecure` | | Do not check TLS certificates. Only for servers you trust. |
+| `--proxy-username`, `--proxy-password` | | The proxy login, if it is not in the `--proxy` address. Both are needed, with `--proxy`. Prefer the environment variables. |
+| `--cookie-file` | | Read cookies from a Netscape-format `cookies.txt` (as exported by browsers). Domains are not checked. |
+| `--base-url` | | When the playlist is a local file, resolve its relative addresses against this web address. |
 | `--env-proxy` / `--no-env-proxy` | | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. Off by default. |
 | `--client-cert` | | A client certificate (PEM) for servers that require mutual TLS. |
 | `--client-key` | | The private key for `--client-cert`, if it is a separate file. |
@@ -100,6 +103,8 @@ These only decide which stream is marked with `*`; nothing is downloaded.
 | `--connect-timeout` | | Seconds to wait to connect. |
 | `--read-timeout` | | Seconds to wait for data. |
 | `--timeout` | | Most seconds one request may take, retries included. |
+| `--backoff` | | Back-off factor between retries: the wait is this times 2 to the attempt number (default 0.5 seconds). |
+| `--max-redirects` | | Most redirects to follow for one request (default 10). |
 | `--retries` | | Extra attempts after a failure. |
 | `--credential-host` | | Also send headers like `Authorization` and your cookies to this host (repeatable). By default they go only to the host of the URL. |
 

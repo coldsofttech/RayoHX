@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `rayohx clean` removes leftover working folders, and `rayohx config` shows the settings in effect.
+- Read a playlist from a local file (`rayohx info master.m3u8 --base-url URL`), also for `download`.
+- `--events` writes download events as JSON lines on stderr.
+- `kill -USR1` pauses and continues a running download (Linux and macOS).
+- `--cookie-file` reads a browser-style `cookies.txt`; `--proxy-username` and `--proxy-password` give the proxy login separately.
+- `--backoff`, `--max-redirects`, `--reserve-space`, `--keep-state` and `--directory` expose the remaining engine settings.
 - Download several streams with one command: `rayohx download URL URL -o folder/` or `--input-file`, with `--stop-on-error`.
 - `--codec`, `--video-range` and `--max-frame-rate` to prefer a kind of stream.
 - SOCKS5 proxies, `--env-proxy` to use `HTTP_PROXY` and friends, `--client-cert`, `--client-key` and `--client-key-password` for mutual TLS, and `--allow-file-keys`.

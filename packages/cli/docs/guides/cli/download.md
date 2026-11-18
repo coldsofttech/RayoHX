@@ -70,6 +70,22 @@ An existing output file is never replaced unless you pass `--overwrite`.
 - **Not supported.** Encrypted streams (plain AES-128) work. Protected (DRM) streams and live
   streams are refused with an explanation.
 
+## Local playlists
+
+If the first argument is a file on disk, it is read as the playlist instead of being fetched. Its
+relative addresses are resolved against `--base-url`; without one, only playlists whose addresses
+are all absolute will work.
+
+```bash
+rayohx info master.m3u8 --base-url https://cdn.example.com/vod/
+rayohx download master.m3u8 --base-url https://cdn.example.com/vod/ -o movie.mp4
+```
+
+## Pausing
+
+On Linux and macOS, `kill -USR1 <pid>` pauses a running download (segments already in progress
+finish) and a second `kill -USR1` continues it. Windows has no such signal.
+
 ## Resuming
 
 An interrupted or cancelled download continues where it stopped when you run the same command
@@ -101,6 +117,7 @@ Options are grouped the same way in `rayohx download --help`.
 | Option | Short | Description |
 |---|---|---|
 | `--output` | `-o` | Where to save (a folder when there are several addresses). A name without an extension gets the right one. By default it is named after the address, in the current folder. |
+| `--directory` | `-d` | The folder for a file that `--output` does not name. Created if missing. |
 | `--format` | | `auto` (default), `ts`, `mp4`, or `segments` (one file per segment, in a folder). |
 | `--overwrite` / `--no-overwrite` | | Replace an existing output file. Off by default. |
 | `--validate` / `--no-validate` | | Check the finished file before putting it in place. On by default. |
@@ -143,6 +160,9 @@ note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
 | `--origin` | | The `Origin` to send. |
 | `--proxy` | | An `http://`, `https://`, `socks5://` or `socks5h://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable, since command lines can be seen by other users. |
 | `--insecure` | | Do not check TLS certificates. Only for servers you trust. |
+| `--proxy-username`, `--proxy-password` | | The proxy login, if it is not in the `--proxy` address. Both are needed, with `--proxy`. Prefer the environment variables. |
+| `--cookie-file` | | Read cookies from a Netscape-format `cookies.txt` (as exported by browsers). Domains are not checked. |
+| `--base-url` | | When the playlist is a local file, resolve its relative addresses against this web address. |
 | `--env-proxy` / `--no-env-proxy` | | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. Off by default. |
 | `--client-cert` | | A client certificate (PEM) for servers that require mutual TLS. |
 | `--client-key` | | The private key for `--client-cert`, if it is a separate file. |
@@ -151,6 +171,8 @@ note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
 | `--connect-timeout` | | Seconds to wait to connect. |
 | `--read-timeout` | | Seconds to wait for data. |
 | `--timeout` | | Most seconds one request may take, retries included. |
+| `--backoff` | | Back-off factor between retries: the wait is this times 2 to the attempt number (default 0.5 seconds). |
+| `--max-redirects` | | Most redirects to follow for one request (default 10). |
 | `--retries` | | Extra attempts after a failure (0 or more). |
 | `--rate-limit` | | Most bytes per second to download in total, for example `2M`. |
 | `--credential-host` | | Also send headers like `Authorization` and your cookies to this host (repeatable). By default they go only to the host of the URL, and redirects never carry them elsewhere. |
@@ -169,6 +191,8 @@ and a speed limit.
 | `--buffer-size` | | Memory for the segment buffer, for example `64M`. |
 | `--max-temp-size` | | Most working disk space to use, for example `2G`. |
 | `--allow-file-keys` / `--no-allow-file-keys` | | Let a playlist's `file:` key addresses read a key from this machine. Off by default; only for streams you trust. |
+| `--reserve-space` | | Free disk space that must remain after the download, for example `1G` (default 256M; `0` for none). |
+| `--keep-state` / `--no-keep-state` | | Keep what a resume needs after a failure or Ctrl+C (on by default). |
 | `--space-check` / `--no-space-check` | | Check that the disk has room (on by default). Turn it off if the free space is reported wrongly, for example on some network drives. |
 
 ### Display
@@ -176,6 +200,7 @@ and a speed limit.
 | Option | Description |
 |---|---|
 | `--json` | Print the result as JSON on stdout, for other programs. |
+| `--events` | Write every download event as one JSON line on stderr, for other programs. Replaces the progress display. |
 | `--progress` | How to show progress: `auto` (default), `bar`, `plain`, `none`. |
 
 Sizes accept `K`, `M` and `G`. Sizes are binary (`4M` is 4 MiB); bitrates are decimal (`4M` is

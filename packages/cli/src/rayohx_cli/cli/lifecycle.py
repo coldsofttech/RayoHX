@@ -28,15 +28,28 @@ def graceful_interrupt(downloader: Downloader) -> Generator[None]:
         else:
             raise KeyboardInterrupt
 
+    def toggle_pause(signum: int, frame: FrameType | None) -> None:
+        if downloader.is_paused:
+            downloader.resume()
+            output.message("Resumed.")
+        else:
+            downloader.pause()
+            output.message("Paused. Send the same signal again to continue.")
+
     try:
         previous = signal.signal(signal.SIGINT, handler)
     except ValueError:  # not the main thread: signals cannot be handled here
         yield
         return
+    # SIGUSR1 pauses and continues where the system has it (not on Windows).
+    pause_signal = getattr(signal, "SIGUSR1", None)
+    previous_pause = signal.signal(pause_signal, toggle_pause) if pause_signal else None
     try:
         yield
     finally:
         signal.signal(signal.SIGINT, previous)
+        if pause_signal is not None and previous_pause is not None:
+            signal.signal(pause_signal, previous_pause)
 
 
 def finish(

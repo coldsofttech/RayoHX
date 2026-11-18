@@ -104,3 +104,25 @@ def test_the_previous_ctrl_c_handler_comes_back() -> None:
     with graceful_interrupt(_Downloader()):  # type: ignore[arg-type]
         assert signal.getsignal(signal.SIGINT) is not before
     assert signal.getsignal(signal.SIGINT) is before
+
+
+@pytest.mark.skipif(not hasattr(signal, "SIGUSR1"), reason="no SIGUSR1 on this system")
+def test_sigusr1_pauses_and_resumes(capsys: pytest.CaptureFixture[str]) -> None:
+    class Pausable(_Downloader):
+        is_paused = False
+
+        def pause(self) -> None:
+            self.is_paused = True
+
+        def resume(self) -> None:
+            self.is_paused = False
+
+    downloader = Pausable()
+    before = signal.getsignal(signal.SIGUSR1)
+    with graceful_interrupt(downloader):  # type: ignore[arg-type]
+        signal.raise_signal(signal.SIGUSR1)
+        assert downloader.is_paused
+        signal.raise_signal(signal.SIGUSR1)
+        assert not downloader.is_paused
+    assert signal.getsignal(signal.SIGUSR1) is before
+    assert "Paused" in capsys.readouterr().err

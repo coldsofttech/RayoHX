@@ -28,6 +28,8 @@ file=$(rayohx download https://cdn.example.com/vod/master.m3u8 --quiet)
 |---|---|
 | [info](cli/info.md) | `rayohx info`: what a stream offers, the table and `--json` output, which tracks a download would pick |
 | [download](cli/download.md) | `rayohx download`: every option, output files, progress, resume, examples |
+| [clean](cli/clean.md) | `rayohx clean`: remove leftover working folders from interrupted downloads |
+| [config](cli/config.md) | `rayohx config`: which settings file and `RAYOHX_` variables are in effect |
 | [Global options](cli/global-options.md) | `--verbose`, `--quiet`, `--no-color`, `--log-file`, `--config`, shell completion |
 | [Settings](cli/settings.md) | The settings file, `RAYOHX_` environment variables, `@file` values, precedence |
 | [Exit codes and errors](cli/exit-codes.md) | What each exit code means, how errors look, stopping with Ctrl+C |
