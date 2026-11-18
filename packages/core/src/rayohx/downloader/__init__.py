@@ -16,10 +16,14 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from rayohx.downloader.batch import BatchItem, batch_outputs, download_many
     from rayohx.downloader.controller import Downloader
     from rayohx.downloader.shortcut import download
 
 _EXPORTS = {
+    "BatchItem": "rayohx.downloader.batch",
+    "batch_outputs": "rayohx.downloader.batch",
+    "download_many": "rayohx.downloader.batch",
     "Downloader": "rayohx.downloader.controller",
     "download": "rayohx.downloader.shortcut",
 }
@@ -40,6 +44,9 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "BatchItem",
     "Downloader",
+    "batch_outputs",
     "download",
+    "download_many",
 ]

@@ -1,5 +1,6 @@
 """Choosing what to download."""
 
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -11,6 +12,33 @@ Url = Annotated[
     typer.Argument(
         help="The address of the playlist (.m3u8). Quote it if it contains & or ?.",
         metavar="URL",
+    ),
+]
+
+Urls = Annotated[
+    list[str] | None,
+    typer.Argument(
+        help="The addresses of the playlists (.m3u8). Quote them if they contain & or ?.",
+        metavar="[URL]...",
+    ),
+]
+InputFile = Annotated[
+    Path | None,
+    typer.Option(
+        "--input-file",
+        "-i",
+        help="Also download the addresses listed in this file, one per line (- for standard "
+        "input). Blank lines and lines starting with # are skipped.",
+        rich_help_panel=SELECTION,
+    ),
+]
+StopOnError = Annotated[
+    bool,
+    typer.Option(
+        "--stop-on-error/--no-stop-on-error",
+        envvar="RAYOHX_STOP_ON_ERROR",
+        help="With several addresses, stop at the first one that fails. Off by default.",
+        rich_help_panel=SELECTION,
     ),
 ]
 

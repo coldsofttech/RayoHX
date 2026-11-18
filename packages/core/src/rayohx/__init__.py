@@ -17,7 +17,7 @@ logging.getLogger("rayohx").addHandler(logging.NullHandler())
 
 if TYPE_CHECKING:
     from rayohx.cancellation import CancellationToken
-    from rayohx.downloader import Downloader, download
+    from rayohx.downloader import BatchItem, Downloader, batch_outputs, download, download_many
     from rayohx.enums import (
         ContainerFormat,
         DownloadState,
@@ -84,6 +84,8 @@ _EXPORTS = {
     "DownloadRequest": "rayohx.models",
     "DownloadResult": "rayohx.models",
     "DownloadState": "rayohx.enums",
+    "BatchItem": "rayohx.downloader",
+    "batch_outputs": "rayohx.downloader",
     "Downloader": "rayohx.downloader",
     "EncryptionInfo": "rayohx.models",
     "EncryptionMethod": "rayohx.enums",
@@ -109,6 +111,7 @@ _EXPORTS = {
     "VideoTrack": "rayohx.models",
     "configure_logging": "rayohx.logs",
     "download": "rayohx.downloader",
+    "download_many": "rayohx.downloader",
     "inspect": "rayohx.playlist.inspection",
     "inspect_playlist": "rayohx.playlist",
     "is_hls_playlist": "rayohx.playlist",
@@ -140,6 +143,7 @@ def __dir__() -> list[str]:
 
 __all__ = [
     "AudioTrack",
+    "BatchItem",
     "CancellationToken",
     "ContainerFormat",
     "DownloadProgress",
@@ -170,8 +174,10 @@ __all__ = [
     "Variant",
     "VideoTrack",
     "__version__",
+    "batch_outputs",
     "configure_logging",
     "download",
+    "download_many",
     "inspect",
     "inspect_playlist",
     "is_hls_playlist",

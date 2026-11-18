@@ -18,6 +18,8 @@ class OutputConfig:
     """What file is produced and how it is checked."""
 
     path: Path | None = None
+    #: The folder for an output that is not named with ``path``; the current folder by default.
+    directory: Path | None = None
     format: OutputFormat = OutputFormat.AUTO
     #: Replace an existing file. Off by default so a download never destroys data silently.
     overwrite: bool = False
@@ -38,6 +40,7 @@ class OutputConfig:
         """A serializable view."""
         return {
             "path": str(self.path) if self.path else None,
+            "directory": str(self.directory) if self.directory else None,
             "format": self.format.value,
             "overwrite": self.overwrite,
             "validate": self.validate,

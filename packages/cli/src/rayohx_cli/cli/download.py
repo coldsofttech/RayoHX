@@ -1,11 +1,21 @@
 """The ``download`` command: save a stream to a file."""
 
+from pathlib import Path
+
 import typer
-from rayohx import Downloader, OutputFormat, RemuxBackend, StorageStrategy
+from rayohx import (
+    Downloader,
+    OutputFormat,
+    RemuxBackend,
+    StorageStrategy,
+    batch_outputs,
+)
+from rayohx._redaction import redact_url
+from rayohx.config import DownloadConfig
 from rayohx.errors import ConfigurationError
 
 from rayohx_cli import output, params
-from rayohx_cli.cli.common import make_config, usage_error
+from rayohx_cli.cli.common import EXIT_CANCELLED, gather_urls, make_config, usage_error
 from rayohx_cli.cli.lifecycle import finish, graceful_interrupt
 from rayohx_cli.cli.root import app
 from rayohx_cli.progress import MODES, make_reporter
@@ -13,7 +23,7 @@ from rayohx_cli.progress import MODES, make_reporter
 
 @app.command()
 def download(
-    url: params.Url,
+    urls: params.Urls = None,
     output_path: params.OutputPath = None,
     quality: params.Quality = "best",
     max_resolution: params.MaxResolution = None,
@@ -63,11 +73,15 @@ def download(
     allow_file_keys: params.AllowFileKeys = False,
     json_output: params.JsonOutput = False,
     progress: params.ProgressMode = "auto",
+    input_file: params.InputFile = None,
+    stop_on_error: params.StopOnError = False,
 ) -> None:
-    """Download a stream to a file.
+    """Download one or more streams to files.
 
-    The path of the saved file is printed on stdout. Interrupted downloads continue where they
-    stopped when you run the same command again. Press Ctrl-C once to stop cleanly.
+    The path of each saved file is printed on stdout. With several addresses (or --input-file),
+    --output names a folder and the files are named after the addresses. Interrupted downloads
+    continue where they stopped when you run the same command again. Press Ctrl-C once to stop
+    cleanly.
     """
     if progress not in MODES:
         raise typer.BadParameter(f"must be one of {', '.join(MODES)}.", param_hint="--progress")
@@ -119,8 +133,25 @@ def download(
         space_check=space_check,
         allow_file_keys=allow_file_keys,
     )
+    targets = gather_urls(urls or [], input_file)
+    if len(targets) == 1:
+        run_one(targets[0], output_path, config, progress, json_output)
+        return
+    run_many(targets, output_path, config, progress, json_output, stop_on_error)
+
+
+def run_one(
+    url: str,
+    output_path: Path | None,
+    config: DownloadConfig,
+    progress: str,
+    json_output: bool,
+    documents: list[dict[str, object]] | None = None,
+    downloader: Downloader | None = None,
+) -> None:
+    """Download one address with a progress display, then report how it ended."""
     try:
-        downloader = Downloader(url, output=output_path, config=config)
+        downloader = downloader or Downloader(url, output=output_path, config=config)
     except ConfigurationError as exc:
         usage_error(exc)
     reporter = make_reporter(
@@ -137,4 +168,46 @@ def download(
             result = downloader.run()
     finally:
         reporter.close()
-    finish(result, downloader, json_output=json_output)
+    finish(result, downloader, json_output=json_output, documents=documents)
+
+
+def run_many(
+    targets: list[str],
+    output_path: Path | None,
+    config: DownloadConfig,
+    progress: str,
+    json_output: bool,
+    stop_on_error: bool,
+) -> None:
+    """Download several addresses in turn into one folder."""
+    if output_path is not None and output_path.exists() and not output_path.is_dir():
+        usage_error(
+            ConfigurationError(
+                f"{output_path} is a file, but there are {len(targets)} addresses to download.",
+                hint="With several addresses, --output names a folder.",
+            )
+        )
+    paths = batch_outputs(targets, output_path)
+    # Check every address and setting before anything is downloaded.
+    try:
+        downloaders = [
+            Downloader(u, output=p, config=config) for u, p in zip(targets, paths, strict=True)
+        ]
+    except ConfigurationError as exc:
+        usage_error(exc)
+    if output_path is not None:
+        output_path.mkdir(parents=True, exist_ok=True)
+    documents: list[dict[str, object]] = []
+    code = 0
+    for position, (url, downloader) in enumerate(zip(targets, downloaders, strict=True), start=1):
+        output.message(f"[{position}/{len(targets)}] {redact_url(url)}")
+        try:
+            run_one(url, None, config, progress, json_output, documents, downloader)
+        except typer.Exit as exit_:
+            code = EXIT_CANCELLED if exit_.exit_code == EXIT_CANCELLED else code or exit_.exit_code
+            if exit_.exit_code == EXIT_CANCELLED or stop_on_error:
+                break
+    if json_output:
+        output.print_json(documents)
+    if code:
+        raise typer.Exit(code)
