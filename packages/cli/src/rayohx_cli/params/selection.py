@@ -78,6 +78,33 @@ VariantName = Annotated[
         rich_help_panel=SELECTION,
     ),
 ]
+Codec = Annotated[
+    str | None,
+    typer.Option(
+        "--codec",
+        envvar="RAYOHX_CODEC",
+        help="Prefer this video codec: h264, hevc, vp9 or av1. Others are used if it is missing.",
+        rich_help_panel=SELECTION,
+    ),
+]
+VideoRange = Annotated[
+    str | None,
+    typer.Option(
+        "--video-range",
+        envvar="RAYOHX_VIDEO_RANGE",
+        help="Prefer this dynamic range: sdr, pq, hlg or hdr (pq or hlg).",
+        rich_help_panel=SELECTION,
+    ),
+]
+MaxFrameRate = Annotated[
+    float | None,
+    typer.Option(
+        "--max-frame-rate",
+        envvar="RAYOHX_MAX_FRAME_RATE",
+        help="Never pick a stream above this many frames per second, for example 30.",
+        rich_help_panel=SELECTION,
+    ),
+]
 Audio = Annotated[
     list[str] | None,
     typer.Option(

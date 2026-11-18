@@ -103,6 +103,9 @@ def build_config(
     resolution: str | None = None,
     bandwidth: str | None = None,
     variant_name: str | None = None,
+    codec: str | None = None,
+    video_range: str | None = None,
+    max_frame_rate: float | None = None,
     audio: Sequence[str] = (),
     audio_name: Sequence[str] = (),
     subtitles: Sequence[str] = (),
@@ -200,6 +203,9 @@ def build_config(
         "variant": variant,
         "resolution": resolution,
         "variant_name": variant_name,
+        "codec": codec,
+        "video_range": video_range,
+        "max_frame_rate": max_frame_rate,
     }
     if bandwidth:
         selection_options["bandwidth"] = parse_size(bandwidth, name="bandwidth", decimal=True)

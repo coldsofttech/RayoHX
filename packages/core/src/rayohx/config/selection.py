@@ -17,6 +17,17 @@ _LANGUAGE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
 _RESOLUTION = re.compile(r"^\d{3,4}p$", re.IGNORECASE)
 _EXACT_SIZE = re.compile(r"^(\d{2,5})x(\d{2,5})$", re.IGNORECASE)
 
+#: Video codec names accepted for ``codec`` and the codec string prefixes each one matches.
+CODEC_FAMILIES: dict[str, tuple[str, ...]] = {
+    "h264": ("avc",),
+    "hevc": ("hvc", "hev", "dvh"),
+    "vp9": ("vp09", "vp9"),
+    "av1": ("av01",),
+}
+_CODEC_ALIASES = {"avc": "h264", "h.264": "h264", "h265": "hevc", "h.265": "hevc"}
+#: ``hdr`` means any high-dynamic-range stream (``pq`` or ``hlg``).
+VIDEO_RANGES = ("sdr", "pq", "hlg", "hdr")
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SelectionConfig:
@@ -46,6 +57,15 @@ class SelectionConfig:
     bandwidth: int | None = None
     #: Only streams with exactly this name (the ``NAME`` of the playlist), ignoring case.
     variant_name: str | None = None
+    #: Prefer this video codec: ``h264``, ``hevc``, ``vp9`` or ``av1``. If no stream uses it,
+    #: the others stay in the running and a note says so.
+    codec: str | None = None
+    #: Prefer this dynamic range: ``sdr``, ``pq``, ``hlg`` or ``hdr`` (``pq`` or ``hlg``). A
+    #: stream that does not say counts as ``sdr``. Falls back like ``codec``.
+    video_range: str | None = None
+    #: Highest frame rate in frames per second. A stream that does not state one is never ruled
+    #: out. Handled like ``max_resolution``.
+    max_frame_rate: float | None = None
 
     def __post_init__(self) -> None:
         check_positive("variant", self.variant, allow_none=True)
@@ -68,12 +88,34 @@ class SelectionConfig:
                 self.variant_name,
                 self.max_resolution,
                 self.max_bitrate,
+                self.codec,
+                self.video_range,
+                self.max_frame_rate,
             )
         ):
             raise ConfigurationError(
                 "variant chooses a stream by itself, so it cannot be combined with "
-                "resolution, bandwidth, variant_name, max_resolution or max_bitrate."
+                "resolution, bandwidth, variant_name, max_resolution, max_bitrate, codec, "
+                "video_range or max_frame_rate."
             )
+        if self.codec is not None:
+            codec = self.codec.strip().lower()
+            codec = _CODEC_ALIASES.get(codec, codec)
+            if codec not in CODEC_FAMILIES:
+                raise ConfigurationError(
+                    f"codec {self.codec!r} is not valid.",
+                    hint=f"Use one of {', '.join(CODEC_FAMILIES)}.",
+                )
+            object.__setattr__(self, "codec", codec)
+        if self.video_range is not None:
+            video_range = self.video_range.strip().lower()
+            if video_range not in VIDEO_RANGES:
+                raise ConfigurationError(
+                    f"video_range {self.video_range!r} is not valid.",
+                    hint=f"Use one of {', '.join(VIDEO_RANGES)}.",
+                )
+            object.__setattr__(self, "video_range", video_range)
+        check_positive("max_frame_rate", self.max_frame_rate, allow_none=True)
         if not _QUALITY.match(self.quality):
             raise ConfigurationError(
                 f"quality {self.quality!r} is not valid.",
@@ -115,4 +157,7 @@ class SelectionConfig:
             "resolution": self.resolution,
             "bandwidth": self.bandwidth,
             "variant_name": self.variant_name,
+            "codec": self.codec,
+            "video_range": self.video_range,
+            "max_frame_rate": self.max_frame_rate,
         }

@@ -50,6 +50,7 @@ def select_variant(
     entries = _exact_matches(entries, config, notes)
     video = [entry for entry in entries if not is_audio_only(entry[1])]
     entries = video or entries
+    entries = _preferred(entries, config, notes)
 
     max_height = int(config.max_resolution[:-1]) if config.max_resolution else None
     allowed = [
@@ -61,11 +62,16 @@ def select_variant(
             or quality_height(entry[1]) <= max_height
         )
         and (config.max_bitrate is None or entry[1].bandwidth <= config.max_bitrate)
+        and (
+            config.max_frame_rate is None
+            or not entry[1].frame_rate
+            or entry[1].frame_rate <= config.max_frame_rate
+        )
     ]
     if not allowed:
         chosen = min(entries, key=worst_key)[1]
         notes.append(
-            "No stream fits the resolution or bitrate limit, so the smallest one "
+            "No stream fits the resolution, bitrate or frame rate limit, so the smallest one "
             f"({describe(chosen)}) was chosen."
         )
         return chosen
@@ -77,6 +83,36 @@ def select_variant(
         return max(allowed, key=best_key)[1]
     target = AUTO_TARGET_HEIGHT if mode == "auto" else int(mode[:-1])
     return closest_to(allowed, target, notes)
+
+
+def _preferred(
+    entries: list[tuple[int, Variant]], config: SelectionConfig, notes: list[str]
+) -> list[tuple[int, Variant]]:
+    """Keep the streams with the preferred codec and dynamic range, if any have them."""
+    from rayohx.config.selection import CODEC_FAMILIES
+
+    if config.codec is not None:
+        prefixes = CODEC_FAMILIES[config.codec]
+        matching = [e for e in entries if any(c.lower().startswith(prefixes) for c in e[1].codecs)]
+        if matching:
+            entries = matching
+        else:
+            notes.append(f"No stream uses {config.codec}, so the other codecs were considered.")
+    if config.video_range is not None:
+        wanted = config.video_range
+        matching = [e for e in entries if _range_matches(e[1].video_range, wanted)]
+        if matching:
+            entries = matching
+        else:
+            notes.append(
+                f"No stream has {wanted.upper()} video, so the other dynamic ranges were considered."
+            )
+    return entries
+
+
+def _range_matches(video_range: str | None, wanted: str) -> bool:
+    actual = (video_range or "sdr").lower()
+    return actual in ("pq", "hlg") if wanted == "hdr" else actual == wanted
 
 
 def _exact_matches(

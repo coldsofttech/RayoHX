@@ -231,3 +231,12 @@ def test_network_extras_reach_the_config(tmp_path: Path) -> None:
     assert config.network.proxy_from_env is True
     assert config.network.client_cert == cert
     assert "pw" not in str(config.network.as_dict())
+
+
+def test_preferences_reach_the_selection() -> None:
+    config = build_config(codec="HEVC", video_range="hdr", max_frame_rate=30)
+    assert config.selection.codec == "hevc"
+    assert config.selection.video_range == "hdr"
+    assert config.selection.max_frame_rate == 30
+    with pytest.raises(ConfigurationError):
+        build_config(codec="mpeg2")

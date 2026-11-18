@@ -38,9 +38,7 @@ def make_identity(directory: Path, password: bytes | None = None) -> tuple[Path,
         else serialization.NoEncryption()
     )
     key_path.write_bytes(
-        key.private_bytes(
-            serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, encryption
-        )
+        key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, encryption)
     )
     return cert_path, key_path
 

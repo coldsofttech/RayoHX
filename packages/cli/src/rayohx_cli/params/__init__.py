@@ -49,7 +49,9 @@ from rayohx_cli.params.selection import (
     Audio,
     AudioName,
     Bandwidth,
+    Codec,
     MaxBitrate,
+    MaxFrameRate,
     MaxResolution,
     Quality,
     Resolution,
@@ -59,12 +61,16 @@ from rayohx_cli.params.selection import (
     Variant,
     VariantName,
     VideoOnly,
+    VideoRange,
 )
 
 __all__ = [
     "Audio",
     "AudioName",
     "Bandwidth",
+    "Codec",
+    "MaxFrameRate",
+    "VideoRange",
     "BufferSize",
     "CaBundle",
     "ClientCert",
