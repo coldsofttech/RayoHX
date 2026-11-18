@@ -6,6 +6,16 @@ import typer
 
 from rayohx_cli.params.panels import DISPLAY
 
+Events = Annotated[
+    bool,
+    typer.Option(
+        "--events/--no-events",
+        envvar="RAYOHX_EVENTS",
+        help="Write every download event as one JSON line on stderr, for other programs. "
+        "Replaces the progress display.",
+        rich_help_panel=DISPLAY,
+    ),
+]
 JsonOutput = Annotated[
     bool,
     typer.Option(

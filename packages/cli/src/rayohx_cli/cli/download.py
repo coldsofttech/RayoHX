@@ -10,14 +10,21 @@ from rayohx import (
     StorageStrategy,
     batch_outputs,
 )
-from rayohx._redaction import redact_url
 from rayohx.config import DownloadConfig
 from rayohx.errors import ConfigurationError
 
 from rayohx_cli import output, params
-from rayohx_cli.cli.common import EXIT_CANCELLED, gather_urls, make_config, usage_error
+from rayohx_cli.cli.common import (
+    EXIT_CANCELLED,
+    Source,
+    gather_urls,
+    make_config,
+    open_source,
+    usage_error,
+)
 from rayohx_cli.cli.lifecycle import finish, graceful_interrupt
 from rayohx_cli.cli.root import app
+from rayohx_cli.events import EventStream
 from rayohx_cli.progress import MODES, make_reporter
 
 
@@ -82,6 +89,8 @@ def download(
     json_output: params.JsonOutput = False,
     progress: params.ProgressMode = "auto",
     input_file: params.InputFile = None,
+    base_url: params.BaseUrl = None,
+    events: params.Events = False,
     stop_on_error: params.StopOnError = False,
 ) -> None:
     """Download one or more streams to files.
@@ -149,29 +158,34 @@ def download(
         directory=directory,
         allow_file_keys=allow_file_keys,
     )
-    targets = gather_urls(urls or [], input_file)
+    targets = [open_source(t, base_url) for t in gather_urls(urls or [], input_file)]
+    if events:
+        progress = "none"
     if directory is not None:
         directory.mkdir(parents=True, exist_ok=True)
         if len(targets) > 1 and output_path is None:
             output_path = directory
     if len(targets) == 1:
-        run_one(targets[0], output_path, config, progress, json_output)
+        run_one(targets[0], output_path, config, progress, json_output, events=events)
         return
-    run_many(targets, output_path, config, progress, json_output, stop_on_error)
+    run_many(targets, output_path, config, progress, json_output, stop_on_error, events)
 
 
 def run_one(
-    url: str,
+    source: Source,
     output_path: Path | None,
     config: DownloadConfig,
     progress: str,
     json_output: bool,
     documents: list[dict[str, object]] | None = None,
     downloader: Downloader | None = None,
+    events: bool = False,
 ) -> None:
     """Download one address with a progress display, then report how it ended."""
     try:
-        downloader = downloader or Downloader(url, output=output_path, config=config)
+        downloader = downloader or Downloader(
+            source.url, output=output_path, config=config, playlist_text=source.text
+        )
     except ConfigurationError as exc:
         usage_error(exc)
     reporter = make_reporter(
@@ -182,6 +196,8 @@ def run_one(
         verbose=output.settings.verbose,
     )
     downloader.events.subscribe(reporter)
+    if events:
+        downloader.events.subscribe(EventStream())
     reporter.start()
     try:
         with graceful_interrupt(downloader):
@@ -192,12 +208,13 @@ def run_one(
 
 
 def run_many(
-    targets: list[str],
+    targets: list[Source],
     output_path: Path | None,
     config: DownloadConfig,
     progress: str,
     json_output: bool,
     stop_on_error: bool,
+    events: bool = False,
 ) -> None:
     """Download several addresses in turn into one folder."""
     if output_path is not None and output_path.exists() and not output_path.is_dir():
@@ -207,11 +224,12 @@ def run_many(
                 hint="With several addresses, --output names a folder.",
             )
         )
-    paths = batch_outputs(targets, output_path)
+    paths = batch_outputs([source.url for source in targets], output_path)
     # Check every address and setting before anything is downloaded.
     try:
         downloaders = [
-            Downloader(u, output=p, config=config) for u, p in zip(targets, paths, strict=True)
+            Downloader(s.url, output=p, config=config, playlist_text=s.text)
+            for s, p in zip(targets, paths, strict=True)
         ]
     except ConfigurationError as exc:
         usage_error(exc)
@@ -219,10 +237,12 @@ def run_many(
         output_path.mkdir(parents=True, exist_ok=True)
     documents: list[dict[str, object]] = []
     code = 0
-    for position, (url, downloader) in enumerate(zip(targets, downloaders, strict=True), start=1):
-        output.message(f"[{position}/{len(targets)}] {redact_url(url)}")
+    for position, (source, downloader) in enumerate(
+        zip(targets, downloaders, strict=True), start=1
+    ):
+        output.message(f"[{position}/{len(targets)}] {source.label}")
         try:
-            run_one(url, None, config, progress, json_output, documents, downloader)
+            run_one(source, None, config, progress, json_output, documents, downloader, events)
         except typer.Exit as exit_:
             code = EXIT_CANCELLED if exit_.exit_code == EXIT_CANCELLED else code or exit_.exit_code
             if exit_.exit_code == EXIT_CANCELLED or stop_on_error:

@@ -17,7 +17,7 @@ from rayohx.errors import ConfigurationError
 
 FILE_NAME = "rayohx.toml"
 #: Options that make no sense as a default.
-EXCLUDED = frozenset({"url", "urls", "input_file", "output", "help", "json"})
+EXCLUDED = frozenset({"url", "urls", "input_file", "base_url", "output", "help", "json"})
 
 
 def user_config_file(environ: Mapping[str, str] | None = None) -> Path:

@@ -161,6 +161,15 @@ CookieFile = Annotated[
         rich_help_panel=NETWORK,
     ),
 ]
+BaseUrl = Annotated[
+    str | None,
+    typer.Option(
+        "--base-url",
+        help="When the playlist is a local file, resolve its relative addresses against this "
+        "web address.",
+        rich_help_panel=NETWORK,
+    ),
+]
 RateLimit = Annotated[
     str | None,
     typer.Option(

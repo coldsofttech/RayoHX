@@ -2,10 +2,12 @@
 
 import sys
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import NoReturn
 
 import typer
+from rayohx._redaction import redact_url
 from rayohx.config import DownloadConfig
 from rayohx.errors import ConfigurationError, RayoHXError
 
@@ -55,3 +57,36 @@ def gather_urls(urls: Sequence[str], input_file: Path | None) -> list[str]:
             )
         )
     return found
+
+
+@dataclass(frozen=True)
+class Source:
+    """Where a playlist comes from: a web address, or a local file read into ``text``."""
+
+    url: str
+    text: str | None = None
+
+    @property
+    def label(self) -> str:
+        return redact_url(self.url) if self.text is None else self.url
+
+
+PLACEHOLDER_HOST = "https://playlist.invalid/"
+
+
+def open_source(target: str, base_url: str | None) -> Source:
+    """A web address as it is, or a local playlist file read in.
+
+    A local file's relative addresses are resolved against ``base_url``. Without one, a
+    placeholder address is used, which suits playlists whose addresses are all absolute.
+    """
+    if target.lower().startswith(("http://", "https://")):
+        return Source(target)
+    path = Path(target).expanduser()
+    if not path.is_file():
+        return Source(target)  # not a file: let the address check explain what is wrong
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        usage_error(ConfigurationError(f"The playlist file {path} cannot be read."))
+    return Source(base_url or PLACEHOLDER_HOST + path.name, text)
