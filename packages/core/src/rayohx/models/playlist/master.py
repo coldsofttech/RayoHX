@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from rayohx.models.playlist.tracks.audio import AudioTrack
     from rayohx.models.playlist.tracks.subtitle import SubtitleTrack
     from rayohx.models.playlist.tracks.video import VideoTrack
@@ -22,8 +25,11 @@ class MasterPlaylist:
     audio_tracks: tuple[AudioTrack, ...] = ()
     subtitle_tracks: tuple[SubtitleTrack, ...] = ()
     version: int | None = None
+    #: Variables the playlist defined with ``EXT-X-DEFINE``. Media playlists may import them.
+    variables: Mapping[str, str] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "variables", MappingProxyType(dict(self.variables)))
         object.__setattr__(self, "variants", tuple(self.variants))
         object.__setattr__(self, "video_tracks", tuple(self.video_tracks))
         object.__setattr__(self, "audio_tracks", tuple(self.audio_tracks))

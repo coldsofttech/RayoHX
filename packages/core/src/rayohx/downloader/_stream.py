@@ -13,6 +13,8 @@ from rayohx.models import MasterPlaylist, MediaPlaylist
 from rayohx.playlist import is_hls_playlist, parse_playlist
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from rayohx._http import HttpClient
     from rayohx.models import SegmentData
     from rayohx.stream import StreamSelection
@@ -34,14 +36,16 @@ def describe(stream: StreamSelection) -> dict[str, object]:
     }
 
 
-def load_media(client: HttpClient, url: str) -> MediaPlaylist:
+def load_media(
+    client: HttpClient, url: str, variables: Mapping[str, str] | None = None
+) -> MediaPlaylist:
     text, final = client.fetch_text(url)
     if not is_hls_playlist(text):
         raise InvalidPlaylistError(
             "A stream's address did not return an HLS playlist.",
             hint="The link may have expired or need sign-in.",
         )
-    playlist = parse_playlist(text, final)
+    playlist = parse_playlist(text, final, variables=variables)
     if not isinstance(playlist, MediaPlaylist):
         raise InvalidPlaylistError("Expected a playlist of segments but found a list of streams.")
     return playlist

@@ -51,7 +51,7 @@ from rayohx.playlist import inspect_playlist
 from rayohx.stream import select_stream
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
     import httpx
 
@@ -88,6 +88,7 @@ class Downloader:
         self._token = cancel if cancel is not None else CancellationToken()
         self._id = download_id or uuid.uuid4().hex[:12]
         self._transport = transport
+        self._variables: Mapping[str, str] | None = None  # the master playlist's variables
         self._clock = clock
         self._machine = DownloadStateMachine()
         self._progress = DownloadProgress()
@@ -168,7 +169,8 @@ class Downloader:
             if isinstance(playlist, MasterPlaylist):
                 stream = select_stream(playlist, config.selection)
                 self._emit(EventType.STREAM_SELECTED, data=describe(stream))
-                media = load_media(client, stream.variant.uri)
+                self._variables = playlist.variables
+                media = load_media(client, stream.variant.uri, self._variables)
                 self._emit(EventType.PLAYLIST_LOADED, data={"kind": "media"})
             else:
                 media = playlist
@@ -234,7 +236,7 @@ class Downloader:
         renditions = []
         for track in stream.audio_tracks if stream else ():
             assert track.uri is not None  # noqa: S101 - selection keeps only tracks with an address
-            media = load_media(client, track.uri)
+            media = load_media(client, track.uri, self._variables)
             container = media.container
             if container is ContainerFormat.UNKNOWN:
                 container = probe_container(client, media)
@@ -255,7 +257,7 @@ class Downloader:
         used: set[Path] = set()
         for track in stream.subtitle_tracks if stream else ():
             assert track.uri is not None  # noqa: S101 - selection keeps only tracks with an address
-            media = load_media(client, track.uri)
+            media = load_media(client, track.uri, self._variables)
             if media.container not in {ContainerFormat.WEBVTT, ContainerFormat.UNKNOWN}:
                 raise OutputFormatError(
                     f"The subtitles {track.name!r} are not WebVTT text, which is all that can "

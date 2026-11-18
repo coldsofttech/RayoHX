@@ -338,7 +338,6 @@ def test_not_a_playlist_error_has_a_hint() -> None:
 @pytest.mark.parametrize(
     ("name", "message"),
     [
-        ("unsupported_define.m3u8", "variables"),
         ("unsupported_iframes.m3u8", "I-frame"),
         ("unsupported_scheme.m3u8", "http"),
     ],
