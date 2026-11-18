@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import NoReturn
 
 import typer
-from rayohx._redaction import redact_url
 from rayohx.config import DownloadConfig
 from rayohx.errors import ConfigurationError, RayoHXError
+from rayohx.redaction import redact_url
 
 from rayohx_cli import output
 from rayohx_cli.values import build_config

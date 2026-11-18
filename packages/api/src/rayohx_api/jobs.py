@@ -15,12 +15,12 @@ from pathlib import Path
 from typing import Any
 
 from rayohx import CancellationToken
-from rayohx._redaction import redact_url
 from rayohx.downloader import Downloader
 from rayohx.downloader.batch import batch_outputs
 from rayohx.enums import DownloadState, EventType
 from rayohx.errors import ConfigurationError
 from rayohx.events import DownloadEvent
+from rayohx.redaction import redact_url
 from rayohx.serialization import progress_to_dict
 
 from rayohx_api.build import download_config, sources

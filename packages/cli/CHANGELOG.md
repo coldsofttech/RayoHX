@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- `rayohx clean` and the output code use the public `rayohx.storage` and `rayohx.redaction` modules.
+
 ### Added
 
 - `rayohx clean` removes leftover working folders, and `rayohx config` shows the settings in effect.

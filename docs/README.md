@@ -7,6 +7,7 @@ Technical documentation for this project lives in this folder. The top-level [RE
 - [Architecture](architecture.md): how checks, workflows, governance and releases fit together.
 - [Engine design](engine.md): the HLS engine's parts, the FFmpeg-free output approach and licensing rules.
 - [Python guide](guides/python.md): using RayoHX as a library: inspecting and downloading streams, settings, events, errors and logging.
+- [Platform](platform.md): the persistence, events and paths layer around the engine, and the rules that keep the layers apart.
 - [API](api.md): running the API on its own, settings, endpoints and the OpenAPI contract.
 - [UI](ui.md): the Windows window, the React frontend and how it talks to Python.
 - [Security](security.md): how requests are protected in the window and when run standalone.

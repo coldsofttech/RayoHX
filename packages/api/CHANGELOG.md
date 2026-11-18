@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- The clean route uses the public `rayohx.storage` module instead of private engine code.
+
 ### Added
 
 - Every download option of the command line on `/api/v1/downloads`, batches of addresses, playlist text with a base address, saved default options and a per-job engine log.

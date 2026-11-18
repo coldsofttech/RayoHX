@@ -1,21 +1,17 @@
 """Version 1 of the API, served under ``/api/v1``."""
 
 import asyncio
-import re
-import shutil
-import time
 from collections.abc import AsyncIterator
 from functools import lru_cache
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from rayohx import __version__
-from rayohx._download._workspace import FOLDER_PREFIX, LOCK_FILE, STATE_FILE, _FileLock
 from rayohx.errors import RayoHXError
 from rayohx.playlist.inspection import inspect, inspect_text
 from rayohx.serialization import playlist_to_dict
+from rayohx.storage import clean_workspaces
 
 from rayohx_api.auth import authenticate
 from rayohx_api.build import DEFAULT_CONCURRENCY, download_config, network_config, sources
@@ -38,7 +34,6 @@ from rayohx_api.schemas_v1 import (
 )
 
 router = APIRouter(tags=["v1"], dependencies=[Depends(authenticate)])
-DAY = 86400
 
 
 @lru_cache
@@ -237,57 +232,18 @@ async def save_defaults(
     return _view(settings)
 
 
-_KEY_FOLDER = re.compile(r"^[0-9a-f]{16}$")
-
-
-def _workspaces(folder: Path) -> list[Path]:
-    try:
-        children = sorted(folder.iterdir())
-    except OSError:
-        return []
-    found = []
-    for child in children:
-        if child.is_symlink() or not child.is_dir():
-            continue
-        if child.name.startswith(FOLDER_PREFIX) or (
-            _KEY_FOLDER.match(child.name) and (child / STATE_FILE).is_file()
-        ):
-            found.append(child)
-    return found
-
-
-def _in_use(folder: Path) -> bool:
-    lock = folder / LOCK_FILE
-    if not lock.is_file():
-        return False
-    probe = _FileLock(lock)
-    if probe.acquire():
-        probe.release()
-        return False
-    return True
-
-
 @router.post("/clean", summary="Remove working folders left by interrupted downloads")
 async def clean(
     body: CleanRequest, settings: Annotated[Settings, Depends(get_settings)]
 ) -> CleanResponse:
     """Only looks inside the download folder. Folders of running downloads are never removed."""
-    now = time.time()
-    found: list[CleanedFolder] = []
-    skipped = 0
-    for workspace in _workspaces(settings.download_dir):
-        if _in_use(workspace):
-            skipped += 1
-            continue
-        state = workspace / STATE_FILE
-        used = (state if state.is_file() else workspace).stat().st_mtime
-        age = (now - used) / DAY
-        if age < body.older_than_days:
-            continue
-        size = sum(f.stat().st_size for f in workspace.rglob("*") if f.is_file())
-        found.append(CleanedFolder(name=workspace.name, size_bytes=size, age_days=round(age, 2)))
-        if not body.dry_run:
-            shutil.rmtree(workspace, ignore_errors=True)
+    removed, skipped = clean_workspaces(
+        settings.download_dir, older_than_days=body.older_than_days, dry_run=body.dry_run
+    )
+    found = [
+        CleanedFolder(name=info.name, size_bytes=info.size_bytes, age_days=round(info.age_days, 2))
+        for info in removed
+    ]
     return CleanResponse(
         dry_run=body.dry_run,
         folders=found,

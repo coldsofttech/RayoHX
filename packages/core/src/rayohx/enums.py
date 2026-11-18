@@ -11,6 +11,9 @@ class DownloadState(StrEnum):
     PREPARING = "preparing"
     DOWNLOADING = "downloading"
     FINALIZING = "finalizing"
+    #: The finished file is being checked. The engine does not enter this state yet; a download
+    #: may go from FINALIZING straight to COMPLETED.
+    VERIFYING = "verifying"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
@@ -94,3 +97,26 @@ class RemuxBackend(StrEnum):
     AUTO = "auto"
     NATIVE = "native"
     FFMPEG = "ffmpeg"
+
+
+class ErrorCategory(StrEnum):
+    """What kind of problem an error is. Retry rules, reports and exit codes key off this."""
+
+    URL = "url"
+    CONFIGURATION = "configuration"
+    PLAYLIST = "playlist"
+    SELECTION = "selection"
+    NETWORK = "network"
+    HTTP = "http"
+    AUTHENTICATION = "authentication"
+    PROXY = "proxy"
+    TLS = "tls"
+    SEGMENT = "segment"
+    CRYPTO = "crypto"
+    STORAGE = "storage"
+    OUTPUT = "output"
+    REMUX = "remux"
+    VERIFICATION = "verification"
+    AUTOMATION = "automation"
+    CANCELLATION = "cancellation"
+    INTERNAL = "internal"

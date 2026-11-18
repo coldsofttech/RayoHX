@@ -51,6 +51,7 @@ if TYPE_CHECKING:
         Variant,
         VideoTrack,
     )
+    from rayohx.platform import Rayo
     from rayohx.playlist import (
         PlaylistFetcher,
         inspect_playlist,
@@ -73,7 +74,10 @@ _SUBMODULES = frozenset(
         "errors",
         "events",
         "models",
+        "platform",
         "playlist",
+        "redaction",
+        "storage",
         "stream",
     }
 )
@@ -98,6 +102,7 @@ _EXPORTS = {
     "OutputInfo": "rayohx.models",
     "Playlist": "rayohx.models",
     "PlaylistFetcher": "rayohx.playlist",
+    "Rayo": "rayohx.platform",
     "RemuxBackend": "rayohx.enums",
     "Resolution": "rayohx.models",
     "Segment": "rayohx.models",
@@ -163,6 +168,7 @@ __all__ = [
     "OutputInfo",
     "Playlist",
     "PlaylistFetcher",
+    "Rayo",
     "RemuxBackend",
     "Resolution",
     "Segment",

@@ -1,59 +1,23 @@
 """The ``clean`` command: remove working folders left behind by interrupted downloads."""
 
-import re
 import shutil
 import time
 from pathlib import Path
 from typing import Annotated
 
 import typer
-from rayohx._download._workspace import FOLDER_PREFIX, LOCK_FILE, STATE_FILE, _FileLock
+from rayohx.storage import find_workspaces, folder_size, is_workspace_in_use, last_used
 
 from rayohx_cli import format as fmt
 from rayohx_cli import output
 from rayohx_cli.cli.root import app
 
-_KEY_FOLDER = re.compile(r"^[0-9a-f]{16}$")
 DAY = 86400
-
-
-def find_workspaces(folder: Path) -> list[Path]:
-    """Working folders directly inside ``folder``: ``.rayohx-*`` ones, and the hash-named ones
-    inside a ``--workspace`` folder (they hold a resume state file)."""
-    found = []
-    try:
-        children = sorted(folder.iterdir())
-    except OSError:
-        return []
-    for child in children:
-        if child.is_symlink() or not child.is_dir():
-            continue
-        named = child.name.startswith(FOLDER_PREFIX)
-        keyed = bool(_KEY_FOLDER.match(child.name)) and (child / STATE_FILE).is_file()
-        if named or keyed:
-            found.append(child)
-    return found
-
-
-def folder_size(folder: Path) -> int:
-    return sum(item.stat().st_size for item in folder.rglob("*") if item.is_file())
-
-
-def last_used(folder: Path) -> float:
-    state = folder / STATE_FILE
-    return (state if state.is_file() else folder).stat().st_mtime
 
 
 def in_use(folder: Path) -> bool:
     """Whether a running download holds this folder's lock."""
-    lock = folder / LOCK_FILE
-    if not lock.is_file():
-        return False
-    probe = _FileLock(lock)
-    if probe.acquire():
-        probe.release()
-        return False
-    return True
+    return is_workspace_in_use(folder)
 
 
 @app.command()

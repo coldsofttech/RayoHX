@@ -4,8 +4,18 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Platform (unstable)
+
+The platform is the new `rayohx.platform` package: persistent services around the engine. It is not part of the engine's stable API until its first release. See `docs/platform.md`.
+
+- `Rayo`, the platform's entry point (`from rayohx import Rayo`), with a local SQLite database (migrations, backup before upgrade, recovery from a damaged file), shared folders (including portable mode and `RAYOHX_HOME`), a saved event log, and a small settings store.
+- Platform events remove secrets from every payload before saving or delivering them.
+
 ### Added
 
+- Every error has a stable `code` and an `ErrorCategory` (`error.code`, `error.category`); HTTP errors include the status (`HTTP_503`, `AUTH_403`).
+- A `VERIFYING` download state between finalizing and completed. Nothing enters it yet.
+- The public modules `rayohx.storage` (find, measure and clean working folders) and `rayohx.redaction`, so front ends no longer import private modules.
 - SOCKS5 proxies (`socks5://`, `socks5h://`), proxies from the environment with `NetworkConfig(proxy_from_env=True)`, and client certificates (`client_cert`, `client_key`, `client_key_password`) for servers that require mutual TLS.
 - Playlist variables (`EXT-X-DEFINE` with `NAME`/`VALUE`, `QUERYPARAM` and `IMPORT`) are read instead of refused.
 - Prefer a `codec`, a `video_range` (`sdr`, `pq`, `hlg`, `hdr`) and a `max_frame_rate` when choosing a stream.
