@@ -18,8 +18,7 @@ async function call(path, { method = 'GET', body } = {}) {
   return data;
 }
 
-export const inspect = (url, headers = {}) =>
-  call('/inspect', { method: 'POST', body: { url, network: { headers } } });
+export const inspect = (request) => call('/inspect', { method: 'POST', body: request });
 export const listDownloads = () => call('/downloads');
 export const startDownload = (request) => call('/downloads', { method: 'POST', body: request });
 export const controlDownload = (id, action) =>

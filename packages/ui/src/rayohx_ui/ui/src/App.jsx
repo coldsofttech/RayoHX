@@ -48,10 +48,14 @@ export default function App() {
   const [tab, setTab] = useState('new');
   const [active, setActive] = useState(0);
   const [quality, setQuality] = useState('best');
+  const [local, setLocal] = useState(false);
 
   useEffect(() => {
     getSettings().then(
-      (s) => setQuality(s.quality),
+      (s) => {
+        setQuality(s.quality);
+        setLocal(s.allow_local_paths);
+      },
       () => {},
     );
   }, []);
@@ -86,7 +90,11 @@ export default function App() {
             <Tab value="settings">Settings</Tab>
           </TabList>
           {tab === 'new' && (
-            <NewDownload defaultQuality={quality} onStarted={() => setTab('downloads')} />
+            <NewDownload
+              defaultQuality={quality}
+              allowLocalPaths={local}
+              onStarted={() => setTab('downloads')}
+            />
           )}
           {tab === 'downloads' && <Downloads onCount={setActive} />}
           {tab === 'settings' && <Settings onChanged={(s) => setQuality(s.quality)} />}

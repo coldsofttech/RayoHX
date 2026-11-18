@@ -10,6 +10,9 @@ import {
   MessageBarBody,
   Option,
   Spinner,
+  Tab,
+  TabList,
+  Textarea,
   Table,
   TableBody,
   TableCell,
@@ -24,6 +27,8 @@ import {
 import { ArrowDownload24Regular, Search24Regular } from '@fluentui/react-icons';
 import { inspect, startDownload } from '../api.js';
 import { bitrate } from '../format.js';
+import { buildOptions, buildSource } from '../options.js';
+import Options from './Options.jsx';
 
 const useStyles = makeStyles({
   stack: { display: 'flex', flexDirection: 'column', rowGap: tokens.spacingVerticalL },
@@ -45,9 +50,19 @@ const useStyles = makeStyles({
 
 const QUALITIES = ['best', '1080p', '720p', '480p', '360p', 'worst'];
 
-export default function NewDownload({ onStarted, defaultQuality = 'best' }) {
+export default function NewDownload({
+  onStarted,
+  defaultQuality = 'best',
+  allowLocalPaths = false,
+}) {
   const styles = useStyles();
+  const [mode, setMode] = useState('url');
   const [url, setUrl] = useState('');
+  const [urls, setUrls] = useState('');
+  const [text, setText] = useState('');
+  const [base, setBase] = useState('');
+  const [filename, setFilename] = useState('');
+  const [values, setValues] = useState({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [playlist, setPlaylist] = useState(null);
@@ -55,13 +70,23 @@ export default function NewDownload({ onStarted, defaultQuality = 'best' }) {
   const [audio, setAudio] = useState([]);
   const [subtitles, setSubtitles] = useState([]);
 
+  const input = { url, urls, text, base };
+  const source = buildSource(mode, input);
+  const ready =
+    mode === 'url' ? url.trim() : mode === 'many' ? urls.trim() : text.trim() && base.trim();
+  const setValue = (id, next) => setValues((current) => ({ ...current, [id]: next }));
+
+  // Inspect looks at the first address only; a batch is inspected through its first stream.
+  const inspectSource = mode === 'many' ? { url: source.urls[0] } : source;
+
   async function look(event) {
     event.preventDefault();
     setBusy(true);
     setError('');
     setPlaylist(null);
     try {
-      const data = await inspect(url.trim());
+      const { network } = buildOptions(values);
+      const data = await inspect({ ...inspectSource, network });
       setPlaylist(data.playlist);
       setAudio([]);
       setSubtitles([]);
@@ -76,9 +101,17 @@ export default function NewDownload({ onStarted, defaultQuality = 'best' }) {
     setBusy(true);
     setError('');
     try {
-      await startDownload({ url: url.trim(), quality, audio, subtitles });
+      const options = buildOptions(values);
+      await startDownload({
+        ...source,
+        ...(filename.trim() && mode !== 'many' ? { filename: filename.trim() } : {}),
+        ...options,
+        selection: { ...options.selection, quality, audio, subtitles },
+      });
       setPlaylist(null);
       setUrl('');
+      setUrls('');
+      setText('');
       onStarted();
     } catch (problem) {
       setError(problem.message);
@@ -95,8 +128,13 @@ export default function NewDownload({ onStarted, defaultQuality = 'best' }) {
     <div className={styles.stack}>
       <form className={styles.card} onSubmit={look}>
         <Title3>Add a stream</Title3>
-        <div className={styles.row}>
-          <Field label="Playlist address" className={styles.grow}>
+        <TabList size="small" selectedValue={mode} onTabSelect={(_, d) => setMode(d.value)}>
+          <Tab value="url">One address</Tab>
+          <Tab value="many">Several addresses</Tab>
+          <Tab value="text">Playlist text</Tab>
+        </TabList>
+        {mode === 'url' && (
+          <Field label="Playlist address">
             <Input
               value={url}
               onChange={(_, data) => setUrl(data.value)}
@@ -105,14 +143,45 @@ export default function NewDownload({ onStarted, defaultQuality = 'best' }) {
               required
             />
           </Field>
+        )}
+        {mode === 'many' && (
+          <Field label="Playlist addresses" hint="One per line. Lines starting with # are ignored.">
+            <Textarea value={urls} onChange={(_, data) => setUrls(data.value)} rows={4} />
+          </Field>
+        )}
+        {mode === 'text' && (
+          <>
+            <Field label="Playlist text" hint="The contents of an .m3u8 file you already have.">
+              <Textarea value={text} onChange={(_, data) => setText(data.value)} rows={5} />
+            </Field>
+            <Field
+              label="Base address"
+              hint="Relative addresses in the playlist are resolved against it."
+            >
+              <Input value={base} onChange={(_, data) => setBase(data.value)} type="url" />
+            </Field>
+          </>
+        )}
+        {mode !== 'many' && (
+          <Field label="File name" hint="Optional. Saved in the download folder.">
+            <Input value={filename} onChange={(_, data) => setFilename(data.value)} />
+          </Field>
+        )}
+        <Options values={values} onChange={setValue} allowLocalPaths={allowLocalPaths} />
+        <div className={styles.row}>
           <Button
             appearance="primary"
             type="submit"
             icon={busy ? <Spinner size="tiny" /> : <Search24Regular />}
-            disabled={busy || !url.trim()}
+            disabled={busy || !ready}
           >
             Inspect
           </Button>
+          {mode === 'many' && (
+            <Button icon={<ArrowDownload24Regular />} onClick={start} disabled={busy || !ready}>
+              Download all
+            </Button>
+          )}
         </div>
         {error && (
           <MessageBar intent="error" role="alert">
@@ -133,6 +202,7 @@ export default function NewDownload({ onStarted, defaultQuality = 'best' }) {
                     <TableHeaderCell>Resolution</TableHeaderCell>
                     <TableHeaderCell>Bitrate</TableHeaderCell>
                     <TableHeaderCell>Codecs</TableHeaderCell>
+                    <TableHeaderCell>Use</TableHeaderCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -144,6 +214,25 @@ export default function NewDownload({ onStarted, defaultQuality = 'best' }) {
                       </TableCell>
                       <TableCell>{bitrate(v.bandwidth)}</TableCell>
                       <TableCell>{v.codecs.join(', ') || '–'}</TableCell>
+                      <TableCell>
+                        <Button
+                          size="small"
+                          appearance={
+                            values['selection.variant'] === String(v.index) ? 'primary' : 'outline'
+                          }
+                          aria-label={`Use stream ${v.index}`}
+                          onClick={() =>
+                            setValue(
+                              'selection.variant',
+                              values['selection.variant'] === String(v.index)
+                                ? ''
+                                : String(v.index),
+                            )
+                          }
+                        >
+                          {values['selection.variant'] === String(v.index) ? 'Chosen' : 'Choose'}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
