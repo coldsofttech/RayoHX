@@ -12,6 +12,8 @@ from rayohx.errors import ConfigurationError
 if TYPE_CHECKING:
     from typing import Any
 
+#: As a language, every track of the kind (all audio tracks, all subtitle tracks).
+ALL_TRACKS = "*"
 _QUALITY = re.compile(r"^(best|worst|auto|\d{3,4}p)$", re.IGNORECASE)
 _LANGUAGE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
 _RESOLUTION = re.compile(r"^\d{3,4}p$", re.IGNORECASE)
@@ -133,7 +135,7 @@ class SelectionConfig:
         for name in ("audio_languages", "subtitle_languages"):
             values = tuple(getattr(self, name))
             for language in values:
-                if not _LANGUAGE.match(language):
+                if language != ALL_TRACKS and not _LANGUAGE.match(language):
                     raise ConfigurationError(f"{language!r} is not a valid language code.")
             object.__setattr__(self, name, values)
         for name in ("audio_names", "subtitle_names"):

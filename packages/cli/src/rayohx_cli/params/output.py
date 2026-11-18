@@ -34,7 +34,10 @@ Format = Annotated[
         "--format",
         envvar="RAYOHX_FORMAT",
         case_sensitive=False,
-        help="auto, ts, mp4, or segments (one file per segment, in a folder).",
+        help=(
+            "auto, original (the stream's own container), ts, mp4, mkv or audio (FFmpeg), or "
+            "segments (one file per segment, in a folder)."
+        ),
         rich_help_panel=OUTPUT,
     ),
 ]

@@ -45,7 +45,7 @@ def test_every_command_has_help(runner: CliRunner, command: list[str]) -> None:
         ["download", MASTER, "--concurrency", "0"],
         ["download", MASTER, "--concurrency", "100"],
         ["download", MASTER, "--storage", "nowhere"],
-        ["download", MASTER, "--format", "mkv"],
+        ["download", MASTER, "--format", "avi"],
         ["download", MASTER, "--bogus"],
         ["download", MASTER, "--retries", "-1"],
         ["frobnicate"],

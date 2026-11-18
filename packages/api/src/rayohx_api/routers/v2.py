@@ -6,10 +6,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
+from rayohx.capabilities import detect
+from rayohx.enums import OutputFormat
 from rayohx.errors import RayoHXError
-from rayohx.platform import JobRecord, JobState, RetryPolicy
+from rayohx.platform import JobRecord, JobState, QueuePriority, RetryPolicy
 from rayohx.platform.errors import QueueError
 from rayohx.platform.events import EventCategory
+from rayohx.platform.profiles import DownloadProfile, validate
 
 from rayohx_api.auth import authenticate
 from rayohx_api.config import Settings, get_settings
@@ -17,10 +20,13 @@ from rayohx_api.routers.v1 import _problem, to_job
 from rayohx_api.schemas_v2 import (
     Attempt,
     BulkOutcome,
+    CapabilitiesOut,
     EventList,
     JobDetail,
     MoveRequest,
     PlatformEvent,
+    ProfileList,
+    ProfileOut,
     QueueAction,
     QueueAdd,
     QueueJob,
@@ -38,6 +44,7 @@ router = APIRouter(tags=["v2"], dependencies=[Depends(authenticate)])
 def to_queue_job(record: JobRecord) -> QueueJob:
     return QueueJob(
         **to_job(record).model_dump(),
+        profile=record.profile_id,
         priority=record.priority.name.lower(),  # type: ignore[arg-type]
         rank=record.rank,
         attempts=record.attempts,
@@ -82,9 +89,14 @@ async def add_to_queue(
     body: QueueAdd, settings: Annotated[Settings, Depends(get_settings)]
 ) -> QueueList:
     try:
-        retry = RetryPolicy(**body.retry.model_dump())
-        request = body.model_copy(update={}, deep=True)
-        jobs = enqueue(request, settings, priority=body.priority, retry=retry)  # type: ignore[arg-type]
+        retry = RetryPolicy(**body.retry.model_dump()) if "retry" in body.model_fields_set else None
+        jobs = enqueue(
+            body,
+            settings,
+            priority=QueuePriority.parse(body.priority),
+            retry=retry,
+            profile=body.profile,
+        )
     except ValueError as exc:  # an unknown priority or retry value
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
     except RayoHXError as exc:
@@ -141,6 +153,49 @@ async def move_job(job_id: str, body: MoveRequest) -> QueueJob:
     except QueueError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, exc.message) from exc
     return to_queue_job(record)
+
+
+def _profile(profile: DownloadProfile, default_id: str | None) -> ProfileOut:
+    problems = [
+        f.message for f in validate(profile, detect(), machine_checks=True) if f.level == "error"
+    ]
+    return ProfileOut(
+        id=profile.id,
+        name=profile.name,
+        description=profile.description,
+        builtin=profile.builtin,
+        default=profile.id == default_id,
+        options=dict(profile.options),
+        max_attempts=profile.retry.max_attempts if profile.retry else None,
+        naming=profile.naming,
+        metadata=profile.metadata,
+        verify=profile.verify,
+        problems=problems,
+    )
+
+
+@router.get("/profiles", summary="The built-in and saved profiles")
+async def list_profiles() -> ProfileList:
+    default = rayo().profiles.default()
+    default_id = default.id if default else None
+    return ProfileList(items=[_profile(p, default_id) for p in rayo().profiles.list()])
+
+
+@router.get("/profiles/{profile_id}", summary="One profile")
+async def get_profile(profile_id: str) -> ProfileOut:
+    profile = rayo().profiles.get(profile_id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such profile.")
+    default = rayo().profiles.default()
+    return _profile(profile, default.id if default else None)
+
+
+@router.get("/capabilities", summary="What this server can do beyond the built-in engine")
+async def capabilities() -> CapabilitiesOut:
+    caps = detect()
+    return CapabilitiesOut(
+        **caps.as_dict(), formats={fmt.value: caps.supports(fmt) for fmt in OutputFormat}
+    )
 
 
 def _event(event: "object") -> PlatformEvent:

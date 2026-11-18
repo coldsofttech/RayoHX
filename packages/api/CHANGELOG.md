@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `/api/v2/profiles`, `/api/v2/capabilities`, and a `profile` field on `POST /api/v2/queue`: the profile's settings apply and only the options a request sets override them.
+- The output formats `original`, `mkv` and `audio`.
 - `/api/v2`: the queue with priorities, retries, ordering and bulk actions, the job run history, and the saved event log with a server-sent stream that can be resumed with `Last-Event-ID`.
 - `RAYOHX_API_HOME` for the queue database folder.
 - Every download option of the command line on `/api/v1/downloads`, batches of addresses, playlist text with a base address, saved default options and a per-job engine log.

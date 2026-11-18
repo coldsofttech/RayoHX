@@ -176,7 +176,7 @@ class QueueRunner:
         """Wait until nothing is running or waiting to run. False if ``timeout`` ran out."""
         deadline = None if timeout is None else time.monotonic() + timeout
         while True:
-            if not self._active and self._repo.waiting_count() == 0:
+            if not self._active and not self._busy and self._repo.waiting_count() == 0:
                 return True
             if deadline is not None and time.monotonic() >= deadline:
                 return False
@@ -294,15 +294,17 @@ class QueueRunner:
         active.thread.start()
 
     def _check_idle(self) -> None:
+        """Announce, once, that the queue has run dry after doing some work."""
         with self._cond:
             if not self._busy or self._active:
                 return
-        if self._repo.waiting_count() == 0:
-            with self._cond:
-                self._busy = False
-            self._bus.emit(
-                "queue.completed", category=EventCategory.QUEUE, counts=self._repo.counts()
-            )
+        if self._repo.waiting_count() != 0:
+            return
+        with self._cond:
+            if not self._busy or self._active:
+                return
+            self._busy = False
+        self._bus.emit("queue.completed", category=EventCategory.QUEUE, counts=self._repo.counts())
 
     # --- one job ---------------------------------------------------------------------------
 
@@ -341,6 +343,11 @@ class QueueRunner:
                 logger.exception("Could not record how job %s ended.", job_id)
             with self._cond:
                 self._active.pop(job_id, None)
+            try:
+                self._check_idle()  # announce "queue completed" before anyone sees it idle
+            except Exception:
+                logger.exception("Could not check whether the queue is idle.")
+            with self._cond:
                 self._cond.notify_all()
 
     def _load_config(self, job: JobRecord) -> DownloadConfig | None:

@@ -247,3 +247,106 @@ def test_huge_cursors_are_refused_not_crashed(client: TestClient) -> None:
         "GET", "/api/v2/events/stream", headers={"Last-Event-ID": "99999999999999999999999"}
     ) as response:
         assert response.status_code == 200
+
+
+# --- profiles ----------------------------------------------------------------------------------
+
+
+def test_profiles_and_capabilities_are_listed(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from rayohx.capabilities import Capabilities
+
+    monkeypatch.setattr("rayohx_api.routers.v2.detect", lambda: Capabilities())
+    monkeypatch.setattr("rayohx.platform.profiles.rules.detect", lambda _p=None: Capabilities())
+    items = client.get("/api/v2/profiles").json()["items"]
+    assert [p["id"] for p in items] == ["best-quality", "1080p", "mobile", "archive", "custom"]
+    archive = next(p for p in items if p["id"] == "archive")
+    assert archive["builtin"] is True
+    assert "FFmpeg" in archive["problems"][0]
+    assert [p["problems"] for p in items if p["id"] == "mobile"] == [[]]
+    assert (
+        client.get("/api/v2/profiles/mobile").json()["options"]["selection"]["max_resolution"]
+        == "480p"
+    )
+    assert client.get("/api/v2/profiles/ghost").status_code == 404
+    caps = client.get("/api/v2/capabilities").json()
+    assert caps["ffmpeg"] is None
+    assert caps["formats"]["mkv"] is False
+    assert caps["formats"]["mp4"] is True
+
+
+def queued_options(client: TestClient, job_id: str) -> dict:
+    from rayohx_api.service import rayo
+
+    record = rayo().queue.get(job_id)
+    assert record is not None
+    return dict(record.spec.options)
+
+
+def test_a_request_can_name_a_profile(client: TestClient) -> None:
+    job = add(client, "p", profile="mobile")
+    assert job["profile"] == "mobile"
+    options = queued_options(client, job["id"])
+    assert options["selection"]["max_resolution"] == "480p"
+    assert options["output"]["format"] == "mp4"
+    assert client.get(f"/api/v2/queue/{job['id']}").json()["profile"] == "mobile"
+
+
+def test_only_what_the_request_sets_overrides_the_profile(client: TestClient) -> None:
+    job = add(
+        client, "o", profile="mobile",
+        selection={"max_resolution": "720p"}, output={"directory": "shows"},
+    )  # fmt: skip
+    options = queued_options(client, job["id"])
+    assert options["selection"]["max_resolution"] == "720p"  # set in the request
+    assert options["selection"]["max_bitrate"] == 1_500_000  # the profile's
+    assert options["output"]["format"] == "mp4"  # not set in the request: the profile's
+    assert options["output"]["directory"].endswith("shows")
+
+
+def test_the_default_profile_applies_and_secrets_stay_out(client: TestClient) -> None:
+    from rayohx_api.service import rayo
+
+    rayo().profiles.set_default("1080p")
+    job = add(client, "d", network={"headers": {"Authorization": "Bearer HUSH"}, "retries": 7})
+    assert job["profile"] == "1080p"
+    options = queued_options(client, job["id"])
+    assert options["selection"]["max_resolution"] == "1080p"
+    assert options["network"]["retries"] == 7
+    assert options["network"]["headers"] == {}
+    assert "HUSH" not in client.get("/api/v2/queue").text
+
+
+def test_no_profile_keeps_the_saved_defaults_behavior(client: TestClient) -> None:
+    client.put("/api/v1/settings/defaults", json={"selection": {"quality": "720p"}})
+    job = add(client, "legacy")
+    assert job["profile"] is None
+    assert queued_options(client, job["id"])["selection"]["quality"] == "720p"
+
+
+def test_profile_errors_are_422(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from rayohx.capabilities import Capabilities
+
+    response = client.post("/api/v2/queue", json={"url": URL.format("a"), "profile": "ghost"})
+    assert response.status_code == 422
+    assert "no profile" in response.json()["detail"]
+    monkeypatch.setattr("rayohx.platform.profiles.rules.detect", lambda _p=None: Capabilities())
+    needs = client.post("/api/v2/queue", json={"url": URL.format("a"), "profile": "archive"})
+    assert needs.status_code == 422
+    assert "FFmpeg" in needs.json()["detail"]
+    assert client.get("/api/v2/queue").json()["items"] == []
+
+
+def test_the_new_output_formats_are_accepted(client: TestClient) -> None:
+    for fmt in ("original", "mkv", "audio"):
+        response = client.post(
+            "/api/v1/downloads", json={"url": URL.format(fmt), "output": {"format": fmt}}
+        )
+        assert response.status_code in {202, 422}, fmt  # 422 only if FFmpeg is missing
+    assert (
+        client.post(
+            "/api/v1/downloads", json={"url": URL.format("x"), "output": {"format": "avi"}}
+        ).status_code
+        == 422
+    )

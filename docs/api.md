@@ -44,6 +44,8 @@ Read from `RAYOHX_API_*` environment variables or a `.env` file. List values are
 | `POST /api/v2/queue/actions` | Pause, resume, cancel, retry, remove, set priority, move to top or bottom, for many jobs at once |
 | `POST /api/v2/queue/{id}/move` | Put a job just before another |
 | `GET /api/v2/queue/stats`, `PUT /api/v2/queue/settings` | Counts, and how many jobs run at once |
+| `GET /api/v2/profiles`, `/profiles/{id}` | The built-in and saved profiles, and why one cannot run on this server |
+| `GET /api/v2/capabilities` | Whether FFmpeg was found and which output formats this server can make |
 | `GET /api/v2/events`, `/events/stream` | The saved event log; follow it with `after_id` or `Last-Event-ID` |
 
 Errors use the problem-details format (`application/problem+json`).
@@ -53,6 +55,8 @@ Errors use the problem-details format (`application/problem+json`).
 Downloads are jobs in a database (see [platform](platform.md)), so they survive a restart of the API. The API runs the queue while it is up: `max_active_downloads` jobs run at once and the rest wait in priority order. A job that was running when the API stopped goes back to the queue and continues.
 
 `/api/v1/downloads` keeps its behavior as a thin layer over the same queue: it adds a job (never retried, as before) and the other routes act on it. `/api/v2` adds priorities, retries, ordering, bulk actions and the event log. Job addresses are returned with signing tokens removed, and secrets (cookies, headers, proxy passwords) are never returned.
+
+A request to `POST /api/v2/queue` can name a `profile`. The profile's settings apply and only the options the request itself sets are laid over them (a field left out never overrides the profile). With no profile named, the default profile is used if one is set; otherwise the saved default options apply, as in `/api/v1`. Profiles are created and edited with the command line or the Python API, not over HTTP.
 
 When another process (for example `rayohx queue run`) is running the queue, the API does not start a second runner: it reports `"runner": "another process"` in the queue stats and passes pause and cancel requests through the database.
 

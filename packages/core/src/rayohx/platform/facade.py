@@ -20,6 +20,7 @@ from rayohx.downloader import Downloader
 from rayohx.platform.events import EventBus, EventCategory, EventStore, Severity
 from rayohx.platform.paths import PlatformPaths, resolve_paths, under
 from rayohx.platform.persistence import Database, SettingsStore
+from rayohx.platform.profiles import ProfileStore
 from rayohx.platform.queue import JobRepository, Queue, QueueRunner
 from rayohx.platform.secrets import SecretStore, default_secret_store
 
@@ -68,6 +69,8 @@ class Rayo:
         )
         self.secrets: SecretStore = secrets if secrets is not None else default_secret_store()
         lock_path = self.paths.data_dir / "runner.lock"
+        #: The built-in and saved download profiles.
+        self.profiles = ProfileStore(self.database, self.settings)
         self.jobs = JobRepository(self.database)
         runner = QueueRunner(
             self.jobs,
@@ -85,6 +88,7 @@ class Rayo:
             self.events,
             self.secrets,
             self.settings,
+            self.profiles,
             download_dir=self.download_dir,
             runner_lock_path=lock_path,
         )

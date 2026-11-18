@@ -88,6 +88,47 @@
         "title": "BulkOutcome",
         "type": "object"
       },
+      "CapabilitiesOut": {
+        "properties": {
+          "ffmpeg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where FFmpeg was found, if it was.",
+            "title": "Ffmpeg"
+          },
+          "ffprobe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ffprobe"
+          },
+          "formats": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Output format to whether this server can make it.",
+            "title": "Formats",
+            "type": "object"
+          }
+        },
+        "required": [
+          "ffmpeg",
+          "formats"
+        ],
+        "title": "CapabilitiesOut",
+        "type": "object"
+      },
       "CleanRequest": {
         "properties": {
           "dry_run": {
@@ -652,6 +693,18 @@
             "title": "Priority",
             "type": "string"
           },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The profile the job's settings came from.",
+            "title": "Profile"
+          },
           "progress": {
             "anyOf": [
               {
@@ -1030,8 +1083,11 @@
             "default": "auto",
             "enum": [
               "auto",
+              "original",
               "ts",
               "mp4",
+              "mkv",
+              "audio",
               "segments"
             ],
             "title": "Format",
@@ -1120,6 +1176,104 @@
           "payload"
         ],
         "title": "PlatformEvent",
+        "type": "object"
+      },
+      "ProfileList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ProfileList",
+        "type": "object"
+      },
+      "ProfileOut": {
+        "properties": {
+          "builtin": {
+            "title": "Builtin",
+            "type": "boolean"
+          },
+          "default": {
+            "title": "Default",
+            "type": "boolean"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "max_attempts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its retry policy, if it has one.",
+            "title": "Max Attempts"
+          },
+          "metadata": {
+            "title": "Metadata",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "naming": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Naming"
+          },
+          "options": {
+            "additionalProperties": true,
+            "description": "Only the settings the profile changes.",
+            "title": "Options",
+            "type": "object"
+          },
+          "problems": {
+            "description": "Why this server cannot use it now, if it cannot.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "verify": {
+            "title": "Verify",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "builtin",
+          "default",
+          "options",
+          "metadata",
+          "verify",
+          "problems"
+        ],
+        "title": "ProfileOut",
         "type": "object"
       },
       "Progress": {
@@ -1356,6 +1510,19 @@
             "title": "Priority",
             "type": "string"
           },
+          "profile": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A profile's id or name. Its settings apply, and only the options you set in this request override them. Without it, the default profile (if any) is used.",
+            "title": "Profile"
+          },
           "retry": {
             "$ref": "#/components/schemas/Retry"
           },
@@ -1488,6 +1655,18 @@
             ],
             "title": "Priority",
             "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The profile the job's settings came from.",
+            "title": "Profile"
           },
           "progress": {
             "anyOf": [
@@ -2591,6 +2770,32 @@
         ]
       }
     },
+    "/api/v2/capabilities": {
+      "get": {
+        "operationId": "capabilities_api_v2_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitiesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "What this server can do beyond the built-in engine",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
     "/api/v2/events": {
       "get": {
         "operationId": "list_events_api_v2_events_get",
@@ -2682,6 +2887,79 @@
           }
         ],
         "summary": "The saved event log, oldest first",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/profiles": {
+      "get": {
+        "operationId": "list_profiles_api_v2_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "The built-in and saved profiles",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/profiles/{profile_id}": {
+      "get": {
+        "operationId": "get_profile_api_v2_profiles__profile_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "One profile",
         "tags": [
           "v2"
         ]

@@ -573,4 +573,4 @@ def test_download_rejects_bad_options_early(tmp_path: Path) -> None:
     with pytest.raises(ConfigurationError):
         download(URL, tmp_path / "x.ts", quality="hd")
     with pytest.raises(ValueError, match="not a valid OutputFormat"):
-        download(URL, tmp_path / "x.ts", format="mkv")
+        download(URL, tmp_path / "x.ts", format="avi")

@@ -336,3 +336,23 @@ def test_the_new_choices_are_validated() -> None:
             SelectionConfig(**bad)
     assert SelectionConfig(resolution=" 1280x720 ").resolution == "1280x720"
     assert SelectionConfig(variant=2).as_dict()["variant"] == 2
+
+
+def test_a_star_selects_every_separate_audio_and_subtitle_track() -> None:
+    master = load("master_audio_subs.m3u8")
+    default = select_stream(master, SelectionConfig())
+    everything = select_stream(
+        master, SelectionConfig(audio_languages=("*",), subtitle_languages=("*",))
+    )
+    every_audio = [t for t in master.audio_group(everything.variant.audio_group) if t.uri]
+    every_subtitle = [t for t in master.subtitle_group(everything.variant.subtitle_group) if t.uri]
+    assert list(everything.audio_tracks) == every_audio
+    assert list(everything.subtitle_tracks) == every_subtitle
+    assert len(everything.audio_tracks) >= len(default.audio_tracks)
+    assert len(everything.subtitle_tracks) > 0
+
+
+def test_a_star_is_a_valid_language_but_other_junk_is_not() -> None:
+    SelectionConfig(audio_languages=("*",), subtitle_languages=("*", "en"))
+    with pytest.raises(ConfigurationError):
+        SelectionConfig(audio_languages=("**",))

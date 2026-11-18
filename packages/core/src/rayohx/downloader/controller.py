@@ -15,7 +15,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rayohx._download._output import plan_output
+from rayohx._download._output import audio_suffix, plan_output
 from rayohx._http import HttpClient
 from rayohx._logs import set_download_id
 from rayohx._mux.ffmpeg import find_ffmpeg
@@ -33,7 +33,14 @@ from rayohx.downloader._stream import (
     load_media,
     probe_container,
 )
-from rayohx.enums import ContainerFormat, DownloadState, EventType, OutputFormat, RemuxBackend
+from rayohx.enums import (
+    ContainerFormat,
+    DownloadState,
+    EventType,
+    OutputFormat,
+    Processing,
+    RemuxBackend,
+)
 from rayohx.errors import (
     CancellationError,
     DownloadError,
@@ -61,6 +68,12 @@ if TYPE_CHECKING:
     from rayohx.stream import StreamSelection
 
 logger = logging.getLogger(__name__)
+
+#: What the file is called in the result, for the formats FFmpeg makes (MP4 is the default).
+_FFMPEG_CONTAINER = {
+    OutputFormat.MKV: ContainerFormat.MATROSKA,
+    OutputFormat.AUDIO: ContainerFormat.AUDIO,
+}
 
 
 class Downloader:
@@ -236,6 +249,13 @@ class Downloader:
                 allow_remux=True,
                 merge=bool(audios),
             )
+            if plan.format is OutputFormat.AUDIO:
+                # One audio file: the first selected track, and no subtitles.
+                audios = audios[:1]
+                stream = None
+            if plan.via_ffmpeg:
+                self._require_ffmpeg(plan)  # before any segment is fetched
+                plan = self._with_audio_suffix(client, media, container, audios, plan)
             subtitles = self._subtitle_jobs(client, stream, plan)
             # Refuse before downloading anything if a file we will write is already there.
             targets = [path for _, _, path in subtitles]
@@ -250,7 +270,11 @@ class Downloader:
             self._sync_pause_state()  # a pause requested before the download began
             shift: float | None = None
             if ffmpeg_path is not None:
-                video_audio = audio_codecs(client, media, container)
+                video_audio = (
+                    ()
+                    if plan.format is OutputFormat.AUDIO and audios
+                    else audio_codecs(client, media, container)
+                )
                 audios = [
                     dataclasses.replace(a, codecs=audio_codecs(client, a.media, a.container))
                     for a in audios
@@ -258,16 +282,25 @@ class Downloader:
                 summary = delivery.with_ffmpeg(
                     media, container, plan, variant, audios, ffmpeg_path, video_audio
                 )
-                result_container = ContainerFormat.FMP4
+                result_container = _FFMPEG_CONTAINER.get(plan.format, ContainerFormat.FMP4)
+                processing = (
+                    Processing.EXTRACTED
+                    if plan.format is OutputFormat.AUDIO
+                    else Processing.MUXED
+                    if audios
+                    else Processing.REMUXED
+                )
             elif plan.mux:
                 summary, shift = delivery.native_mux(media, container, plan, variant, audios)
                 result_container = ContainerFormat.FMP4
+                processing = Processing.MUXED if audios else Processing.REMUXED
             else:
                 summary = delivery.plain(media, container, plan, variant)
                 result_container = container
+                processing = Processing.COPIED
             if subtitles:
                 delivery.subtitles(subtitles, shift or 0.0)
-        output = output_info(plan.path, summary, result_container)
+        output = output_info(plan.path, summary, result_container, processing)
         self._emit(EventType.FINALIZATION_COMPLETED, message=str(output.path))
         return output, summary.progress
 
@@ -323,6 +356,8 @@ class Downloader:
             return None
         wanted = self._config.output.remux_backend
         executable = find_ffmpeg(self._config.output.ffmpeg_path)
+        if plan.via_ffmpeg:
+            return self._require_ffmpeg(plan)
         if wanted is RemuxBackend.FFMPEG:
             if executable is None:
                 raise OutputFormatError(
@@ -348,6 +383,38 @@ class Downloader:
             )
             raise UnsupportedCodecError(exc.codec, hint=hint) from exc
         return None
+
+    def _require_ffmpeg(self, plan: OutputPlan) -> Path:
+        """The FFmpeg that Matroska and audio-only output need, or an explanation."""
+        what = "Matroska" if plan.format is OutputFormat.MKV else "Audio-only"
+        if self._config.output.remux_backend is RemuxBackend.NATIVE:
+            raise OutputFormatError(
+                f"{what} output needs FFmpeg, but only the built-in remuxer is allowed.",
+                hint="Set the remux backend to auto or ffmpeg.",
+            )
+        executable = find_ffmpeg(self._config.output.ffmpeg_path)
+        if executable is None:
+            raise OutputFormatError(
+                f"{what} output needs FFmpeg, which could not be found.",
+                hint="FFmpeg is an optional prerequisite: install it, or set its path in "
+                "the output settings.",
+            )
+        return executable
+
+    def _with_audio_suffix(
+        self,
+        client: HttpClient,
+        media: MediaPlaylist,
+        container: ContainerFormat,
+        audios: list[Rendition],
+        plan: OutputPlan,
+    ) -> OutputPlan:
+        """Give an audio file the extension that suits its codec (when the name left it open)."""
+        if not plan.suffix_pending:
+            return plan
+        source, kind_ = (audios[0].media, audios[0].container) if audios else (media, container)
+        suffix = audio_suffix(audio_codecs(client, source, kind_), kind_)
+        return dataclasses.replace(plan, path=plan.path.with_suffix(suffix), suffix_pending=False)
 
     def _finalizing(self) -> None:
         with self._pause_lock:

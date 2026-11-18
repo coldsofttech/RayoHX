@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from rayohx.enums import Processing
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -18,3 +20,5 @@ class OutputInfo:
     path: Path
     container: ContainerFormat
     size_bytes: int
+    #: What was done to the data on its way to this file.
+    processing: Processing = Processing.COPIED

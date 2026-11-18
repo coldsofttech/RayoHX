@@ -28,6 +28,7 @@ file=$(rayohx download https://cdn.example.com/vod/master.m3u8 --quiet)
 |---|---|
 | [info](cli/info.md) | `rayohx info`: what a stream offers, the table and `--json` output, which tracks a download would pick |
 | [download](cli/download.md) | `rayohx download`: every option, output files, progress, resume, examples |
+| [profile](cli/profile.md) | `rayohx profile`: saved, reusable settings: built-in and your own, file name templates, import and export |
 | [queue](cli/queue.md) | `rayohx queue`: a download queue that survives restarts: priorities, pause and resume, retries, running several at once |
 | [clean](cli/clean.md) | `rayohx clean`: remove leftover working folders from interrupted downloads |
 | [config](cli/config.md) | `rayohx config`: which settings file and `RAYOHX_` variables are in effect |
@@ -74,6 +75,7 @@ copy (see [download](cli/download.md#output-files)).
 |---|---|---|
 | `rayohx info URL` | Show a stream's qualities, audio and subtitle tracks, and what a download would pick | [info](cli/info.md) |
 | `rayohx download URL` | Download a stream to a file or a folder of segments | [download](cli/download.md) |
+| `rayohx profile ...` | Save and reuse settings (`--profile NAME` on `download` and `queue add`) | [profile](cli/profile.md) |
 | `rayohx queue ...` | Queue downloads, order them and run them | [queue](cli/queue.md) |
 | `rayohx --version` | Show the version and exit | [Global options](cli/global-options.md) |
 | `rayohx --help` | Show help for the tool; add a command name for that command's help | [Global options](cli/global-options.md) |

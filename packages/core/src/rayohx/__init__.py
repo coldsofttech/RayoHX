@@ -70,10 +70,12 @@ if TYPE_CHECKING:
 _SUBMODULES = frozenset(
     {
         "cancellation",
+        "capabilities",
         "config",
         "errors",
         "events",
         "models",
+        "naming",
         "platform",
         "playlist",
         "redaction",

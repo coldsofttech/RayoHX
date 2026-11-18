@@ -19,11 +19,22 @@ class Retry(BaseModel):
 
 
 class QueueAdd(DownloadCreate):
+    profile: str | None = Field(
+        default=None,
+        max_length=80,
+        description=(
+            "A profile's id or name. Its settings apply, and only the options you set in this "
+            "request override them. Without it, the default profile (if any) is used."
+        ),
+    )
     priority: Priority = "normal"
     retry: Retry = Field(default_factory=Retry)
 
 
 class QueueJob(Job):
+    profile: str | None = Field(
+        default=None, description="The profile the job's settings came from."
+    )
     priority: Priority
     rank: float
     attempts: int
@@ -96,3 +107,29 @@ class PlatformEvent(BaseModel):
 class EventList(BaseModel):
     items: list[PlatformEvent]
     last_id: int = Field(description="Pass as after_id to get only newer events.")
+
+
+class ProfileOut(BaseModel):
+    id: str
+    name: str
+    description: str
+    builtin: bool
+    default: bool
+    options: dict[str, Any] = Field(description="Only the settings the profile changes.")
+    max_attempts: int | None = Field(default=None, description="Its retry policy, if it has one.")
+    naming: str | None = None
+    metadata: str
+    verify: str
+    problems: list[str] = Field(description="Why this server cannot use it now, if it cannot.")
+
+
+class ProfileList(BaseModel):
+    items: list[ProfileOut]
+
+
+class CapabilitiesOut(BaseModel):
+    ffmpeg: str | None = Field(description="Where FFmpeg was found, if it was.")
+    ffprobe: str | None = None
+    formats: dict[str, bool] = Field(
+        description="Output format to whether this server can make it."
+    )

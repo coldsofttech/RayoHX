@@ -23,6 +23,7 @@ from rayohx_cli.cli.common import (
     usage_error,
 )
 from rayohx_cli.cli.lifecycle import finish, graceful_interrupt
+from rayohx_cli.cli.overrides import with_profile
 from rayohx_cli.cli.root import app
 from rayohx_cli.events import EventStream
 from rayohx_cli.progress import MODES, make_reporter
@@ -30,6 +31,7 @@ from rayohx_cli.progress import MODES, make_reporter
 
 @app.command()
 def download(
+    ctx: typer.Context,
     urls: params.Urls = None,
     output_path: params.OutputPath = None,
     quality: params.Quality = "best",
@@ -92,6 +94,7 @@ def download(
     base_url: params.BaseUrl = None,
     events: params.Events = False,
     stop_on_error: params.StopOnError = False,
+    profile: params.ProfileOption = None,
 ) -> None:
     """Download one or more streams to files.
 
@@ -158,6 +161,8 @@ def download(
         directory=directory,
         allow_file_keys=allow_file_keys,
     )
+    if profile:
+        config = with_profile(ctx, config, profile)
     targets = [open_source(t, base_url) for t in gather_urls(urls or [], input_file)]
     if events:
         progress = "none"

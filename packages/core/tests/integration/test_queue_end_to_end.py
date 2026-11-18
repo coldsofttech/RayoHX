@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -171,3 +172,44 @@ def test_stopping_the_queue_gracefully_requeues_and_the_next_start_finishes(
             assert done is not None
             assert done.state is JobState.COMPLETED
             assert Path(done.output_path or "").read_bytes() == expected()
+
+
+def real_media_routes() -> dict[str, Callable[[Seen], Reply]]:
+    """A playlist of a real H.264 + AAC transport stream cut into three segments."""
+    data = (Path(__file__).resolve().parents[1] / "fixtures" / "media" / "h264_aac.ts").read_bytes()
+    packets = len(data) // 188
+    bounds = [(packets * i // 3) * 188 for i in range(3)] + [packets * 188]
+    lines = ["#EXTM3U", "#EXT-X-TARGETDURATION:2", "#EXT-X-PLAYLIST-TYPE:VOD"]
+    routes: dict[str, Callable[[Seen], Reply]] = {}
+    for index in range(3):
+        lines += ["#EXTINF:1.3,", f"seg{index}.ts"]
+        part = data[bounds[index] : bounds[index + 1]]
+        routes[f"/real/seg{index}.ts"] = lambda _s, p=part: Reply(body=p)
+    routes["/real/index.m3u8"] = lambda _s: Reply(
+        body=("\n".join([*lines, "#EXT-X-ENDLIST"]) + "\n").encode()
+    )
+    return routes
+
+
+@pytest.mark.skipif(
+    shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None, reason="needs FFmpeg"
+)
+def test_the_archive_profile_makes_a_matroska_file_through_the_queue(tmp_path: Path) -> None:
+    with LocalServer(real_media_routes()) as server, make(tmp_path) as rayo:
+        job = rayo.queue.add(f"{server.url}/real/index.m3u8", profile="archive", output_name="film")
+        assert job.profile_id == "archive"
+        rayo.queue.start()
+        assert rayo.queue.wait_idle(60)
+        done = rayo.queue.get(job.id)
+        assert done is not None
+        assert done.state is JobState.COMPLETED, done.error_message
+        path = Path(done.output_path or "")
+        assert path.suffix == ".mkv"
+        streams = json.loads(
+            subprocess.run(
+                ["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(path)],  # noqa: S607
+                capture_output=True, text=True, check=True,
+            ).stdout
+        )["streams"]  # fmt: skip
+        assert sorted(s["codec_type"] for s in streams) == ["audio", "video"]
+        assert not list((tmp_path / "dl").glob(".*"))  # no leftovers

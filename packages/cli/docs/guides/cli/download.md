@@ -59,6 +59,10 @@ An existing output file is never replaced unless you pass `--overwrite`.
   automatically, with the language set. Choose the tracks with `--audio`, or leave them out with
   `--video-only`.
 - **Subtitles.** `-s en` saves `movie.en.vtt` beside the video, lined up with it.
+- **Original.** `--format original` keeps the stream's own container exactly (a transport stream stays `.ts`, a fragmented MP4 stays `.mp4`). Nothing is re-wrapped, so a separate audio track cannot be joined in.
+- **Matroska.** `--format mkv` (or a name ending in `.mkv`) copies the streams into a Matroska file, joining in separate audio tracks. It needs FFmpeg, and is refused before anything is downloaded if FFmpeg is missing.
+- **Audio only.** `--format audio` keeps just the sound. When the stream has a separate audio track, only that track is downloaded, not the video. The extension follows the codec (`.m4a` for AAC, `.mp3`, `.ac3`, `.eac3`, otherwise `.mka`), or use a name such as `talk.mp3`. It needs FFmpeg.
+- **What was done to the data.** The JSON result's `processing` says `copied` (segments joined, nothing changed), `remuxed` (copied into another container), `muxed` (separate tracks joined) or `extracted` (the sound taken out). Streams are never re-encoded.
 - **Segments.** `--format segments` saves one file per segment in a folder instead of one file.
 - **No FFmpeg needed.** Re-wrapping into MP4 is done by RayoHX itself for H.264 and HEVC video with
   AAC, AC-3, E-AC-3 and MP3 audio, and nothing is converted or re-encoded. For anything else (MPEG-2
@@ -118,7 +122,7 @@ Options are grouped the same way in `rayohx download --help`.
 |---|---|---|
 | `--output` | `-o` | Where to save (a folder when there are several addresses). A name without an extension gets the right one. By default it is named after the address, in the current folder. |
 | `--directory` | `-d` | The folder for a file that `--output` does not name. Created if missing. |
-| `--format` | | `auto` (default), `ts`, `mp4`, or `segments` (one file per segment, in a folder). |
+| `--format` | | `auto` (default), `original`, `ts`, `mp4`, `mkv`, `audio`, or `segments` (one file per segment, in a folder). `mkv` and `audio` need FFmpeg. |
 | `--overwrite` / `--no-overwrite` | | Replace an existing output file. Off by default. |
 | `--validate` / `--no-validate` | | Check the finished file before putting it in place. On by default. |
 | `--remux-backend` | | Who re-wraps streams into MP4: `auto` (built in, then FFmpeg), `native` or `ffmpeg`. |

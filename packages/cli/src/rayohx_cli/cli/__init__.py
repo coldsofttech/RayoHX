@@ -12,6 +12,7 @@ from rayohx_cli.cli import (  # noqa: F401  (registers the commands)
     config,
     download,
     info,
+    profile,
     queue,
 )
 from rayohx_cli.cli.common import EXIT_CANCELLED, EXIT_FAILED, EXIT_USAGE

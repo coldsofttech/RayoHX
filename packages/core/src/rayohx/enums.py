@@ -60,6 +60,10 @@ class ContainerFormat(StrEnum):
     MPEG_TS = "mpeg-ts"
     FMP4 = "fmp4"
     WEBVTT = "webvtt"
+    #: Output only: a Matroska file.
+    MATROSKA = "matroska"
+    #: Output only: an audio file.
+    AUDIO = "audio"
     UNKNOWN = "unknown"
 
 
@@ -85,9 +89,17 @@ class StorageStrategy(StrEnum):
 class OutputFormat(StrEnum):
     """The kind of file the user asks for."""
 
+    #: Follow the file name, else keep the stream's own container.
     AUTO = "auto"
+    #: Keep the stream's own container exactly (a transport stream stays one). Nothing is
+    #: re-wrapped, so separate audio tracks cannot be joined in.
+    ORIGINAL = "original"
     TS = "ts"
     MP4 = "mp4"
+    #: Matroska. Needs FFmpeg, which only copies the streams.
+    MKV = "mkv"
+    #: Only the sound, copied out into an audio file. Needs FFmpeg.
+    AUDIO = "audio"
     SEGMENTS = "segments"
 
 
@@ -120,3 +132,21 @@ class ErrorCategory(StrEnum):
     AUTOMATION = "automation"
     CANCELLATION = "cancellation"
     INTERNAL = "internal"
+
+
+class Processing(StrEnum):
+    """What was done to the data between the network and the output file.
+
+    Streams are never re-encoded: ``TRANSCODED`` exists so a result can say so truthfully if that
+    ever changes, and nothing produces it today.
+    """
+
+    #: The segments were joined; the data is unchanged.
+    COPIED = "copied"
+    #: The streams were copied into a different container.
+    REMUXED = "remuxed"
+    #: Separate tracks were joined into one file.
+    MUXED = "muxed"
+    #: One kind of stream (the sound) was taken out.
+    EXTRACTED = "extracted"
+    TRANSCODED = "transcoded"

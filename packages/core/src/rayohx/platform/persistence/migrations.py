@@ -97,10 +97,24 @@ ALTER TABLE jobs ADD COLUMN progress_json TEXT;
 CREATE INDEX jobs_ready ON jobs (state, not_before);
 """
 
+_PROFILES = """
+CREATE TABLE profiles (
+    id             TEXT PRIMARY KEY,
+    name           TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    description    TEXT NOT NULL DEFAULT '',
+    data_json      TEXT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    created_at     REAL NOT NULL,
+    updated_at     REAL NOT NULL
+);
+ALTER TABLE jobs ADD COLUMN profile_id TEXT;
+"""
+
 #: Every migration this version of RayoHX knows, oldest first.
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "initial", _INITIAL),
     Migration(2, "queue", _QUEUE),
+    Migration(3, "profiles", _PROFILES),
 )
 
 

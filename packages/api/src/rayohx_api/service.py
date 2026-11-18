@@ -11,13 +11,13 @@ from pathlib import Path
 from typing import Any
 
 from rayohx import Rayo
-from rayohx.config import validate_url
+from rayohx.config import DownloadConfig, validate_url
 from rayohx.downloader import Downloader
 from rayohx.downloader.batch import batch_outputs
 from rayohx.errors import ConfigurationError
 from rayohx.platform import JobRecord, QueuePriority, RetryPolicy
 from rayohx.platform.errors import RunnerLockedError
-from rayohx.platform.jobs import NO_RETRY, safe_filename
+from rayohx.platform.jobs import NO_RETRY, config_to_options, safe_filename
 
 from rayohx_api.build import DEFAULT_CONCURRENCY, download_config, sources
 from rayohx_api.config import Settings, get_settings
@@ -72,14 +72,106 @@ def ensure_runner() -> None:
             logger.info("Another process runs the queue; this one only controls it.")
 
 
+#: Request field to the setting it sets, for the options a request may lay over a profile.
+_SETTING = {
+    "selection": {
+        "quality": "selection.quality",
+        "max_resolution": "selection.max_resolution",
+        "max_bitrate": "selection.max_bitrate",
+        "variant": "selection.variant",
+        "resolution": "selection.resolution",
+        "bandwidth": "selection.bandwidth",
+        "variant_name": "selection.variant_name",
+        "codec": "selection.codec",
+        "video_range": "selection.video_range",
+        "max_frame_rate": "selection.max_frame_rate",
+        "audio": "selection.audio_languages",
+        "audio_names": "selection.audio_names",
+        "subtitles": "selection.subtitle_languages",
+        "subtitle_names": "selection.subtitle_names",
+        "video_only": "selection.video_only",
+    },
+    "storage": {
+        "strategy": "storage.strategy",
+        "workspace": "storage.workspace_dir",
+        "buffer_bytes": "storage.buffer_bytes",
+        "max_temp_bytes": "storage.max_temp_bytes",
+        "reserve_bytes": "storage.reserve_bytes",
+        "space_check": "storage.check_space",
+        "keep_state": "storage.keep_state_on_failure",
+    },
+    "output": {
+        "format": "output.format",
+        "directory": "output.directory",
+        "overwrite": "output.overwrite",
+        "validate_output": "output.validate",
+        "remux_backend": "output.remux_backend",
+        "ffmpeg": "output.ffmpeg_path",
+    },
+    "engine": {
+        "concurrency": "concurrency",
+        "resume": "resume",
+        "allow_file_keys": "allow_file_keys",
+    },
+    "network": {
+        "headers": "network.headers",
+        "referer": "network.headers",
+        "origin": "network.headers",
+        "user_agent": "network.user_agent",
+        "backoff": "network.backoff_factor",
+        "max_redirects": "network.max_redirects",
+        "insecure": "network.verify_tls",
+        "ca_bundle": "network.verify_tls",
+        "env_proxy": "network.proxy_from_env",
+        "proxy": "network.proxy",
+        "client_cert": "network.client_cert",
+        "client_key": "network.client_key",
+        "connect_timeout": "network.connect_timeout",
+        "read_timeout": "network.read_timeout",
+        "timeout": "network.total_timeout",
+        "retries": "network.retries",
+        "rate_limit": "network.rate_limit",
+        "credential_hosts": "network.credential_hosts",
+    },
+}
+
+
+def _given_overrides(
+    request: DownloadCreate, config: DownloadConfig
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The settings the request itself set (not defaults), and its secrets."""
+    options, secrets = config_to_options(config)
+    overrides: dict[str, Any] = {}
+    for section, names in _SETTING.items():
+        given = getattr(request, section).model_fields_set
+        for name in given & set(names):
+            top, _, key = names[name].partition(".")
+            if key:
+                overrides.setdefault(top, {})[key] = options[top][key]
+            else:
+                overrides[top] = options[top]
+    network = request.network.model_fields_set
+    if not network & {"headers", "cookies", "cookie_file", "proxy", "client_key_password"}:
+        secrets = {}
+    return overrides, secrets
+
+
 def enqueue(
     body: DownloadCreate,
     settings: Settings,
     *,
     priority: QueuePriority = QueuePriority.NORMAL,
-    retry: RetryPolicy = NO_RETRY,
+    retry: RetryPolicy | None = NO_RETRY,
+    profile: str | None = None,
 ) -> list[JobRecord]:
-    """Queue one job for each address in the request, after merging the saved defaults."""
+    """Queue one job for each address in the request.
+
+    With a profile (named, or the default one), the profile's settings apply and only what the
+    request set itself is laid over them. Without one, the saved default options are merged in.
+    """
+    chosen = rayo().profiles.require(profile) if profile else rayo().profiles.default()
+    if chosen is not None:
+        return _enqueue_with_profile(body, settings, chosen.id, priority, retry)
     merged = merge(store().get(), body.model_dump(exclude_unset=True))
     request = DownloadCreate.model_validate(merged)
     urls = sources(request)
@@ -111,6 +203,42 @@ def enqueue(
             retry=retry,
         )
         for address, name in zip(urls, names, strict=True)
+    ]
+    ensure_runner()
+    return jobs
+
+
+def _enqueue_with_profile(
+    body: DownloadCreate,
+    settings: Settings,
+    profile_id: str,
+    priority: QueuePriority,
+    retry: RetryPolicy | None,
+) -> list[JobRecord]:
+    request = DownloadCreate.model_validate(body.model_dump(exclude_unset=True))
+    urls = sources(request)
+    if request.filename and len(urls) > 1:
+        raise ConfigurationError("A file name can only be given for a single download.")
+    filename = safe_filename(request.filename) if request.filename else None
+    base = settings.download_dir
+    config = download_config(
+        request, base=base, local=settings.allow_local_paths, concurrency=DEFAULT_CONCURRENCY
+    )
+    overrides, secrets = _given_overrides(request, config)
+    for address in urls:
+        validate_url(address)
+    jobs = [
+        rayo().queue.add(
+            address,
+            profile=profile_id,
+            overrides=overrides,
+            secrets=secrets,
+            output_name=filename,
+            playlist_text=request.playlist_text,
+            priority=priority,
+            retry=retry,
+        )
+        for address in urls
     ]
     ensure_runner()
     return jobs

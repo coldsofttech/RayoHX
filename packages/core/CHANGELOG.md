@@ -13,10 +13,15 @@ The platform is the new `rayohx.platform` package: persistent services around th
 - A persistent download queue (`rayo.queue`): priorities, an explicit order, several jobs at once, pause and resume that give up the slot and keep the work, cancel, retry, bulk actions, export and import. Jobs survive restarts and crashes, and a failure never affects other jobs.
 - Failed jobs are retried after a growing delay when the error may pass; every run is recorded.
 - Job secrets (cookies, secret headers, proxy credentials) are kept in a secret store (system credential store with the optional `keyring` package, else memory) and never in the database.
+- Download profiles (`rayo.profiles`): five built in (Best Quality, 1080p, Mobile, Archive, Custom) and your own, with validation, a default profile, file name templates, import and export. `rayo.queue.add(url, profile=..., overrides=...)` copies the settings into the job.
 - `DownloadConfig` can be saved as plain data and rebuilt (`rayohx.platform.jobs.config_to_options`, `config_from_options`).
 
 ### Added
 
+- Output formats `original` (the stream's own container, untouched), `mkv` (Matroska) and `audio` (only the sound, as `.m4a`, `.mp3`, `.ac3`, `.eac3` or `.mka` to suit the codec). `mkv` and `audio` need FFmpeg, which only copies the streams, and are refused before any download when it is missing. Audio-only from a separate audio track never fetches the video.
+- `OutputInfo.processing` (`copied`, `remuxed`, `muxed`, `extracted`) and `rayohx.capabilities` to find out what this machine can do.
+- `audio_languages=("*",)` and `subtitle_languages=("*",)` select every audio or subtitle track.
+- `rayohx.naming` with the file name helpers.
 - Every error has a stable `code` and an `ErrorCategory` (`error.code`, `error.category`); HTTP errors include the status (`HTTP_503`, `AUTH_403`).
 - A `VERIFYING` download state between finalizing and completed. Nothing enters it yet.
 - The public modules `rayohx.storage` (find, measure and clean working folders) and `rayohx.redaction`, so front ends no longer import private modules.

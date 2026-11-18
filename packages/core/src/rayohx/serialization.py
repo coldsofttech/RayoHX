@@ -140,6 +140,7 @@ def result_to_dict(result: DownloadResult) -> dict[str, Any]:
                 "path": str(result.output.path),
                 "size_bytes": result.output.size_bytes,
                 "container": result.output.container.value,
+                "processing": result.output.processing.value,
             }
             if result.output
             else None

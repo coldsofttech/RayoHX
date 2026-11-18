@@ -143,6 +143,8 @@ class JobRecord:
     recovered: bool = False
     needs_credentials: bool = False
     control_request: str | None = None
+    #: The profile the job's settings came from (a snapshot: later edits do not change the job).
+    profile_id: str | None = None
     #: The latest progress snapshot (live while the job runs in this process).
     progress: Mapping[str, Any] | None = None
 
@@ -168,6 +170,7 @@ class JobRecord:
             "not_before": self.not_before,
             "recovered": self.recovered,
             "needs_credentials": self.needs_credentials,
+            "profile": self.profile_id,
             "progress": dict(self.progress) if self.progress else None,
         }
 

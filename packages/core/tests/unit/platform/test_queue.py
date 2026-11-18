@@ -291,6 +291,7 @@ def test_retries_stop_at_the_limit(make_rayo: Callable[..., Rayo]) -> None:
     failed = rayo.queue.get(job.id)
     assert failed is not None
     assert (failed.state, failed.attempts, failed.error_code) == (JobState.FAILED, 3, "HTTP_503")
+    rayo.queue.stop()  # so the retried job is not picked up before we look
     assert rayo.queue.retry(job.id).ok  # a manual retry starts again from zero
     again = rayo.queue.get(job.id)
     assert again is not None

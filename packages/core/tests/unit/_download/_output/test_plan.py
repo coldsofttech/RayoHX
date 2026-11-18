@@ -88,7 +88,7 @@ def test_an_explicit_format_must_agree_with_the_file_name() -> None:
     assert plan("video", MP4, OutputFormat.MP4) == ("video.mp4", OutputFormat.MP4)
 
 
-@pytest.mark.parametrize("name", ["video.mkv", "video.avi", "video.mov", "video.webm", "video.txt"])
+@pytest.mark.parametrize("name", ["video.avi", "video.mov", "video.webm", "video.txt"])
 def test_unsupported_file_types_are_refused(name: str) -> None:
     with pytest.raises(OutputFormatError, match="not supported") as info:
         plan(name, TS)

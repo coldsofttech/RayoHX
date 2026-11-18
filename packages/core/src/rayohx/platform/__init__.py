@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     )
     from rayohx.platform.paths import PlatformPaths, resolve_paths
     from rayohx.platform.persistence import Database, SettingsStore
+    from rayohx.platform.profiles import DownloadProfile, ProfileStore
     from rayohx.platform.queue import Queue
 
 _EXPORTS = {
@@ -54,7 +55,9 @@ _EXPORTS = {
     "JobRecord": "rayohx.platform.jobs",
     "JobState": "rayohx.platform.jobs",
     "PlatformPaths": "rayohx.platform.paths",
+    "ProfileStore": "rayohx.platform.profiles",
     "Queue": "rayohx.platform.queue",
+    "DownloadProfile": "rayohx.platform.profiles",
     "QueuePriority": "rayohx.platform.jobs",
     "RetryPolicy": "rayohx.platform.jobs",
     "Rayo": "rayohx.platform.facade",
@@ -82,6 +85,7 @@ def __dir__() -> list[str]:
 __all__ = [
     "BulkResult",
     "Database",
+    "DownloadProfile",
     "EventBus",
     "EventCategory",
     "EventStore",
@@ -90,6 +94,7 @@ __all__ = [
     "PersistenceError",
     "PlatformEvent",
     "PlatformPaths",
+    "ProfileStore",
     "Queue",
     "QueuePriority",
     "Rayo",

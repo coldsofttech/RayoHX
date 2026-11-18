@@ -19,7 +19,20 @@ _SUFFIX_FORMATS = {
     ".mp4": OutputFormat.MP4,
     ".m4v": OutputFormat.MP4,
     ".m4a": OutputFormat.MP4,
+    ".mkv": OutputFormat.MKV,
+    ".aac": OutputFormat.AUDIO,
+    ".mp3": OutputFormat.AUDIO,
+    ".ac3": OutputFormat.AUDIO,
+    ".eac3": OutputFormat.AUDIO,
+    ".mka": OutputFormat.AUDIO,
 }
+#: Audio file names that may be asked for. ``.m4a`` is MP4 for ``AUTO`` but audio when audio is
+#: requested.
+AUDIO_SUFFIXES = frozenset({".m4a", ".aac", ".mp3", ".ac3", ".eac3", ".mka"})
+#: The audio file to make for each codec found in a transport stream.
+_AUDIO_BY_CODEC = {"aac": ".m4a", "mp3": ".mp3", "ac3": ".ac3", "eac3": ".eac3"}
+#: Holds the place of an audio file's extension until the codec is known.
+PENDING_SUFFIX = ".mka"
 _NATIVE = {
     ContainerFormat.MPEG_TS: (OutputFormat.TS, ".ts"),
     ContainerFormat.FMP4: (OutputFormat.MP4, ".mp4"),
@@ -33,8 +46,12 @@ class OutputPlan:
     path: Path
     format: OutputFormat
     container: ContainerFormat
-    #: Whether the segments have to be re-wrapped into a new MP4 rather than just joined.
+    #: Whether the segments have to be re-wrapped into a new file rather than just joined.
     mux: bool = False
+    #: Whether only FFmpeg can make this file (Matroska, audio).
+    via_ffmpeg: bool = False
+    #: Whether an audio file's extension still has to be chosen from its codec.
+    suffix_pending: bool = False
 
     @property
     def is_directory(self) -> bool:
@@ -84,6 +101,22 @@ def plan_output(
         return OutputPlan(Path(folder), OutputFormat.SEGMENTS, container)
 
     suffix = path.suffix.lower() if path is not None else ""
+    if requested is OutputFormat.AUDIO:
+        return _plan_audio(path, suffix, url, directory, container)
+    if requested is OutputFormat.MKV:
+        return _plan_file(path, suffix, OutputFormat.MKV, ".mkv", url, directory, container)
+    if requested is OutputFormat.ORIGINAL:
+        return _plan_original(
+            path, suffix, native_format, native_suffix, url, directory, container, merge
+        )
+    if requested is OutputFormat.AUTO and _SUFFIX_FORMATS.get(suffix) is OutputFormat.MKV:
+        return _plan_file(path, suffix, OutputFormat.MKV, ".mkv", url, directory, container)
+    if (
+        requested is OutputFormat.AUTO
+        and suffix in _SUFFIX_FORMATS
+        and (_SUFFIX_FORMATS[suffix] is OutputFormat.AUDIO)
+    ):
+        return _plan_audio(path, suffix, url, directory, container)
     if path is not None and suffix and suffix not in _SUFFIX_FORMATS:
         raise OutputFormatError(
             f"Files ending in {path.suffix!r} are not supported.",
@@ -125,6 +158,90 @@ def plan_output(
     if not suffix:
         path = path.with_name(path.name + suffix_for_chosen)
     return OutputPlan(path, chosen, container, mux)
+
+
+def _plan_file(
+    path: Path | None,
+    suffix: str,
+    chosen: OutputFormat,
+    wanted_suffix: str,
+    url: str,
+    directory: Path | None,
+    container: ContainerFormat,
+) -> OutputPlan:
+    """A Matroska file, made by FFmpeg."""
+    if suffix and suffix != wanted_suffix:
+        assert path is not None  # noqa: S101
+        raise OutputFormatError(
+            f"The file name ends in {path.suffix!r} but the format {chosen.value!r} was asked for.",
+            hint=f"Use {wanted_suffix}.",
+        )
+    if path is None:
+        path = (directory or Path.cwd()) / f"{name_from_url(url)}{wanted_suffix}"
+    elif not suffix:
+        path = path.with_name(path.name + wanted_suffix)
+    return OutputPlan(path, chosen, container, mux=True, via_ffmpeg=True)
+
+
+def _plan_audio(
+    path: Path | None, suffix: str, url: str, directory: Path | None, container: ContainerFormat
+) -> OutputPlan:
+    """An audio file, made by FFmpeg. Its extension may wait until the codec is known."""
+    if suffix and suffix not in AUDIO_SUFFIXES:
+        assert path is not None  # noqa: S101
+        raise OutputFormatError(
+            f"{path.suffix!r} is not an audio file this tool can make.",
+            hint="Use .m4a, .mp3, .aac, .ac3, .eac3 or .mka, or leave the extension out.",
+        )
+    if suffix:
+        assert path is not None  # noqa: S101
+        return OutputPlan(path, OutputFormat.AUDIO, container, mux=True, via_ffmpeg=True)
+    base = path if path is not None else (directory or Path.cwd()) / name_from_url(url)
+    return OutputPlan(
+        base.with_name(base.name + PENDING_SUFFIX),
+        OutputFormat.AUDIO,
+        container,
+        mux=True,
+        via_ffmpeg=True,
+        suffix_pending=True,
+    )
+
+
+def _plan_original(
+    path: Path | None,
+    suffix: str,
+    native_format: OutputFormat,
+    native_suffix: str,
+    url: str,
+    directory: Path | None,
+    container: ContainerFormat,
+    merge: bool,
+) -> OutputPlan:
+    """The stream's own container, untouched."""
+    if merge:
+        raise OutputFormatError(
+            "The original format cannot hold a separate audio track.",
+            hint="Set video_only, or choose MP4 or MKV to join the audio in.",
+        )
+    if suffix and _SUFFIX_FORMATS.get(suffix) is not native_format:
+        assert path is not None  # noqa: S101
+        raise OutputFormatError(
+            f"The file name ends in {path.suffix!r}, but this stream's own format is "
+            f"{_describe(container)}.",
+            hint=f"Use {native_suffix}.",
+        )
+    if path is None:
+        path = (directory or Path.cwd()) / f"{name_from_url(url)}{native_suffix}"
+    elif not suffix:
+        path = path.with_name(path.name + native_suffix)
+    return OutputPlan(path, native_format, container)
+
+
+def audio_suffix(codecs: tuple[str, ...], container: ContainerFormat) -> str:
+    """The audio file extension that suits a stream's first audio codec."""
+    if codecs:
+        return _AUDIO_BY_CODEC.get(codecs[0], ".mka")
+    return ".m4a" if container is ContainerFormat.FMP4 else ".mka"
 
 
 def _describe(container: ContainerFormat) -> str:

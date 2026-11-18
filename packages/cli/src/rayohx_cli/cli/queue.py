@@ -22,6 +22,7 @@ from rayohx.platform.events import PlatformEvent
 from rayohx_cli import format as fmt
 from rayohx_cli import output, params
 from rayohx_cli.cli.common import EXIT_FAILED, EXIT_USAGE, gather_urls, make_config, usage_error
+from rayohx_cli.cli.overrides import overrides_from
 from rayohx_cli.cli.root import app
 
 queue_app = typer.Typer(
@@ -50,6 +51,13 @@ def open_platform(home: Path | None = None, **kwargs: Any) -> Rayo:
     except RayoHXError as exc:
         output.error_from(exc)
         raise typer.Exit(EXIT_FAILED) from exc
+
+
+def retry_given(ctx: typer.Context) -> bool:
+    """Whether --max-attempts was given (otherwise the profile's retry policy applies)."""
+    from rayohx_cli.cli.overrides import given
+
+    return "max_attempts" in given(ctx)
 
 
 def priority_of(value: str) -> QueuePriority:
@@ -109,6 +117,7 @@ def run_action(ids: list[str], home: Path | None, verb: str, action: str) -> Non
 
 @queue_app.command("add")
 def add(
+    ctx: typer.Context,
     urls: params.Urls = None,
     input_file: params.InputFile = None,
     name: Annotated[
@@ -139,10 +148,15 @@ def add(
     retries: params.Retries = None,
     concurrency: params.Concurrency = None,
     storage: params.Storage = StorageStrategy.AUTO,
+    profile: params.ProfileOption = None,
     json_output: params.JsonOutput = False,
     home: Home = None,
 ) -> None:
-    """Add one job for each address. Secrets (cookies, headers, passwords) are kept apart."""
+    """Add one job for each address, with the settings of a profile and any options you give.
+
+    Without --profile the default profile is used, if one is set ([bold]rayohx profile
+    default[/bold]). Secrets (cookies, headers, passwords) are kept apart from the settings.
+    """
     addresses = gather_urls(urls or [], input_file)
     if name and len(addresses) > 1:
         usage_error(ConfigurationError("--name can only be used with a single address."))
@@ -170,6 +184,7 @@ def add(
         storage=storage,
     )
     level = priority_of(priority)
+    overrides, secrets = overrides_from(ctx, config)
     try:
         for address in addresses:  # check them all first: nothing is added if one is wrong
             validate_url(address)
@@ -182,10 +197,12 @@ def add(
             records.append(
                 rayo.queue.add(
                     address,
-                    config=config,
+                    profile=profile,
+                    overrides=overrides,
+                    secrets=secrets,
                     priority=level,
                     output_name=name,
-                    retry=RetryPolicy(max_attempts=max_attempts),
+                    retry=RetryPolicy(max_attempts=max_attempts) if retry_given(ctx) else None,
                 )
             )
     except RayoHXError as exc:

@@ -77,7 +77,7 @@ class Storage(BaseModel):
 
 
 class Output(BaseModel):
-    format: Literal["auto", "ts", "mp4", "segments"] = "auto"
+    format: Literal["auto", "original", "ts", "mp4", "mkv", "audio", "segments"] = "auto"
     directory: str | None = Field(default=None, description="Sub-folder of the download folder.")
     overwrite: bool = False
     validate_output: bool = Field(default=True, alias="validate")

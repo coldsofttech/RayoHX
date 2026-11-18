@@ -85,9 +85,31 @@ with Rayo() as rayo:
 
 **Events.** The runner publishes `queue.*` events (`job_added`, `job_state_changed`, `job_retry_scheduled`, `job_recovered`, `job_completed`, `job_failed`, `completed`, ...) and forwards the engine's events with the job id, so `event_store.query(job_id=...)` is a per-job log.
 
+## Profiles
+
+```python
+rayo.profiles.create("Movies", base="1080p", options={"output": {"format": "mkv"}}, naming="{name} {date}")
+rayo.queue.add(url, profile="Movies", overrides={"selection": {"max_resolution": "720p"}})
+```
+
+A profile (`DownloadProfile`) is a name plus the settings it *changes*, in the shape of `config_to_options`, a retry policy, a file name template, and `metadata` and `verify` values that are stored now and applied when metadata handling and verification arrive. Five are built in (`best-quality`, `1080p`, `mobile`, `archive`, `custom`) and cannot be changed; yours live in the `profiles` table.
+
+**Combining.** Engine defaults, then the profile, then the caller's overrides, section by section. A job stores the *result* (a snapshot), so editing or deleting the profile later never changes queued jobs. `profile=None` uses the default profile (`profiles.set_default`) when one is set.
+
+**Validation** (`rayohx.platform.profiles.validate` / `check`) has two levels. *Structure* is always checked and blocks saving: unknown settings, invalid values (the settings are built into a real `DownloadConfig`), secrets, a bad naming template, bad `metadata` or `verify`. *This machine* is checked when a job is queued: an output format that needs FFmpeg (Matroska, audio-only) is refused if FFmpeg is missing or the native-only remux backend is set. Profiles never hold secrets: cookies, secret headers and proxy logins are refused, and are given per job.
+
+**Import and export** use `{"rayohx_profiles": 1, "profiles": [...]}`. Import checks every profile first, renames or skips a taken name, and migrates old schema versions (`profiles.store.MIGRATIONS`).
+
+**Naming.** A template (`{name}`, `{date}`, `{time}`, `{job}`, `{profile}`, `{host}`) is rendered when the job is queued, deterministically and without any path separator, into the job's `output_name`.
+
+## Output formats
+
+`OutputFormat` has `AUTO`, `ORIGINAL`, `TS`, `MP4`, `MKV`, `AUDIO` and `SEGMENTS`. The engine always prefers the least destructive route: keep the container (`ORIGINAL`, or `AUTO` for a stream that needs nothing), then copy the streams into another container, and it never re-encodes. `MKV` and `AUDIO` are made by FFmpeg copying the streams (`-c copy`) and fail before any download when FFmpeg is missing. An audio-only download of a stream with a separate audio track fetches only that track. A result's `OutputInfo.processing` says what happened: `copied`, `remuxed`, `muxed` or `extracted`. `rayohx.capabilities.detect()` reports what this machine can do.
+
 ## Migrations so far
 
 | Version | Name | Adds |
 | --- | --- | --- |
 | 1 | `initial` | settings, jobs, job attempts, events |
 | 2 | `queue` | job columns for the display address, secret reference, recovery, output, retry time, control requests and progress |
+| 3 | `profiles` | the profiles table, and the profile a job came from |

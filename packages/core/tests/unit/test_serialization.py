@@ -112,6 +112,7 @@ def test_progress_and_results_are_plain_data(tmp_path: Path) -> None:
         "path": str(tmp_path / "v.mp4"),
         "size_bytes": 9,
         "container": "fmp4",
+        "processing": "copied",
     }
     assert "zzz" not in json.dumps(result)
     failed = DownloadResult(

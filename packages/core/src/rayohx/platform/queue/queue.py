@@ -13,6 +13,7 @@ running jobs are handed over through the database and carried out within a poll 
 from __future__ import annotations
 
 import dataclasses
+import time
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -30,12 +31,20 @@ from rayohx.platform.jobs.model import (
 from rayohx.platform.jobs.names import safe_filename
 from rayohx.platform.jobs.options import config_from_options, config_to_options
 from rayohx.platform.jobs.retry import RetryPolicy
+from rayohx.platform.profiles import (
+    DownloadProfile,
+    ProfileStore,
+    check,
+    render_name,
+    resolve_options,
+)
+from rayohx.platform.profiles.naming import tokens_for
 from rayohx.platform.queue.runner import CANCEL, PAUSE
 from rayohx.redaction import redact_url
 from rayohx.storage import FileLock
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
     from pathlib import Path
 
     from rayohx.platform.events import EventBus
@@ -70,15 +79,19 @@ class Queue:
         bus: EventBus,
         secrets: SecretStore,
         settings: SettingsStore,
+        profiles: ProfileStore,
         *,
         download_dir: Path,
         runner_lock_path: Path | None = None,
+        clock: Callable[[], float] = time.time,
     ) -> None:
         self._repo = repository
         self._runner = runner
         self._bus = bus
         self._secrets = secrets
         self._settings = settings
+        self.profiles = profiles
+        self._clock = clock
         self.download_dir = download_dir
         self._runner_lock_path = runner_lock_path
         saved = settings.get(MAX_ACTIVE_KEY)
@@ -91,6 +104,8 @@ class Queue:
         self,
         url: str,
         *,
+        profile: str | None = None,
+        overrides: Mapping[str, Any] | None = None,
         config: DownloadConfig | None = None,
         options: Mapping[str, Any] | None = None,
         secrets: Mapping[str, Any] | None = None,
@@ -101,16 +116,35 @@ class Queue:
     ) -> JobRecord:
         """Queue one download.
 
-        Give the settings as a ``DownloadConfig`` (``config``), or as stored ``options`` and
-        ``secrets`` (as returned by ``config_to_options``). With neither, defaults are used. The
-        settings are checked now, so a bad combination is refused here and not when the job runs.
+        The settings come from one of two places:
+
+        * a **profile** (``profile``, else the default profile if one is set, else the engine's
+          defaults), with ``overrides`` laid over it. Both are plain option data; ``secrets``
+          holds cookies and the like for this job only.
+        * complete settings: a ``DownloadConfig`` (``config``) or stored ``options`` and
+          ``secrets``. These replace any profile.
+
+        Everything is checked now, including whether this machine can make the output format the
+        settings ask for, so a bad combination is refused here and not when the job runs. The
+        settings are copied into the job: editing the profile later does not change it.
 
         Raises:
-            ConfigurationError: If the address, file name or settings are not valid.
+            ConfigurationError: If the address, file name, profile or settings are not valid.
         """
         address = validate_url(url)
         name = safe_filename(output_name) if output_name else None
-        stored, hidden = self._split(config, options, secrets)
+        chosen: DownloadProfile | None = None
+        if config is not None or options is not None:
+            if profile is not None or overrides:
+                raise ConfigurationError("Give a profile with overrides, or complete settings.")
+            stored, hidden = self._split(config, options, secrets)
+        else:
+            chosen = self.profiles.require(profile) if profile else self.profiles.default()
+            if chosen is not None:
+                check(chosen, machine_checks=True)
+            stored = resolve_options(chosen, overrides)
+            stored.pop("version", None)
+            hidden = dict(secrets or {})
         if config is not None and config.output.path is not None:
             if name is not None:
                 raise ConfigurationError("Give the file name once: output_name or output.path.")
@@ -119,8 +153,16 @@ class Queue:
             if str(parent) not in {"", "."}:
                 stored["output"] = {**stored.get("output", {}), "directory": str(parent)}
         config_from_options(stored, hidden, default_directory=self.download_dir)  # validate
+        self._check_machine(stored)
 
         job_id = uuid.uuid4().hex[:12]
+        if name is None and chosen is not None and chosen.naming:
+            name = render_name(
+                chosen.naming,
+                tokens_for(url=address, job_id=job_id, profile=chosen.name, moment=self._clock()),
+            )
+        if retry is None:
+            retry = (chosen.retry if chosen else None) or RetryPolicy()
         ref = None
         if hidden:
             ref = f"job-{job_id}"
@@ -130,7 +172,7 @@ class Queue:
             options=stored,
             playlist_text=playlist_text,
             output_name=name,
-            retry=retry or RetryPolicy(),
+            retry=retry,
         )
         try:
             record = self._repo.insert(
@@ -140,6 +182,7 @@ class Queue:
                 priority=QueuePriority.parse(priority),
                 rank=self._repo.next_rank(),
                 secret_ref=ref,
+                profile_id=chosen.id if chosen else None,
             )
         except Exception:
             if ref:
@@ -151,9 +194,20 @@ class Queue:
             job_id=job_id,
             url=record.url,
             priority=record.priority.name.lower(),
+            profile=record.profile_id,
         )
         self._runner.wake()
         return record
+
+    @staticmethod
+    def _check_machine(options: Mapping[str, Any]) -> None:
+        """Refuse settings this machine cannot carry out (for example Matroska without FFmpeg)."""
+        stand_in = DownloadProfile(
+            id="job",
+            name="this download",
+            options={k: v for k, v in options.items() if k != "version"},
+        )
+        check(stand_in, machine_checks=True)
 
     def add_many(self, urls: Iterable[str], **kwargs: Any) -> JobList:
         """Queue several addresses with the same settings. Nothing is queued if one is invalid."""

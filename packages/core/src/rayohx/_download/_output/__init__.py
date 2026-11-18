@@ -19,11 +19,12 @@ if TYPE_CHECKING:
         sanitize_filename,
         segment_file_name,
     )
-    from rayohx._download._output._plan import OutputPlan, plan_output
+    from rayohx._download._output._plan import OutputPlan, audio_suffix, plan_output
 
 _EXPORTS = {
     "MAX_NAME_LENGTH": "rayohx._download._output._names",
     "OutputPlan": "rayohx._download._output._plan",
+    "audio_suffix": "rayohx._download._output._plan",
     "name_from_url": "rayohx._download._output._names",
     "plan_output": "rayohx._download._output._plan",
     "sanitize_filename": "rayohx._download._output._names",
@@ -48,6 +49,7 @@ def __dir__() -> list[str]:
 __all__ = [
     "MAX_NAME_LENGTH",
     "OutputPlan",
+    "audio_suffix",
     "name_from_url",
     "plan_output",
     "sanitize_filename",

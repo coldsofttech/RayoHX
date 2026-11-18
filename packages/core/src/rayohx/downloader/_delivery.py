@@ -27,8 +27,8 @@ from rayohx._mux.sink import MuxSink, TrackFile
 from rayohx._mux.webvtt import merge_segments
 from rayohx.cancellation import CancellationToken
 from rayohx.config import DownloadConfig
-from rayohx.enums import ContainerFormat
-from rayohx.errors import OutputExistsError, OutputFormatError
+from rayohx.enums import ContainerFormat, OutputFormat
+from rayohx.errors import FinalizationError, OutputExistsError, OutputFormatError
 from rayohx.events import EventBus
 from rayohx.models import AudioTrack, MediaPlaylist, SubtitleTrack, Variant
 
@@ -159,32 +159,53 @@ class Delivery:
         executable: Path,
         video_audio: tuple[str, ...] = (),
     ) -> DownloadSummary:
-        """Download the pieces to files, then have FFmpeg copy them into one MP4."""
+        """Download the pieces to files, then have FFmpeg copy them into one file.
+
+        For audio-only output the video is not downloaded at all when the stream has a separate
+        audio track: only that track is.
+        """
         saved: list[Path] = []
         part = plan.path.with_name(plan.path.name + ".part")
+        audio_only = plan.format is OutputFormat.AUDIO
+        kind = "mkv" if plan.format is OutputFormat.MKV else "mp4"
         try:
-            video_path = self._temporary(plan.path, "video", container)
-            saved.append(video_path)
-            summary = self._media_download(
-                media,
-                sink=FileSink(video_path, overwrite=True),
-                variant=variant,
-                container=container,
-                config=dataclasses.replace(self.config, resume=False),
-            ).run()
-            for number, audio in enumerate(audios):
-                path = self._temporary(plan.path, f"audio{number}", audio.container)
+            inputs: list[ffmpeg.FfmpegInput] = []
+            if audio_only and audios:
+                first = audios[0]
+                path = self._temporary(plan.path, "audio0", first.container)
                 saved.append(path)
-                self._save(audio, path)
+                summary = self._media_download(
+                    first.media,
+                    sink=FileSink(path, overwrite=True),
+                    container=first.container,
+                    config=dataclasses.replace(self.config, resume=False),
+                ).run()
+                inputs.append(ffmpeg.FfmpegInput(path, first.codecs, first.track.language))
+            else:
+                video_path = self._temporary(plan.path, "video", container)
+                saved.append(video_path)
+                summary = self._media_download(
+                    media,
+                    sink=FileSink(video_path, overwrite=True),
+                    variant=variant,
+                    container=container,
+                    config=dataclasses.replace(self.config, resume=False),
+                ).run()
+                inputs.append(ffmpeg.FfmpegInput(video_path, video_audio))
+                for number, audio in enumerate(audios):
+                    path = self._temporary(plan.path, f"audio{number}", audio.container)
+                    saved.append(path)
+                    self._save(audio, path)
+                    inputs.append(ffmpeg.FfmpegInput(path, audio.codecs, audio.track.language))
             self.on_finalizing()
             self._check_free(plan.path)
-            inputs = [ffmpeg.FfmpegInput(video_path, video_audio)]
-            inputs += [
-                ffmpeg.FfmpegInput(path, audio.codecs, audio.track.language)
-                for path, audio in zip(saved[1:], audios, strict=True)
-            ]
-            ffmpeg.remux(executable, inputs, part, cancel=self.cancel)
-            validate_fmp4_file(part)
+            ffmpeg.remux(
+                executable, inputs, part, cancel=self.cancel, kind=kind, audio_only=audio_only
+            )
+            if plan.format is OutputFormat.MP4:
+                validate_fmp4_file(part)
+            elif not part.is_file() or part.stat().st_size == 0:
+                raise FinalizationError("FFmpeg did not produce an output file.")
             self._place(part, plan.path)
             return dataclasses.replace(summary, output=plan.path)
         finally:

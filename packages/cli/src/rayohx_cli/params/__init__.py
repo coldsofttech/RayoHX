@@ -56,6 +56,7 @@ from rayohx_cli.params.output import (
     RemuxBackendOption,
     Validate,
 )
+from rayohx_cli.params.profile import ProfileOption
 from rayohx_cli.params.selection import (
     Audio,
     AudioName,
@@ -114,6 +115,7 @@ __all__ = [
     "Origin",
     "OutputPath",
     "Overwrite",
+    "ProfileOption",
     "ProgressMode",
     "Proxy",
     "ProxyPassword",

@@ -75,6 +75,7 @@ def _record(row: sqlite3.Row) -> JobRecord:
         recovered=bool(row["recovered"]),
         needs_credentials=bool(row["needs_credentials"]),
         control_request=row["control_request"],
+        profile_id=row["profile_id"],
         progress=json.loads(progress) if progress else None,
     )
 
@@ -198,13 +199,24 @@ class JobRepository:
         priority: QueuePriority,
         rank: float,
         secret_ref: str | None,
+        profile_id: str | None = None,
     ) -> JobRecord:
         now = self._clock()
         with self._db.transaction() as c:
             c.execute(
                 "INSERT INTO jobs (id, spec_json, state, priority, rank, created_at, updated_at, "
-                "url, secret_ref) VALUES (?, ?, 'queued', ?, ?, ?, ?, ?, ?)",
-                (job_id, spec.to_json(), int(priority), rank, now, now, display_url, secret_ref),
+                "url, secret_ref, profile_id) VALUES (?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    job_id,
+                    spec.to_json(),
+                    int(priority),
+                    rank,
+                    now,
+                    now,
+                    display_url,
+                    secret_ref,
+                    profile_id,
+                ),
             )
         record = self.get(job_id)
         assert record is not None  # noqa: S101

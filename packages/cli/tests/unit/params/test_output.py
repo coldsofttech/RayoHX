@@ -65,7 +65,7 @@ def test_the_format_defaults_to_the_one_given(runner: CliRunner) -> None:
 
 
 def test_an_unknown_format_is_a_usage_error(runner: CliRunner) -> None:
-    assert parse(runner, params.Format, OutputFormat.AUTO, ["--format", "mkv"]).exit_code == 2
+    assert parse(runner, params.Format, OutputFormat.AUTO, ["--format", "avi"]).exit_code == 2
 
 
 def test_the_format_can_come_from_the_environment(runner: CliRunner) -> None:

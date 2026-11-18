@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypeVar
 
+from rayohx.config.selection import ALL_TRACKS
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -66,6 +68,8 @@ def _choose(
     notes: list[str],
 ) -> list[Track]:
     chosen: list[Track] = []
+    if ALL_TRACKS in languages:
+        return list(tracks)
     for name in names:
         track = _by_name(tracks, name)
         if track is None:
