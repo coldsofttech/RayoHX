@@ -48,7 +48,7 @@ from rayohx.models import (
     MasterPlaylist,
     OutputInfo,
 )
-from rayohx.playlist import inspect_playlist
+from rayohx.playlist import inspect_playlist, inspect_text
 from rayohx.stream import select_stream
 
 if TYPE_CHECKING:
@@ -80,6 +80,7 @@ class Downloader:
         cancel: CancellationToken | None = None,
         download_id: str | None = None,
         transport: httpx.BaseTransport | None = None,
+        playlist_text: str | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._url = validate_url(url)
@@ -89,6 +90,7 @@ class Downloader:
         self._token = cancel if cancel is not None else CancellationToken()
         self._id = download_id or uuid.uuid4().hex[:12]
         self._transport = transport
+        self._playlist_text = playlist_text
         self._variables: Mapping[str, str] | None = None  # the master playlist's variables
         self._clock = clock
         self._pause_lock = threading.RLock()
@@ -196,7 +198,11 @@ class Downloader:
         with HttpClient(
             config.network, origin_url=self._url, cancel=self._token, transport=self._transport
         ) as client:
-            playlist = inspect_playlist(self._url, client)
+            playlist = (
+                inspect_playlist(self._url, client)
+                if self._playlist_text is None
+                else inspect_text(self._playlist_text, self._url)
+            )
             self._emit(EventType.PLAYLIST_LOADED, data={"kind": kind(playlist)})
 
             stream: StreamSelection | None = None

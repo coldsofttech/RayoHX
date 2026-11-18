@@ -73,3 +73,18 @@ def test_events_from_every_download_reach_the_listener(origin: Origin, tmp_path:
     seen = []
     download_many([BASE + "index.m3u8"], tmp_path, config=CONFIG, on_event=seen.append)
     assert seen
+
+
+def test_a_playlist_you_already_have_can_be_downloaded(tmp_path: Path) -> None:
+    site = Origin(3, content="ts")
+    text = site.playlist_text().replace("\nseg", f"\n{BASE}seg")
+    downloader = Downloader(
+        BASE + "local.m3u8",
+        output=tmp_path / "out.ts",
+        config=CONFIG,
+        transport=httpx.MockTransport(site),
+        playlist_text=text,
+    )
+    assert downloader.run().success
+    assert (tmp_path / "out.ts").read_bytes() == site.expected()
+    assert "local.m3u8" not in site.log  # the playlist itself was never requested
