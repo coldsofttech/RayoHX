@@ -88,6 +88,8 @@ for the order.
 | `DOWNLOAD_COMPLETED` | The download succeeded | `message` is the output path, `progress` |
 | `DOWNLOAD_FAILED` | The download failed | `message`, `progress`, `data["hint"]` |
 | `DOWNLOAD_CANCELLED` | The download was cancelled | `message`, `progress`, `data["hint"]` |
+| `DOWNLOAD_PAUSED` | `pause()` took effect: no new segments start | `progress` |
+| `DOWNLOAD_RESUMED` | `resume()` took effect | `progress` |
 
 The `PREPARING` state has no event of its own; it is visible through `Downloader.state` and the
 `state` field of the next events.

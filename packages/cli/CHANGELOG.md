@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Download several streams with one command: `rayohx download URL URL -o folder/` or `--input-file`, with `--stop-on-error`.
+- `--codec`, `--video-range` and `--max-frame-rate` to prefer a kind of stream.
+- SOCKS5 proxies, `--env-proxy` to use `HTTP_PROXY` and friends, `--client-cert`, `--client-key` and `--client-key-password` for mutual TLS, and `--allow-file-keys`.
 - The `rayohx` command: `rayohx info URL` shows a stream's qualities and tracks and what a download would pick, and `rayohx download URL` saves it as one file.
 - Choose what to download: a quality (`--quality`, `--max-resolution`, `--max-bitrate`), a stream exactly (`--variant N` from `rayohx info`, counting from 1, `--resolution 1280x720`, `--bandwidth`, `--variant-name`), and audio and subtitle tracks (`--audio`, `--subtitles`, `--video-only`).
 - Choose how to save: `--format` (`auto`, `ts`, `mp4` or one file per segment), `--overwrite` and `--validate`. FFmpeg is optional (`--ffmpeg`, `--remux-backend`).

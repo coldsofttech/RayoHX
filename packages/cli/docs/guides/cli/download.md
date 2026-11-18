@@ -6,7 +6,7 @@ downloads the segments in parallel, checks every one, and puts the finished file
 [Back to the command line guide](../cli.md)
 
 ```bash
-rayohx download URL [OPTIONS]
+rayohx download [URL]... [OPTIONS]
 ```
 
 ```bash
@@ -20,6 +20,22 @@ It does the same work as [`rayohx.download`](../python/downloading.md) and
 [`DownloadConfig`](../python/settings.md).
 
 Put the web address in quotes if it contains `&` or `?`, so your shell does not cut it short.
+
+## Several streams
+
+Give several addresses, or a list with `--input-file` / `-i` (one address per line, `#` comments and
+blank lines skipped, `-` for standard input). `--output` then names a **folder**; the files are
+named after the addresses (repeats get `-2`, `-3`).
+
+```bash
+rayohx download "$URL1" "$URL2" -o videos/
+rayohx download -i streams.txt -o videos/ --stop-on-error
+```
+
+They are downloaded one after another with the same options. A failure does not stop the rest
+unless you add `--stop-on-error`. Each saved path is printed on stdout; with `--json` stdout holds
+one JSON array with a document per address. The exit code is `1` if any failed and `130` if you
+cancelled (Ctrl+C stops the batch).
 
 ## What it prints
 
@@ -84,7 +100,7 @@ Options are grouped the same way in `rayohx download --help`.
 
 | Option | Short | Description |
 |---|---|---|
-| `--output` | `-o` | Where to save. A name without an extension gets the right one. By default it is named after the address, in the current folder. |
+| `--output` | `-o` | Where to save (a folder when there are several addresses). A name without an extension gets the right one. By default it is named after the address, in the current folder. |
 | `--format` | | `auto` (default), `ts`, `mp4`, or `segments` (one file per segment, in a folder). |
 | `--overwrite` / `--no-overwrite` | | Replace an existing output file. Off by default. |
 | `--validate` / `--no-validate` | | Check the finished file before putting it in place. On by default. |
@@ -102,11 +118,16 @@ Options are grouped the same way in `rayohx download --help`.
 | `--resolution` | | Only streams with exactly this size, such as `1280x720`. |
 | `--bandwidth` | | Only streams with exactly this bit rate, in bits per second (for example `2800000`). |
 | `--variant-name` | | Only streams with exactly this name (ignoring case). |
+| `--codec` | | Prefer this video codec: `h264`, `hevc`, `vp9` or `av1`. Others are used if it is missing. |
+| `--video-range` | | Prefer this dynamic range: `sdr`, `pq`, `hlg` or `hdr` (`pq` or `hlg`). |
+| `--max-frame-rate` | | Never pick a stream above this many frames per second, for example `30`. |
 | `--audio` | `-a` | Audio language to download (repeat for several), for example `en`. |
 | `--audio-name` | | Download the audio track with this exact name (repeatable). |
 | `--subtitles` | `-s` | Subtitle language to save beside the video (repeat for several). |
 | `--subtitle-name` | | Save the subtitle track with this exact name (repeatable). |
 | `--video-only` | | Download only the video, leaving out separate audio and subtitle tracks. |
+| `--input-file` | `-i` | Also download the addresses listed in this file (see [Several streams](#several-streams)). |
+| `--stop-on-error` | | With several addresses, stop at the first failure. |
 
 If a wish cannot be met (no audio in the language you asked for), the closest track is used and a
 note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
@@ -120,8 +141,12 @@ note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
 | `--user-agent` | | The `User-Agent` to send. |
 | `--referer` | | The `Referer` to send. |
 | `--origin` | | The `Origin` to send. |
-| `--proxy` | | An `http://` or `https://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable, since command lines can be seen by other users. |
+| `--proxy` | | An `http://`, `https://`, `socks5://` or `socks5h://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable, since command lines can be seen by other users. |
 | `--insecure` | | Do not check TLS certificates. Only for servers you trust. |
+| `--env-proxy` / `--no-env-proxy` | | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. Off by default. |
+| `--client-cert` | | A client certificate (PEM) for servers that require mutual TLS. |
+| `--client-key` | | The private key for `--client-cert`, if it is a separate file. |
+| `--client-key-password` | | The password of an encrypted client key. Prefer the environment variable `RAYOHX_CLIENT_KEY_PASSWORD`. |
 | `--ca-bundle` | | A file of trusted certificate authorities (PEM), instead of the system's. |
 | `--connect-timeout` | | Seconds to wait to connect. |
 | `--read-timeout` | | Seconds to wait for data. |
@@ -143,6 +168,7 @@ and a speed limit.
 | `--workspace` | | A folder for working files (default: beside the output). |
 | `--buffer-size` | | Memory for the segment buffer, for example `64M`. |
 | `--max-temp-size` | | Most working disk space to use, for example `2G`. |
+| `--allow-file-keys` / `--no-allow-file-keys` | | Let a playlist's `file:` key addresses read a key from this machine. Off by default; only for streams you trust. |
 | `--space-check` / `--no-space-check` | | Check that the disk has room (on by default). Turn it off if the free space is reported wrongly, for example on some network drives. |
 
 ### Display

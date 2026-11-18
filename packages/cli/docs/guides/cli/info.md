@@ -72,6 +72,9 @@ These only decide which stream is marked with `*`; nothing is downloaded.
 | `--resolution` | | Only streams with exactly this size, such as `1280x720`. |
 | `--bandwidth` | | Only streams with exactly this bit rate, in bits per second (for example `2800000`). |
 | `--variant-name` | | Only streams with exactly this name (ignoring case). |
+| `--codec` | | Prefer this video codec: `h264`, `hevc`, `vp9` or `av1`. Others are used if it is missing. |
+| `--video-range` | | Prefer this dynamic range: `sdr`, `pq`, `hlg` or `hdr` (`pq` or `hlg`). |
+| `--max-frame-rate` | | Never pick a stream above this many frames per second, for example `30`. |
 | `--audio` | `-a` | Audio language to pick (repeat for several), for example `en`. |
 | `--audio-name` | | Pick the audio track with this exact name (repeatable). |
 | `--subtitles` | `-s` | Subtitle language to pick (repeat for several). |
@@ -87,8 +90,12 @@ These only decide which stream is marked with `*`; nothing is downloaded.
 | `--user-agent` | | The `User-Agent` to send. |
 | `--referer` | | The `Referer` to send. |
 | `--origin` | | The `Origin` to send. |
-| `--proxy` | | An `http://` or `https://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable. |
+| `--proxy` | | An `http://`, `https://`, `socks5://` or `socks5h://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable. |
 | `--insecure` | | Do not check TLS certificates. Only for servers you trust. |
+| `--env-proxy` / `--no-env-proxy` | | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. Off by default. |
+| `--client-cert` | | A client certificate (PEM) for servers that require mutual TLS. |
+| `--client-key` | | The private key for `--client-cert`, if it is a separate file. |
+| `--client-key-password` | | The password of an encrypted client key. Prefer the environment variable `RAYOHX_CLIENT_KEY_PASSWORD`. |
 | `--ca-bundle` | | A file of trusted certificate authorities (PEM), instead of the system's. |
 | `--connect-timeout` | | Seconds to wait to connect. |
 | `--read-timeout` | | Seconds to wait for data. |

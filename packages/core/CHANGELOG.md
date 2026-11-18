@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- SOCKS5 proxies (`socks5://`, `socks5h://`), proxies from the environment with `NetworkConfig(proxy_from_env=True)`, and client certificates (`client_cert`, `client_key`, `client_key_password`) for servers that require mutual TLS.
+- Playlist variables (`EXT-X-DEFINE` with `NAME`/`VALUE`, `QUERYPARAM` and `IMPORT`) are read instead of refused.
+- Prefer a `codec`, a `video_range` (`sdr`, `pq`, `hlg`, `hdr`) and a `max_frame_rate` when choosing a stream.
+- AES-128 keys from `data:` addresses, from `file:` addresses with `allow_file_keys`, or from your own `key_fetcher`.
+- `download_many` downloads several streams in one call, and `OutputConfig(directory=...)` sets the folder for unnamed outputs.
+- `Downloader.pause()` and `resume()`, with `DOWNLOAD_PAUSED` and `DOWNLOAD_RESUMED` events.
 - Choose a stream exactly with `variant` (its number in the listing, from 1), `resolution` (such as `1280x720`), `bandwidth` and `variant_name` in `SelectionConfig`. A choice that matches nothing lists the available streams.
 - `StorageConfig(check_space=False)` turns off the disk-space check, for drives that report free space wrongly.
 - A guide for moving from `pym3u8downloader`.

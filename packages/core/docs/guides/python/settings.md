@@ -10,7 +10,7 @@ early and a settings object that exists is always valid.
 |---|---|
 | [`DownloadConfig`](#downloadconfig) | The top-level object; groups the others |
 | [`NetworkConfig`](#networkconfig) | How requests are made |
-| [`ProxyConfig`](#proxyconfig) | An HTTP or HTTPS proxy |
+| [`ProxyConfig`](#proxyconfig) | An HTTP, HTTPS or SOCKS5 proxy |
 | [`SelectionConfig`](#selectionconfig) | Which tracks to take |
 | [`OutputConfig`](#outputconfig) | The finished file |
 | [`StorageConfig`](#storageconfig) | Where working data lives and how much may pile up |
@@ -64,6 +64,8 @@ Everything that shapes a download, grouped by area.
 |---|---|---|---|
 | `concurrency` | `int` | `4` | Segments fetched at the same time, from 1 to 64 |
 | `resume` | `bool` | `True` | Continue an interrupted download |
+| `key_fetcher` | `Callable[[str], bytes] \| None` | `None` | Your own way to get an AES-128 key: called with the key's address (any scheme) and returns the 16 bytes. Replaces the built-in ways. Protected (DRM) streams are still refused |
+| `allow_file_keys` | `bool` | `False` | Let `file:` key addresses read a key from this machine. Off by default, because a stream from the internet could otherwise make RayoHX read local files. `data:` addresses are always allowed |
 | `network` | `NetworkConfig` | `NetworkConfig()` | Requests: headers, timeouts, retries, TLS, proxy |
 | `storage` | `StorageConfig` | `StorageConfig()` | Where and how data is kept while downloading |
 | `output` | `OutputConfig` | `OutputConfig()` | The finished file |
@@ -103,6 +105,10 @@ How requests are made.
 | `max_redirects` | `int` | `10` | Redirects followed per request |
 | `verify_tls` | `bool \| Path` | `True` | `True` verifies with the default trust store, `False` turns verification off, a `Path` verifies against that CA bundle |
 | `proxy` | `ProxyConfig \| None` | `None` | Send requests through this proxy |
+| `proxy_from_env` | `bool` | `False` | When `proxy` is not set, use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` (any letter case). An explicit `proxy` always wins. `NO_PROXY` entries are host names or domain suffixes; ranges and ports are ignored |
+| `client_cert` | `Path \| None` | `None` | A client certificate (PEM) for servers that require mutual TLS |
+| `client_key` | `Path \| None` | `None` | The private key, if it is not in the `client_cert` file |
+| `client_key_password` | `str \| None` | `None` | The password of an encrypted key. Hidden from `repr` and `as_dict()` |
 | `rate_limit` | `int \| None` | `None` | Download speed cap in bytes per second, shared by all workers |
 | `credential_hosts` | `tuple[str, ...]` | `()` | Extra hosts, besides the one the download starts from, allowed to receive secret headers and cookies |
 
@@ -140,7 +146,7 @@ network = NetworkConfig(
 )
 ```
 
-Environment variables such as `HTTPS_PROXY` are not read. Settings come only from the
+Environment variables such as `HTTPS_PROXY` are read only when you set `proxy_from_env=True`. Settings otherwise come only from the
 configuration, so behavior never depends on hidden state.
 
 ```python
@@ -150,11 +156,11 @@ print(network.request_headers())  # {'user-agent': 'Mine', 'Origin': 'o'}
 
 ## ProxyConfig
 
-An HTTP or HTTPS proxy. Credentials go in `username` and `password`, or in the URL.
+An HTTP, HTTPS or SOCKS5 proxy. Credentials go in `username` and `password`, or in the URL.
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `url` | `str` | required | The proxy address, `http://host:port` or `https://host:port` |
+| `url` | `str` | required | The proxy address, `http://`, `https://`, `socks5://` or `socks5h://` (the last lets the proxy look up host names) |
 | `username` | `str \| None` | `None` | Sent as proxy authentication |
 | `password` | `str \| None` | `None` | Sent as proxy authentication |
 
@@ -163,7 +169,7 @@ An HTTP or HTTPS proxy. Credentials go in `username` and `password`, or in the U
 | `redacted_url` (property) | The proxy address with any credentials hidden |
 | `as_dict()` | A serializable view; username and password are replaced with `***` |
 
-Set both `username` and `password`, or neither. SOCKS proxies are not supported yet. `repr` shows
+Set both `username` and `password`, or neither. SOCKS4 proxies are not supported. `repr` shows
 only `redacted_url`.
 
 ```python
@@ -186,10 +192,13 @@ Which tracks to download. The rules are explained in [Selecting tracks](selectin
 | `subtitle_languages` | `tuple[str, ...]` | `()` | Subtitle language codes |
 | `subtitle_names` | `tuple[str, ...]` | `()` | Subtitle track names |
 | `video_only` | `bool` | `False` | Download only the video stream, leaving out separate audio and subtitle tracks |
-| `variant` | `int \| None` | `None` | Stream to download by its number in the listing (the first is 1); cannot be combined with `resolution`, `bandwidth`, `variant_name`, `max_resolution` or `max_bitrate` |
+| `variant` | `int \| None` | `None` | Stream to download by its number in the listing (the first is 1); cannot be combined with `resolution`, `bandwidth`, `variant_name`, `max_resolution`, `max_bitrate`, `codec`, `video_range` or `max_frame_rate` |
 | `resolution` | `str \| None` | `None` | Only streams with exactly this size, such as `1280x720` |
 | `bandwidth` | `int \| None` | `None` | Only streams with exactly this bandwidth or average bandwidth, in bits per second |
 | `variant_name` | `str \| None` | `None` | Only streams with exactly this name, ignoring case |
+| `codec` | `str \| None` | `None` | Prefer a video codec: `h264`, `hevc`, `vp9` or `av1`. If no stream uses it, the others stay in the running and a note says so |
+| `video_range` | `str \| None` | `None` | Prefer a dynamic range: `sdr`, `pq`, `hlg` or `hdr` (`pq` or `hlg`). A stream that does not say counts as `sdr`. Falls back like `codec` |
+| `max_frame_rate` | `float \| None` | `None` | Never pick a stream above this many frames per second. A stream that does not state one is never ruled out |
 
 Method: `as_dict()` (it includes `video_only` and the exact-choice fields). Language codes must look like `en`, `en-US` or `fil`; names must not be empty.
 
@@ -204,6 +213,7 @@ What file is produced and how it is checked.
 | `overwrite` | `bool` | `False` | Replace an existing file. Off by default so a download never destroys data silently |
 | `validate` | `bool` | `True` | Check the finished file |
 | `remux_backend` | `RemuxBackend` | `RemuxBackend.AUTO` | `AUTO`, `NATIVE` or `FFMPEG` |
+| `directory` | `Path \| None` | `None` | The folder for an output that is not named with `path` (the current folder by default) |
 | `ffmpeg_path` | `Path \| None` | `None` | Path of an FFmpeg program to use when the backend is `FFMPEG`, or when `AUTO` needs it |
 
 Method: `as_dict()`.

@@ -39,8 +39,9 @@ video, not twice that.
 
 - **MPEG-TS** streams are saved as `.ts` and **fragmented MP4** streams as `.mp4`. An MPEG-TS stream
   can also be saved as `.mp4`: it is re-wrapped without re-encoding.
-- **Encrypted streams** (plain AES-128) work. Protected (DRM) streams, SAMPLE-AES and live streams
-  are refused with an explanation.
+- **Encrypted streams** (plain AES-128) work, with keys from `http(s):` or `data:` addresses, a
+  `file:` address if you allow it, or your own `key_fetcher`. Protected (DRM) streams, SAMPLE-AES
+  and live streams are refused with an explanation.
 - **A name that does not match what is inside** (for example `.mp4` for an MPEG-TS stream) is
   refused, never quietly mislabeled.
 - **Streams with a separate audio track** are joined into one `.mp4`, using the audio you chose
@@ -133,6 +134,28 @@ else:
     print("cancelled" if result.cancelled else f"saved {result.output.path}")
 ```
 
+## download_many
+
+```python
+rayohx.download_many(
+    urls: Sequence[str],
+    directory: Path | str | None = None,
+    *,
+    config: DownloadConfig | None = None,
+    stop_on_error: bool = False,
+    on_event: Callable[[DownloadEvent], None] | None = None,
+    cancel: CancellationToken | None = None,
+) -> list[BatchItem]
+```
+
+Downloads each address in turn into `directory` (default: the current folder), with the same
+`config`. Files are named after the addresses; two that would get the same name get `-2`, `-3` and
+so on (`rayohx.batch_outputs` shows the names in advance). Every address is checked first, so a typo
+in the last one wastes nothing. A failed download does not stop the others unless `stop_on_error`
+is set, and nothing is raised for it: look at each `BatchItem`, which has `url`, `output`,
+`result`, `exception`, `success` and `skipped` (never started because an earlier download failed or
+was cancelled). Setting `cancel` stops the batch and skips what is left.
+
 ## Downloader
 
 ```python
@@ -151,6 +174,12 @@ rayohx.Downloader(
 
 Downloads one stream. Create it, optionally subscribe to `events`, then call `run`. A `Downloader`
 runs once.
+
+`pause()` stops new segments from starting (those already running finish), `resume()` lets the
+download go on, and `is_paused` tells which. The state moves `DOWNLOADING` → `PAUSED` →
+`DOWNLOADING` with `DOWNLOAD_PAUSED` and `DOWNLOAD_RESUMED` events. Pausing before `run()` starts
+the download paused. Cancelling a paused download stops it at once. The same controls are on
+`CancellationToken` (`pause`, `resume`, `is_paused`).
 
 | Parameter | Meaning |
 |---|---|

@@ -152,7 +152,7 @@ Every runtime dependency must be permissively licensed (MIT, BSD, Apache-2.0 and
 - A playlist is recognised by its `#EXTM3U` header, never by its file name or address.
 - Tags the parser does not know are skipped, so newer playlists keep working.
 - Errors name the line. A web page or other non-playlist gets a hint to check the address, headers and cookies.
-- Playlist variables (`EXT-X-DEFINE`) and I-frame-only playlists are refused with `UnsupportedPlaylistError`, because ignoring them would produce wrong addresses or wrong video.
+- Playlist variables (`EXT-X-DEFINE`: `NAME`/`VALUE`, `QUERYPARAM`, `IMPORT`) are replaced before the playlist is read, and a master playlist keeps its variables so its media playlists can import them. I-frame-only playlists are refused with `UnsupportedPlaylistError`, because ignoring them would produce wrong video.
 - Segments and playlists must be `http` or `https`. Key addresses may use another scheme so that a SAMPLE-AES or DRM playlist can still be inspected. The key is marked unsupported and the download refuses it later.
 - A key without an `IV` keeps `iv=None`. The decrypting phase derives it from the segment's `sequence_number`, as the HLS specification says.
 - `EXT-X-BYTERANGE` ranges without an offset are resolved against the previous range of the same file.
@@ -188,7 +188,8 @@ Picture size is the shorter side, so a 720x1280 portrait stream counts as 720p. 
 | Speed limit | `rate_limit` is shared by all workers. |
 | Cancellation | A `CancellationToken` stops waiting, retrying and reading between chunks. |
 | TLS | Verified by default. `verify_tls` can be off or a CA file. |
-| Proxy | HTTP and HTTPS proxies, with credentials sent as proxy authentication. Environment variables such as `HTTPS_PROXY` are not read; settings come only from the configuration. |
+| Proxy | HTTP, HTTPS and SOCKS5 proxies, with credentials sent as proxy authentication. `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` are read only with `proxy_from_env`; an explicit `proxy` wins. |
+| Client certificate | `client_cert` (and `client_key`) are loaded into the TLS context for servers that require mutual TLS. |
 
 **Credentials stay with their host.** Secret headers (`Authorization`, `Cookie`, API keys, anything with token or secret in its name) and the configured cookies are sent to the host the download started from and to `credential_hosts`. A redirect or a segment on another host gets `Referer`, `Origin`, `User-Agent` and other plain headers, but none of the secrets. Cookies the server sets are not stored.
 
