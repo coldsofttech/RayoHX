@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -90,6 +91,7 @@ class Downloader:
         self._transport = transport
         self._variables: Mapping[str, str] | None = None  # the master playlist's variables
         self._clock = clock
+        self._pause_lock = threading.RLock()
         self._machine = DownloadStateMachine()
         self._progress = DownloadProgress()
         self._ran = False
@@ -115,6 +117,38 @@ class Downloader:
     def cancel(self) -> None:
         """Ask the download to stop. Safe to call from any thread, and more than once."""
         self._token.cancel()
+
+    def pause(self) -> None:
+        """Stop starting new segments until ``resume`` is called.
+
+        Segments already being fetched finish first, so the pause takes a moment to show.
+        Safe to call from any thread, before or during the download. It is a request: a
+        download that is already finalizing carries on to the end.
+        """
+        self._token.pause()
+        self._sync_pause_state()
+
+    def resume(self) -> None:
+        """Go on after ``pause``. Does nothing if the download is not paused."""
+        self._token.resume()
+        self._sync_pause_state()
+
+    @property
+    def is_paused(self) -> bool:
+        """Whether the download is waiting for ``resume``."""
+        return self._machine.state is DownloadState.PAUSED
+
+    def _sync_pause_state(self) -> None:
+        """Make the state and events agree with the token, when the download is downloading."""
+        with self._pause_lock:
+            wanted = self._token.is_paused
+            state = self._machine.state
+            if wanted and state is DownloadState.DOWNLOADING:
+                self._machine.move_to(DownloadState.PAUSED)
+                self._emit(EventType.DOWNLOAD_PAUSED, progress=self._progress)
+            elif not wanted and state is DownloadState.PAUSED:
+                self._machine.move_to(DownloadState.DOWNLOADING)
+                self._emit(EventType.DOWNLOAD_RESUMED, progress=self._progress)
 
     # --- running ---------------------------------------------------------------------------
 
@@ -207,6 +241,7 @@ class Downloader:
             delivery = Delivery(client, config, self._bus, self._id, self._token, self._finalizing)
             variant = stream.variant if stream else None
             self._move(DownloadState.DOWNLOADING)
+            self._sync_pause_state()  # a pause requested before the download began
             shift: float | None = None
             if ffmpeg_path is not None:
                 video_audio = audio_codecs(client, media, container)
@@ -309,7 +344,10 @@ class Downloader:
         return None
 
     def _finalizing(self) -> None:
-        self._move(DownloadState.FINALIZING)
+        with self._pause_lock:
+            if self._machine.state is DownloadState.PAUSED:
+                self._machine.move_to(DownloadState.DOWNLOADING)
+            self._move(DownloadState.FINALIZING)
         self._emit(EventType.FINALIZATION_STARTED, progress=self._progress)
 
     # --- bookkeeping -----------------------------------------------------------------------

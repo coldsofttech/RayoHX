@@ -103,6 +103,14 @@ class SegmentPipeline:
                 self.head = self._drain(self.head, total)
                 if self.head >= total:
                     break
+                if self._cancel is not None and self._cancel.is_paused:
+                    if pending:  # let the running segments finish, start none
+                        done, _ = wait(pending, timeout=POLL_SECONDS, return_when=FIRST_COMPLETED)
+                        for future in done:
+                            self._finish(future, pending.pop(future))
+                    else:
+                        self._cancel.wait_resumed(POLL_SECONDS)
+                    continue
                 cursor = self._dispatch(pool, pending, cursor, total, present)
                 if not pending and not self._store.has(self.head):
                     raise DownloadError("The download stalled: no segment is in progress.")
