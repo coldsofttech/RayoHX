@@ -9,8 +9,8 @@ from pathlib import Path
 
 import httpx
 import pytest
-
 import rayohx
+
 from tests.frozen import locate, skip_if_blocked
 
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="the UI is built on Windows only")

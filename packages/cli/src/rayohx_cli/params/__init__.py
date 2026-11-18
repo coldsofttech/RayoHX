@@ -9,6 +9,7 @@ from rayohx_cli.params.display import (
     ProgressMode,
 )
 from rayohx_cli.params.engine import (
+    AllowFileKeys,
     BufferSize,
     Concurrency,
     MaxTempSize,
@@ -65,17 +66,16 @@ from rayohx_cli.params.selection import (
 )
 
 __all__ = [
+    "AllowFileKeys",
     "Audio",
     "AudioName",
     "Bandwidth",
-    "Codec",
-    "MaxFrameRate",
-    "VideoRange",
     "BufferSize",
     "CaBundle",
     "ClientCert",
     "ClientKey",
     "ClientKeyPassword",
+    "Codec",
     "Concurrency",
     "ConnectTimeout",
     "Cookie",
@@ -87,6 +87,7 @@ __all__ = [
     "Insecure",
     "JsonOutput",
     "MaxBitrate",
+    "MaxFrameRate",
     "MaxResolution",
     "MaxTempSize",
     "Origin",
@@ -113,5 +114,6 @@ __all__ = [
     "Variant",
     "VariantName",
     "VideoOnly",
+    "VideoRange",
     "Workspace",
 ]

@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter
-
 from rayohx import __version__
 from rayohx_api.config import AuthMode, get_settings
 from rayohx_api.routers import v1

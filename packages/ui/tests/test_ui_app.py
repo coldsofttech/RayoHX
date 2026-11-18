@@ -8,9 +8,9 @@ import cornea
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-
 from rayohx import __version__
 from rayohx_api.auth import Principal, authenticate
+
 from rayohx_ui import app as ui_app
 
 

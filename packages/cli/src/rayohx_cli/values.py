@@ -136,6 +136,7 @@ def build_config(
     buffer_size: str | None = None,
     max_temp_size: str | None = None,
     space_check: bool = True,
+    allow_file_keys: bool = False,
     format: OutputFormat = OutputFormat.AUTO,
     overwrite: bool = False,
     validate: bool = True,
@@ -212,7 +213,7 @@ def build_config(
     if max_bitrate:
         selection_options["max_bitrate"] = parse_size(max_bitrate, name="bitrate", decimal=True)
 
-    config_options: dict[str, object] = {"resume": resume}
+    config_options: dict[str, object] = {"resume": resume, "allow_file_keys": allow_file_keys}
     if concurrency is not None:
         config_options["concurrency"] = concurrency
     return DownloadConfig(

@@ -82,6 +82,7 @@ def apply_variables(
 
     substituted: list[Line] = []
     for number, content in rest:
+
         def lookup(match: re.Match[str], number: int = number) -> str:
             name = match[1]
             if name not in variables:

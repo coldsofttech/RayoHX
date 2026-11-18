@@ -1,4 +1,5 @@
 import threading
+from pathlib import Path
 
 import httpx
 import pytest
@@ -84,3 +85,75 @@ def test_a_missing_key_address_is_an_error() -> None:
     object.__setattr__(info, "uri", None)
     with pytest.raises(DecryptionError, match="no address"):
         provider(KeyServer()).key_for(info)
+
+
+# --- other kinds of address and a custom fetcher -------------------------------------------
+
+
+def plain_client() -> HttpClient:
+    transport = httpx.MockTransport(KeyServer())
+    return HttpClient(NetworkConfig(), origin_url=BASE, transport=transport)
+
+
+def enc(uri: str) -> EncryptionInfo:
+    return EncryptionInfo(method=EncryptionMethod.AES_128, uri=uri)
+
+
+def test_data_addresses_hold_the_key() -> None:
+    import base64
+
+    keys = provider(KeyServer())
+    encoded = base64.b64encode(KEY).decode()
+    assert keys.key_for(enc(f"data:text/plain;base64,{encoded}")) == KEY
+    with pytest.raises(DecryptionError, match="not valid"):
+        keys.key_for(enc("data:;base64,@@@"))
+
+
+def test_file_keys_need_permission(tmp_path: Path) -> None:
+    path = tmp_path / "k.key"
+    path.write_bytes(KEY)
+    client = HttpClient(
+        NetworkConfig(), origin_url=BASE, transport=httpx.MockTransport(KeyServer())
+    )
+    refused = KeyProvider(client)
+    with pytest.raises(DecryptionError) as info:
+        refused.key_for(enc(path.as_uri()))
+    assert "allow_file_keys" in (info.value.hint or "")
+    allowed = KeyProvider(client, allow_file_keys=True)
+    assert allowed.key_for(enc(path.as_uri())) == KEY
+    with pytest.raises(DecryptionError, match="cannot be read"):
+        allowed.key_for(enc((tmp_path / "missing").as_uri()))
+
+
+def test_other_schemes_need_a_fetcher() -> None:
+    with pytest.raises(DecryptionError) as info:
+        provider(KeyServer()).key_for(enc("skd://something"))
+    assert "key_fetcher" in (info.value.hint or "")
+    client = HttpClient(
+        NetworkConfig(), origin_url=BASE, transport=httpx.MockTransport(KeyServer())
+    )
+    seen: list[str] = []
+
+    def fetch(uri: str) -> bytes:
+        seen.append(uri)
+        return KEY
+
+    keys = KeyProvider(client, fetcher=fetch)
+    assert keys.key_for(enc("vault://abc")) == KEY
+    assert keys.key_for(enc("vault://abc")) == KEY  # cached
+    assert seen == ["vault://abc"]
+
+
+def test_a_failing_fetcher_is_explained_and_a_wrong_size_refused() -> None:
+    client = HttpClient(
+        NetworkConfig(), origin_url=BASE, transport=httpx.MockTransport(KeyServer())
+    )
+
+    def boom(_uri: str) -> bytes:
+        raise RuntimeError("vault is sealed")
+
+    with pytest.raises(DecryptionError, match="key_fetcher") as info:
+        KeyProvider(client, fetcher=boom).key_for(enc("x://y"))
+    assert "vault is sealed" in (info.value.hint or "")
+    with pytest.raises(InvalidResponseError, match="16 bytes"):
+        KeyProvider(client, fetcher=lambda _u: b"short").key_for(enc("x://y"))

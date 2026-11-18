@@ -29,9 +29,7 @@ _MEDIA_TAGS = frozenset({"EXTINF", "EXT-X-TARGETDURATION"})
 _MASTER_TAGS = frozenset({"EXT-X-STREAM-INF", "EXT-X-MEDIA"})
 
 
-def parse_playlist(
-    text: str, uri: str, *, variables: Mapping[str, str] | None = None
-) -> Playlist:
+def parse_playlist(text: str, uri: str, *, variables: Mapping[str, str] | None = None) -> Playlist:
     """Parse a master or media playlist fetched from ``uri``.
 
     Every address in the result is absolute, and playlist variables (``EXT-X-DEFINE``) are

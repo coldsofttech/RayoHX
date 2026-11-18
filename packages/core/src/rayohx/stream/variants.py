@@ -105,7 +105,8 @@ def _preferred(
             entries = matching
         else:
             notes.append(
-                f"No stream has {wanted.upper()} video, so the other dynamic ranges were considered."
+                f"No stream has {wanted.upper()} video, so the other dynamic ranges were "
+                "considered."
             )
     return entries
 

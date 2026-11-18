@@ -12,13 +12,13 @@ from rayohx.errors import ConfigurationError
 if TYPE_CHECKING:
     from typing import Any
 
-#: Proxy schemes accepted. ``socks5h`` makes the proxy look up host names; ``socks5`` does it here.
+#: Proxy schemes accepted. ``socks5h`` makes the proxy look up host names; ``socks5`` does not.
 SUPPORTED_PROXY_SCHEMES = frozenset({"http", "https", "socks5", "socks5h"})
 
 
 @dataclass(frozen=True, slots=True, kw_only=True, repr=False)
 class ProxyConfig:
-    """An HTTP, HTTPS or SOCKS5 proxy. Credentials go in ``username`` and ``password``, or in the URL."""
+    """An HTTP, HTTPS or SOCKS5 proxy. Credentials go in ``username``/``password`` or the URL."""
 
     url: str
     username: str | None = None

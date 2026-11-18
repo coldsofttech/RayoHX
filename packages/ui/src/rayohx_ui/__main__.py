@@ -9,6 +9,7 @@ import sys
 from collections.abc import Sequence
 
 from rayohx import __version__
+
 from rayohx_ui.app import UiUnavailableError, run_ui
 
 
