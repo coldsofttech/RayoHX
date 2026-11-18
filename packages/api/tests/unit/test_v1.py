@@ -18,6 +18,7 @@ high.m3u8
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     monkeypatch.setenv("RAYOHX_API_DOWNLOAD_DIR", str(tmp_path))
+    monkeypatch.setenv("RAYOHX_API_DEFAULTS_FILE", str(tmp_path / "defaults.json"))
     get_settings.cache_clear()
     reset_state()
     return TestClient(create_app())
@@ -52,11 +53,68 @@ def test_unknown_download_is_404(client: TestClient) -> None:
     assert client.get("/api/v1/downloads").json() == {"items": []}
 
 
-def test_settings_roundtrip(client: TestClient) -> None:
-    assert client.get("/api/v1/settings").json()["concurrency"] == 4
-    updated = client.patch("/api/v1/settings", json={"concurrency": 8, "quality": "720p"}).json()
-    assert (updated["concurrency"], updated["quality"]) == (8, "720p")
-    assert client.patch("/api/v1/settings", json={"concurrency": 999}).status_code == 422
+def test_defaults_are_saved_merged_and_secret_free(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("rayohx_api.jobs.Downloader", FakeDownloader)
+    saved = client.put(
+        "/api/v1/settings/defaults",
+        json={
+            "selection": {"quality": "720p"},
+            "network": {
+                "retries": 7,
+                "proxy": {"url": "http://p:1", "username": "u", "password": "s3cret"},
+            },
+            "engine": {"concurrency": 9},
+        },
+    )
+    assert saved.status_code == 200
+    body = saved.json()
+    assert body["defaults"]["selection"] == {"quality": "720p"}
+    assert "s3cret" not in saved.text
+    assert "s3cret" not in (tmp_path / "defaults.json").read_text()
+    assert body["defaults"]["network"]["proxy"] == {"url": "http://p:1"}
+    # A new process reads them back from the file.
+    reset_state()
+    assert client.get("/api/v1/settings").json()["defaults"]["engine"] == {"concurrency": 9}
+    # A request's own options win over the defaults, section by section.
+    created = client.post(
+        "/api/v1/downloads",
+        json={"url": "https://cdn.example.com/m.m3u8", "selection": {"quality": "480p"}},
+    )
+    assert created.status_code == 202
+    client.post(f"/api/v1/downloads/{created.json()['items'][0]['id']}/cancel")
+
+
+def test_bad_defaults_are_refused(client: TestClient) -> None:
+    response = client.put(
+        "/api/v1/settings/defaults", json={"selection": {"variant": 1, "codec": "av1"}}
+    )
+    assert response.status_code == 422
+    assert (
+        client.put("/api/v1/settings/defaults", json={"engine": {"concurrency": 999}}).status_code
+        == 422
+    )
+    assert client.get("/api/v1/settings").json()["defaults"] == {}
+
+
+def test_engine_log(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from rayohx.enums import DownloadState, EventType
+    from rayohx.events import DownloadEvent
+
+    monkeypatch.setattr("rayohx_api.jobs.Downloader", FakeDownloader)
+    job = post(client).json()["items"][0]
+    from rayohx_api.routers.v1 import manager
+
+    rec = manager().get(job["id"])
+    rec.downloader.events.emit(  # type: ignore[union-attr]
+        DownloadEvent(
+            type=EventType.DOWNLOAD_STARTED, download_id=job["id"], state=DownloadState.INSPECTING
+        )
+    )
+    log = client.get(f"/api/v1/downloads/{job['id']}/log").json()
+    assert log[0]["type"] == "download_started"
+    client.post(f"/api/v1/downloads/{job['id']}/cancel")
 
 
 def test_clean_dry_run_then_remove(client: TestClient, tmp_path: Path) -> None:
@@ -213,6 +271,7 @@ def test_local_paths_allowed(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
         read_cookie_file(bad)
     monkeypatch.setenv("RAYOHX_API_ALLOW_LOCAL_PATHS", "true")
     monkeypatch.setenv("RAYOHX_API_DOWNLOAD_DIR", str(tmp_path))
+    monkeypatch.setenv("RAYOHX_API_DEFAULTS_FILE", str(tmp_path / "defaults.json"))
     get_settings.cache_clear()
     reset_state()
     monkeypatch.setattr("rayohx_api.jobs.Downloader", FakeDownloader)

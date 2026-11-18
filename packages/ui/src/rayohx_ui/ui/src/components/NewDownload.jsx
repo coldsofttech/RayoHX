@@ -27,7 +27,7 @@ import {
 import { ArrowDownload24Regular, Search24Regular } from '@fluentui/react-icons';
 import { inspect, startDownload } from '../api.js';
 import { bitrate } from '../format.js';
-import { buildOptions, buildSource } from '../options.js';
+import { QUALITIES, buildOptions, buildSource } from '../options.js';
 import Options from './Options.jsx';
 
 const useStyles = makeStyles({
@@ -48,13 +48,7 @@ const useStyles = makeStyles({
   tracks: { display: 'flex', flexWrap: 'wrap', columnGap: tokens.spacingHorizontalXL },
 });
 
-const QUALITIES = ['best', '1080p', '720p', '480p', '360p', 'worst'];
-
-export default function NewDownload({
-  onStarted,
-  defaultQuality = 'best',
-  allowLocalPaths = false,
-}) {
+export default function NewDownload({ onStarted, inherited = {}, allowLocalPaths = false }) {
   const styles = useStyles();
   const [mode, setMode] = useState('url');
   const [url, setUrl] = useState('');
@@ -66,10 +60,11 @@ export default function NewDownload({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [playlist, setPlaylist] = useState(null);
-  const [quality, setQuality] = useState(defaultQuality);
+  const [quality, setQuality] = useState('');
   const [audio, setAudio] = useState([]);
   const [subtitles, setSubtitles] = useState([]);
 
+  const shownQuality = quality || inherited['selection.quality'] || 'best';
   const input = { url, urls, text, base };
   const source = buildSource(mode, input);
   const ready =
@@ -106,7 +101,12 @@ export default function NewDownload({
         ...source,
         ...(filename.trim() && mode !== 'many' ? { filename: filename.trim() } : {}),
         ...options,
-        selection: { ...options.selection, quality, audio, subtitles },
+        selection: {
+          ...options.selection,
+          ...(quality ? { quality } : {}),
+          ...(audio.length ? { audio } : {}),
+          ...(subtitles.length ? { subtitles } : {}),
+        },
       });
       setPlaylist(null);
       setUrl('');
@@ -167,7 +167,12 @@ export default function NewDownload({
             <Input value={filename} onChange={(_, data) => setFilename(data.value)} />
           </Field>
         )}
-        <Options values={values} onChange={setValue} allowLocalPaths={allowLocalPaths} />
+        <Options
+          inherited={inherited}
+          values={values}
+          onChange={setValue}
+          allowLocalPaths={allowLocalPaths}
+        />
         <div className={styles.row}>
           <Button
             appearance="primary"
@@ -274,8 +279,8 @@ export default function NewDownload({
           <div className={styles.row}>
             <Field label="Quality">
               <Dropdown
-                value={quality}
-                selectedOptions={[quality]}
+                value={shownQuality}
+                selectedOptions={[shownQuality]}
                 onOptionSelect={(_, data) => setQuality(data.optionValue)}
               >
                 {QUALITIES.map((q) => (

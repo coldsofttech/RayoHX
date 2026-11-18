@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Every download option of the command line on `/api/v1/downloads`, batches of addresses, playlist text with a base address, saved default options and a per-job engine log.
 - `/api/v1` routes to inspect a playlist, run, pause, resume, cancel and follow downloads (with server-sent events), read and change defaults, and clean leftover working folders.
 - The `rayohx-api` web service, with health and readiness checks and API-key authentication (or none, for local development).
 - Settings through `RAYOHX_API_` environment variables or a `.env` file, JSON logs and consistent error responses.

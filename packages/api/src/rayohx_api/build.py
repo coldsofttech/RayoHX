@@ -16,6 +16,8 @@ from rayohx.errors import ConfigurationError
 
 from rayohx_api.schemas_v1 import DownloadCreate, InspectRequest, Network
 
+DEFAULT_CONCURRENCY = 4
+
 
 def subfolder(base: Path, name: str | None, what: str) -> Path | None:
     """A folder inside ``base`` named by a client. It can never lead outside ``base``."""

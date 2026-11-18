@@ -8,7 +8,7 @@ import re
 import threading
 import time
 import uuid
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
@@ -18,7 +18,7 @@ from rayohx import CancellationToken
 from rayohx._redaction import redact_url
 from rayohx.downloader import Downloader
 from rayohx.downloader.batch import batch_outputs
-from rayohx.enums import DownloadState
+from rayohx.enums import DownloadState, EventType
 from rayohx.errors import ConfigurationError
 from rayohx.events import DownloadEvent
 from rayohx.serialization import progress_to_dict
@@ -27,6 +27,10 @@ from rayohx_api.build import download_config, sources
 from rayohx_api.schemas_v1 import DownloadCreate
 
 MAX_JOBS = 200
+#: Events that fire for every segment; progress already covers them.
+_QUIET = frozenset(
+    {EventType.DOWNLOAD_PROGRESS, EventType.SEGMENT_STARTED, EventType.SEGMENT_COMPLETED}
+)
 _BAD_NAME = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 
 
@@ -52,6 +56,7 @@ class JobRecord:
     output_path: str | None = None
     output_size: int | None = None
     error: str | None = None
+    events: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=200))
     downloader: Downloader | None = None
     token: CancellationToken = field(default_factory=CancellationToken)
 
@@ -124,6 +129,16 @@ class JobManager:
         record.updated_at = time.time()
         if event.progress is not None:
             record.progress = progress_to_dict(event.progress)
+        if event.type not in _QUIET:
+            record.events.append(
+                {
+                    "time": event.timestamp,
+                    "type": event.type.value,
+                    "state": event.state.value,
+                    "message": event.message,
+                    "segment": event.segment_index,
+                }
+            )
 
     def _run(self, record: JobRecord) -> None:
         assert record.downloader is not None  # noqa: S101

@@ -3,7 +3,11 @@
 //
 // type: text | number | bool | select | list (comma separated) | lines (one per line) | secret
 // scale: multiplies a number into the API's unit (for example MB to bytes).
+// noDefault: never saved as a default (logins and passwords).
+// defaultsOnly: only in the defaults editor; the new-download form has its own control.
 // local: refers to a file on this machine; only shown when the API allows it.
+
+export const QUALITIES = ['best', '1080p', '720p', '480p', '360p', 'worst', 'auto'];
 
 const yes = (label, key, hint) => ({ key, label, type: 'bool', hint });
 
@@ -12,6 +16,13 @@ export const SECTIONS = [
     id: 'selection',
     title: 'Stream selection',
     fields: [
+      {
+        key: 'quality',
+        label: 'Quality',
+        type: 'select',
+        options: QUALITIES,
+        defaultsOnly: true,
+      },
       {
         key: 'variant',
         label: 'Stream number',
@@ -69,8 +80,8 @@ export const SECTIONS = [
         type: 'text',
         hint: 'http://, https://, socks5:// or socks5h://',
       },
-      { key: 'proxy.username', label: 'Proxy user', type: 'text' },
-      { key: 'proxy.password', label: 'Proxy password', type: 'secret' },
+      { key: 'proxy.username', noDefault: true, label: 'Proxy user', type: 'text' },
+      { key: 'proxy.password', noDefault: true, label: 'Proxy password', type: 'secret' },
       yes('Use proxy settings from the environment', 'env_proxy'),
       { key: 'retries', label: 'Retries', type: 'number' },
       { key: 'backoff', label: 'Back-off factor', type: 'number' },
@@ -84,7 +95,7 @@ export const SECTIONS = [
       { key: 'ca_bundle', label: 'CA bundle', type: 'text', local: true },
       { key: 'client_cert', label: 'Client certificate', type: 'text', local: true },
       { key: 'client_key', label: 'Client key', type: 'text', local: true },
-      { key: 'client_key_password', label: 'Client key password', type: 'secret' },
+      { key: 'client_key_password', noDefault: true, label: 'Client key password', type: 'secret' },
     ],
   },
   {
@@ -190,13 +201,7 @@ export function convert(field, raw) {
       return Object.keys(pairs).length ? pairs : undefined;
     }
     case 'bool':
-      return field.fallback === undefined
-        ? raw
-          ? true
-          : undefined
-        : raw === field.fallback
-          ? undefined
-          : raw;
+      return Boolean(raw);
     default:
       return raw;
   }
@@ -227,4 +232,31 @@ export function buildSource(mode, input) {
   }
   if (mode === 'text') return { playlist_text: input.text, base_url: input.base.trim() };
   return { url: input.url.trim() };
+}
+
+const text = (value) => (value === undefined || value === null ? undefined : String(value));
+
+function getPath(source, path) {
+  return path.split('.').reduce((node, part) => (node == null ? undefined : node[part]), source);
+}
+
+/** The reverse of buildOptions: turns saved defaults into the form's flat values. */
+export function toValues(nested = {}) {
+  const values = {};
+  for (const section of SECTIONS) {
+    for (const field of section.fields) {
+      const raw = getPath(nested[section.id], field.key);
+      if (raw === undefined || raw === null) continue;
+      const id = `${section.id}.${field.key}`;
+      if (field.type === 'bool') values[id] = Boolean(raw);
+      else if (field.type === 'list') values[id] = raw.join(', ');
+      else if (field.type === 'lines')
+        values[id] = Object.entries(raw)
+          .map(([name, value]) => `${name}${field.pairs} ${value}`)
+          .join('\n');
+      else if (field.type === 'number') values[id] = text(raw / (field.scale ?? 1));
+      else values[id] = text(raw);
+    }
+  }
+  return values;
 }

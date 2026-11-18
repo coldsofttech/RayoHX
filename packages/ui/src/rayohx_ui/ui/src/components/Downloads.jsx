@@ -17,7 +17,7 @@ import {
   Pause24Regular,
   Play24Regular,
 } from '@fluentui/react-icons';
-import { controlDownload, listDownloads, removeDownload } from '../api.js';
+import { controlDownload, downloadLog, listDownloads, removeDownload } from '../api.js';
 import { ACTIVE, bytes, duration, speed } from '../format.js';
 
 const useStyles = makeStyles({
@@ -73,10 +73,41 @@ export function StateBadge({ state }) {
   return <Badge {...style}>{state}</Badge>;
 }
 
+function Log({ id }) {
+  const [events, setEvents] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      downloadLog(id).then(
+        (data) => alive && setEvents(data),
+        () => {},
+      );
+    load();
+    const timer = setInterval(load, 2000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [id]);
+  if (!events) return null;
+  return (
+    <ol aria-label="Engine log" style={{ margin: 0, paddingLeft: '1.25rem' }}>
+      {events.map((e, i) => (
+        <li key={`${e.time}-${i}`}>
+          <code>{new Date(e.time * 1000).toLocaleTimeString()}</code> {e.type.replaceAll('_', ' ')}
+          {e.segment != null && ` (segment ${e.segment})`}
+          {e.message && `: ${e.message}`}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export default function Downloads({ onCount }) {
   const styles = useStyles();
   const [items, setItems] = useState([]);
   const [error, setError] = useState('');
+  const [open, setOpen] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -180,6 +211,14 @@ export default function Downloads({ onCount }) {
                   )}
                   {job.output_size_bytes != null && <span>{bytes(job.output_size_bytes)}</span>}
                 </div>
+                <Button
+                  size="small"
+                  appearance="transparent"
+                  onClick={() => setOpen(open === job.id ? null : job.id)}
+                >
+                  {open === job.id ? 'Hide log' : 'Show log'}
+                </Button>
+                {open === job.id && <Log id={job.id} />}
                 {job.error && (
                   <MessageBar intent="error">
                     <MessageBarBody>{job.error}</MessageBarBody>

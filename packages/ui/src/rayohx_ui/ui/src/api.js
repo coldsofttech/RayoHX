@@ -25,5 +25,7 @@ export const controlDownload = (id, action) =>
   call(`/downloads/${id}/${action}`, { method: 'POST' });
 export const removeDownload = (id) => call(`/downloads/${id}`, { method: 'DELETE' });
 export const getSettings = () => call('/settings');
-export const saveSettings = (changes) => call('/settings', { method: 'PATCH', body: changes });
+export const saveDefaults = (defaults) =>
+  call('/settings/defaults', { method: 'PUT', body: defaults });
+export const downloadLog = (id) => call(`/downloads/${id}/log`);
 export const clean = (request) => call('/clean', { method: 'POST', body: request });

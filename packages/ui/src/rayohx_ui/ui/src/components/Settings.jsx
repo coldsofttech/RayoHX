@@ -1,21 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Body1,
   Button,
-  Dropdown,
-  Field,
   MessageBar,
   MessageBarBody,
-  Option,
-  Slider,
-  Switch,
   Text,
   Title3,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { clean, getSettings, saveSettings } from '../api.js';
+import { clean, saveDefaults } from '../api.js';
 import { bytes } from '../format.js';
+import { buildOptions, toValues } from '../options.js';
+import Options from './Options.jsx';
 
 const useStyles = makeStyles({
   card: {
@@ -32,24 +29,22 @@ const useStyles = makeStyles({
   row: { display: 'flex', columnGap: tokens.spacingHorizontalM },
 });
 
-const QUALITIES = ['best', '1080p', '720p', '480p', '360p', 'worst'];
-
-export default function Settings({ onChanged }) {
+export default function Settings({ settings, onChanged }) {
   const styles = useStyles();
-  const [settings, setSettings] = useState(null);
+  const [values, setValues] = useState(() => toValues(settings.defaults));
   const [report, setReport] = useState(null);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    getSettings().then(setSettings, (problem) => setError(problem.message));
-  }, []);
-
-  async function change(changes) {
+  async function save() {
     try {
-      const next = await saveSettings(changes);
-      setSettings(next);
-      onChanged?.(next);
+      const next = await saveDefaults(buildOptions(values));
+      onChanged(next);
+      setValues(toValues(next.defaults));
+      setSaved(true);
+      setError('');
     } catch (problem) {
+      setSaved(false);
       setError(problem.message);
     }
   }
@@ -63,14 +58,6 @@ export default function Settings({ onChanged }) {
     }
   }
 
-  if (!settings) {
-    return error ? (
-      <MessageBar intent="error" role="alert">
-        <MessageBarBody>{error}</MessageBarBody>
-      </MessageBar>
-    ) : null;
-  }
-
   return (
     <div>
       {error && (
@@ -79,37 +66,31 @@ export default function Settings({ onChanged }) {
         </MessageBar>
       )}
       <section className={styles.card} aria-label="Defaults">
-        <Title3 as="h2">Defaults</Title3>
+        <Title3 as="h2">Default options</Title3>
         <Text>
-          Saved in: <code>{settings.download_dir}</code>
+          Downloads go to <code>{settings.download_dir}</code>. Options you leave empty in a new
+          download use these. Logins and passwords are never saved.
         </Text>
-        <Field label={`Parallel segments: ${settings.concurrency}`}>
-          <Slider
-            min={1}
-            max={16}
-            value={settings.concurrency}
-            onChange={(_, data) => change({ concurrency: data.value })}
-          />
-        </Field>
-        <Field label="Default quality">
-          <Dropdown
-            value={settings.quality}
-            selectedOptions={[settings.quality]}
-            onOptionSelect={(_, data) => change({ quality: data.optionValue })}
-          >
-            {QUALITIES.map((q) => (
-              <Option key={q} value={q}>
-                {q}
-              </Option>
-            ))}
-          </Dropdown>
-        </Field>
-        <Switch
-          label="Replace files that already exist"
-          checked={settings.overwrite}
-          onChange={(_, data) => change({ overwrite: data.checked })}
+        <Options
+          forDefaults
+          values={values}
+          allowLocalPaths={settings.allow_local_paths}
+          onChange={(id, next) => {
+            setSaved(false);
+            setValues((current) => ({ ...current, [id]: next }));
+          }}
         />
-        <Text size={200}>These apply until the app is closed. Version {settings.version}.</Text>
+        <div className={styles.row}>
+          <Button appearance="primary" onClick={save}>
+            Save defaults
+          </Button>
+        </div>
+        {saved && (
+          <MessageBar intent="success" role="status">
+            <MessageBarBody>Saved to {settings.defaults_file}.</MessageBarBody>
+          </MessageBar>
+        )}
+        <Text size={200}>RayoHX {settings.version}</Text>
       </section>
 
       <section className={styles.card} aria-label="Clean up">

@@ -72,6 +72,28 @@
         "title": "CleanedFolder",
         "type": "object"
       },
+      "Defaults": {
+        "description": "Options used for every download unless the request sets its own. Passwords are not kept.",
+        "properties": {
+          "engine": {
+            "$ref": "#/components/schemas/Engine"
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Output"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/Storage"
+          }
+        },
+        "title": "Defaults",
+        "type": "object"
+      },
       "DownloadCreate": {
         "properties": {
           "base_url": {
@@ -179,6 +201,51 @@
           }
         },
         "title": "Engine",
+        "type": "object"
+      },
+      "EngineEvent": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "segment": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "time": {
+            "title": "Time",
+            "type": "number"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "type",
+          "state"
+        ],
+        "title": "EngineEvent",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -982,59 +1049,21 @@
         "title": "Selection",
         "type": "object"
       },
-      "SettingsUpdate": {
-        "properties": {
-          "concurrency": {
-            "anyOf": [
-              {
-                "maximum": 64.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Concurrency"
-          },
-          "overwrite": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Overwrite"
-          },
-          "quality": {
-            "anyOf": [
-              {
-                "pattern": "(?i)^(best|worst|auto|\\d{3,4}p)$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Quality"
-          }
-        },
-        "title": "SettingsUpdate",
-        "type": "object"
-      },
       "SettingsView": {
         "properties": {
           "allow_local_paths": {
             "title": "Allow Local Paths",
             "type": "boolean"
           },
-          "concurrency": {
-            "maximum": 64.0,
-            "minimum": 1.0,
-            "title": "Concurrency",
-            "type": "integer"
+          "defaults": {
+            "additionalProperties": true,
+            "description": "Only the options that were set.",
+            "title": "Defaults",
+            "type": "object"
+          },
+          "defaults_file": {
+            "title": "Defaults File",
+            "type": "string"
           },
           "download_dir": {
             "title": "Download Dir",
@@ -1043,17 +1072,6 @@
           "max_active_downloads": {
             "title": "Max Active Downloads",
             "type": "integer"
-          },
-          "overwrite": {
-            "default": false,
-            "title": "Overwrite",
-            "type": "boolean"
-          },
-          "quality": {
-            "default": "best",
-            "pattern": "(?i)^(best|worst|auto|\\d{3,4}p)$",
-            "title": "Quality",
-            "type": "string"
           },
           "version": {
             "title": "Version",
@@ -1064,8 +1082,9 @@
           "download_dir",
           "max_active_downloads",
           "allow_local_paths",
-          "concurrency",
-          "version"
+          "defaults_file",
+          "version",
+          "defaults"
         ],
         "title": "SettingsView",
         "type": "object"
@@ -1497,6 +1516,57 @@
         ]
       }
     },
+    "/api/v1/downloads/{job_id}/log": {
+      "get": {
+        "operationId": "download_log_api_v1_downloads__job_id__log_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EngineEvent"
+                  },
+                  "title": "Response Download Log Api V1 Downloads  Job Id  Log Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "What the engine reported, most recent last",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/downloads/{job_id}/pause": {
       "post": {
         "operationId": "pause_download_api_v1_downloads__job_id__pause_post",
@@ -1657,18 +1727,21 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Current defaults",
+        "summary": "Server settings and saved default options",
         "tags": [
           "v1"
         ]
-      },
-      "patch": {
-        "operationId": "update_settings_api_v1_settings_patch",
+      }
+    },
+    "/api/v1/settings/defaults": {
+      "put": {
+        "description": "Only options that are set are saved. Proxy logins and passwords are never saved.",
+        "operationId": "save_defaults_api_v1_settings_defaults_put",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SettingsUpdate"
+                "$ref": "#/components/schemas/Defaults"
               }
             }
           },
@@ -1701,7 +1774,7 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Change defaults for this run",
+        "summary": "Replace the saved default options",
         "tags": [
           "v1"
         ]

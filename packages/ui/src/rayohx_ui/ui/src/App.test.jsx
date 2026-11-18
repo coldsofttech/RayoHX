@@ -7,10 +7,9 @@ import App from './App.jsx';
 const SETTINGS = {
   download_dir: '/d',
   max_active_downloads: 2,
-  concurrency: 4,
-  quality: 'best',
-  overwrite: false,
   allow_local_paths: false,
+  defaults_file: '/c/api-defaults.json',
+  defaults: {},
   version: '0.1.0',
 };
 const PLAYLIST = {
@@ -149,5 +148,41 @@ describe('advanced options', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     await user.click(screen.getByRole('button', { name: /Network/ }));
     expect(await screen.findByLabelText('Cookie file (cookies.txt)')).toBeInTheDocument();
+  });
+});
+
+describe('saved defaults', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('shows saved defaults in new downloads and saves edits without secrets', async () => {
+    let saved;
+    mockApi({
+      'GET /api/v1/settings': () =>
+        json({
+          ...SETTINGS,
+          defaults: { network: { retries: 7 }, selection: { quality: '720p' } },
+        }),
+      'PUT /api/v1/settings/defaults': (init) => {
+        saved = JSON.parse(init.body);
+        return json({ ...SETTINGS, defaults: saved });
+      },
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /Network/ }));
+    expect(screen.getByLabelText('Retries')).toHaveAttribute('placeholder', '7');
+    expect(screen.queryByLabelText('Proxy password')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Settings' }));
+    await user.click(await screen.findByRole('button', { name: /Network/ }));
+    expect(screen.queryByLabelText('Proxy password')).not.toBeInTheDocument();
+    const retries = screen.getByLabelText('Retries');
+    expect(retries).toHaveValue(7);
+    await user.clear(retries);
+    await user.type(retries, '2');
+    await user.click(screen.getByRole('button', { name: 'Save defaults' }));
+    expect(await screen.findByText(/Saved to/)).toBeInTheDocument();
+    expect(saved.network).toEqual({ retries: 2 });
+    expect(saved.selection).toEqual({ quality: '720p' });
   });
 });

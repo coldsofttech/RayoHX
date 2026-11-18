@@ -22,13 +22,13 @@ const useStyles = makeStyles({
   },
 });
 
-function Control({ field, value, onChange }) {
+function Control({ field, value, inherited, onChange }) {
   switch (field.type) {
     case 'bool':
       return (
         <Checkbox
           label={field.label}
-          checked={value ?? field.fallback ?? false}
+          checked={value ?? inherited ?? field.fallback ?? false}
           onChange={(_, data) => onChange(Boolean(data.checked))}
         />
       );
@@ -36,8 +36,8 @@ function Control({ field, value, onChange }) {
       return (
         <Field label={field.label} hint={field.hint}>
           <Dropdown
-            value={value ?? ''}
-            selectedOptions={value ? [value] : []}
+            value={value ?? inherited ?? ''}
+            selectedOptions={(value ?? inherited) ? [value ?? inherited] : []}
             placeholder="Default"
             clearable
             onOptionSelect={(_, data) => onChange(data.optionValue)}
@@ -53,7 +53,12 @@ function Control({ field, value, onChange }) {
     case 'lines':
       return (
         <Field label={field.label} hint={field.hint}>
-          <Textarea value={value ?? ''} onChange={(_, data) => onChange(data.value)} rows={3} />
+          <Textarea
+            value={value ?? ''}
+            placeholder={inherited}
+            onChange={(_, data) => onChange(data.value)}
+            rows={3}
+          />
         </Field>
       );
     default:
@@ -61,6 +66,7 @@ function Control({ field, value, onChange }) {
         <Field label={field.label} hint={field.hint}>
           <Input
             value={value ?? ''}
+            placeholder={inherited}
             type={
               field.type === 'secret' ? 'password' : field.type === 'number' ? 'number' : 'text'
             }
@@ -73,7 +79,13 @@ function Control({ field, value, onChange }) {
 }
 
 /** Collapsible groups of every download option. Fields left empty use the defaults. */
-export default function Options({ values, onChange, allowLocalPaths }) {
+export default function Options({
+  values,
+  onChange,
+  allowLocalPaths,
+  inherited = {},
+  forDefaults = false,
+}) {
   const styles = useStyles();
   return (
     <Accordion collapsible multiple>
@@ -83,7 +95,12 @@ export default function Options({ values, onChange, allowLocalPaths }) {
           <AccordionPanel>
             <div className={styles.grid}>
               {section.fields
-                .filter((field) => !field.local || allowLocalPaths)
+                .filter(
+                  (field) =>
+                    (!field.local || allowLocalPaths) &&
+                    !(field.defaultsOnly && !forDefaults) &&
+                    !(field.noDefault && forDefaults),
+                )
                 .map((field) => {
                   const id = `${section.id}.${field.key}`;
                   return (
@@ -91,6 +108,7 @@ export default function Options({ values, onChange, allowLocalPaths }) {
                       key={id}
                       field={field}
                       value={values[id]}
+                      inherited={inherited[id]}
                       onChange={(next) => onChange(id, next)}
                     />
                   );

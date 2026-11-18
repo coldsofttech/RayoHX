@@ -139,6 +139,14 @@ class Progress(BaseModel):
     active_workers: int = 0
 
 
+class EngineEvent(BaseModel):
+    time: float
+    type: str
+    state: str
+    message: str | None = None
+    segment: int | None = None
+
+
 class Job(BaseModel):
     id: str
     url: str = Field(description="The address with any signing token removed.")
@@ -155,20 +163,23 @@ class JobList(BaseModel):
     items: list[Job]
 
 
+class Defaults(BaseModel):
+    """Options used for every download unless the request sets its own. Passwords are not kept."""
+
+    network: Network = Field(default_factory=Network)
+    selection: Selection = Field(default_factory=Selection)
+    storage: Storage = Field(default_factory=Storage)
+    output: Output = Field(default_factory=Output)
+    engine: Engine = Field(default_factory=Engine)
+
+
 class SettingsView(BaseModel):
     download_dir: str
     max_active_downloads: int
     allow_local_paths: bool
-    concurrency: int = Field(ge=1, le=64)
-    quality: str = Field(default="best", pattern=QUALITY)
-    overwrite: bool = False
+    defaults_file: str
     version: str
-
-
-class SettingsUpdate(BaseModel):
-    concurrency: int | None = Field(default=None, ge=1, le=64)
-    quality: str | None = Field(default=None, pattern=QUALITY)
-    overwrite: bool | None = None
+    defaults: dict[str, Any] = Field(description="Only the options that were set.")
 
 
 class CleanRequest(BaseModel):

@@ -18,20 +18,22 @@ from rayohx.playlist.inspection import inspect, inspect_text
 from rayohx.serialization import playlist_to_dict
 
 from rayohx_api.auth import authenticate
-from rayohx_api.build import network_config, sources
+from rayohx_api.build import DEFAULT_CONCURRENCY, download_config, network_config, sources
 from rayohx_api.config import Settings, get_settings
+from rayohx_api.defaults import DefaultsStore, default_file, merge, without_secrets
 from rayohx_api.jobs import JobManager, JobRecord, UnsafeFilenameError
 from rayohx_api.schemas_v1 import (
     CleanedFolder,
     CleanRequest,
     CleanResponse,
+    Defaults,
     DownloadCreate,
+    EngineEvent,
     InspectRequest,
     InspectResponse,
     Job,
     JobList,
     Progress,
-    SettingsUpdate,
     SettingsView,
 )
 
@@ -39,19 +41,11 @@ router = APIRouter(tags=["v1"], dependencies=[Depends(authenticate)])
 DAY = 86400
 
 
-class Preferences:
-    """Defaults a client can change while the API runs. They are not saved to disk."""
-
-    def __init__(self) -> None:
-        self.concurrency = 4
-        self.quality = "best"
-        self.overwrite = False
-
-
 @lru_cache
-def _state() -> tuple[JobManager, Preferences]:
+def _state() -> tuple[JobManager, DefaultsStore]:
     settings = get_settings()
-    return JobManager(settings.download_dir, settings.max_active_downloads), Preferences()
+    store = DefaultsStore(settings.defaults_file or default_file())
+    return JobManager(settings.download_dir, settings.max_active_downloads), store
 
 
 def reset_state() -> None:
@@ -63,7 +57,7 @@ def manager() -> JobManager:
     return _state()[0]
 
 
-def prefs() -> Preferences:
+def store() -> DefaultsStore:
     return _state()[1]
 
 
@@ -128,8 +122,11 @@ async def create_download(
     body: DownloadCreate, jobs: Jobs, settings: Annotated[Settings, Depends(get_settings)]
 ) -> JobList:
     try:
+        merged = merge(store().get(), body.model_dump(exclude_unset=True))
         records = jobs.create(
-            body, concurrency=prefs().concurrency, local_paths=settings.allow_local_paths
+            DownloadCreate.model_validate(merged),
+            concurrency=DEFAULT_CONCURRENCY,
+            local_paths=settings.allow_local_paths,
         )
     except (UnsafeFilenameError, RayoHXError) as exc:
         raise _problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
@@ -174,6 +171,11 @@ async def remove_download(job_id: str, jobs: Jobs) -> Response:
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get("/downloads/{job_id}/log", summary="What the engine reported, most recent last")
+async def download_log(job_id: str, jobs: Jobs) -> list[EngineEvent]:
+    return [EngineEvent(**item) for item in _find(jobs, job_id).events]
+
+
 @router.get("/downloads/{job_id}/events", summary="Follow a download as server-sent events")
 async def download_events(job_id: str, request: Request, jobs: Jobs) -> StreamingResponse:
     record = _find(jobs, job_id)
@@ -197,30 +199,41 @@ async def download_events(job_id: str, request: Request, jobs: Jobs) -> Streamin
 
 
 def _view(settings: Settings) -> SettingsView:
-    p = prefs()
     return SettingsView(
         download_dir=str(settings.download_dir),
         max_active_downloads=settings.max_active_downloads,
         allow_local_paths=settings.allow_local_paths,
-        concurrency=p.concurrency,
-        quality=p.quality,
-        overwrite=p.overwrite,
+        defaults_file=str(store().path),
         version=__version__,
+        defaults=store().get(),
     )
 
 
-@router.get("/settings", summary="Current defaults")
+@router.get("/settings", summary="Server settings and saved default options")
 async def read_settings(settings: Annotated[Settings, Depends(get_settings)]) -> SettingsView:
     return _view(settings)
 
 
-@router.patch("/settings", summary="Change defaults for this run")
-async def update_settings(
-    body: SettingsUpdate, settings: Annotated[Settings, Depends(get_settings)]
+@router.put("/settings/defaults", summary="Replace the saved default options")
+async def save_defaults(
+    body: Defaults, settings: Annotated[Settings, Depends(get_settings)]
 ) -> SettingsView:
-    p = prefs()
-    for name, value in body.model_dump(exclude_none=True).items():
-        setattr(p, name, value)
+    """Only options that are set are saved. Proxy logins and passwords are never saved."""
+    data = without_secrets(body.model_dump(exclude_unset=True))
+    try:
+        # Check the combination now, so a bad default is refused here and not on every download.
+        trial = DownloadCreate.model_validate({"url": "https://example.com/a.m3u8", **data})
+        download_config(
+            trial,
+            base=settings.download_dir,
+            local=settings.allow_local_paths,
+            concurrency=DEFAULT_CONCURRENCY,
+        )
+        store().set(data)
+    except RayoHXError as exc:
+        raise _problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
+    except OSError as exc:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Could not save.") from exc
     return _view(settings)
 
 

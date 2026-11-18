@@ -12,6 +12,7 @@ import {
 import { WeatherMoon24Regular, WeatherSunny24Regular } from '@fluentui/react-icons';
 import { darkTheme, lightTheme } from './theme.js';
 import { getSettings } from './api.js';
+import { toValues } from './options.js';
 import NewDownload from './components/NewDownload.jsx';
 import Downloads from './components/Downloads.jsx';
 import Settings from './components/Settings.jsx';
@@ -47,17 +48,10 @@ export default function App() {
   const [dark, setDark] = useState(initialDark);
   const [tab, setTab] = useState('new');
   const [active, setActive] = useState(0);
-  const [quality, setQuality] = useState('best');
-  const [local, setLocal] = useState(false);
+  const [settings, setSettings] = useState(null);
 
   useEffect(() => {
-    getSettings().then(
-      (s) => {
-        setQuality(s.quality);
-        setLocal(s.allow_local_paths);
-      },
-      () => {},
-    );
+    getSettings().then(setSettings, () => {});
   }, []);
 
   return (
@@ -91,13 +85,15 @@ export default function App() {
           </TabList>
           {tab === 'new' && (
             <NewDownload
-              defaultQuality={quality}
-              allowLocalPaths={local}
+              inherited={toValues(settings?.defaults)}
+              allowLocalPaths={settings?.allow_local_paths ?? false}
               onStarted={() => setTab('downloads')}
             />
           )}
           {tab === 'downloads' && <Downloads onCount={setActive} />}
-          {tab === 'settings' && <Settings onChanged={(s) => setQuality(s.quality)} />}
+          {tab === 'settings' && settings && (
+            <Settings settings={settings} onChanged={setSettings} />
+          )}
         </main>
       </div>
     </FluentProvider>
