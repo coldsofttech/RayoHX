@@ -1,7 +1,7 @@
 """``Rayo``: the single entry point to the platform.
 
-Phase 2-1 gives it the shared foundations (folders, database, events, settings). The queue,
-profiles, scheduling, diagnostics and storage services are added to this class as they are built.
+It owns the shared foundations (folders, database, events, settings) and the persistent download
+queue. Profiles, scheduling, diagnostics and storage services are added as they are built.
 
     from rayohx import Rayo
 
@@ -12,15 +12,19 @@ profiles, scheduling, diagnostics and storage services are added to this class a
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
+from rayohx.downloader import Downloader
 from rayohx.platform.events import EventBus, EventCategory, EventStore, Severity
 from rayohx.platform.paths import PlatformPaths, resolve_paths, under
 from rayohx.platform.persistence import Database, SettingsStore
+from rayohx.platform.queue import JobRepository, Queue, QueueRunner
+from rayohx.platform.secrets import SecretStore, default_secret_store
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
     from types import TracebackType
 
 logger = logging.getLogger(__name__)
@@ -40,6 +44,10 @@ class Rayo:
         home: Path | str | None = None,
         paths: PlatformPaths | None = None,
         environ: Mapping[str, str] | None = None,
+        download_dir: Path | str | None = None,
+        secrets: SecretStore | None = None,
+        max_active: int = 2,
+        downloader_factory: Callable[..., Downloader] = Downloader,
     ) -> None:
         if paths is not None:
             self.paths = paths
@@ -52,6 +60,34 @@ class Rayo:
         self.settings = SettingsStore(self.database)
         self.event_store = EventStore(self.database)
         self.events = EventBus(self.event_store)
+        env = os.environ if environ is None else environ
+        configured = download_dir if download_dir is not None else env.get("RAYOHX_DOWNLOAD_DIR")
+        #: Where finished files go unless a job names another folder.
+        self.download_dir = (
+            Path(configured).expanduser() if configured else Path.home() / "Downloads" / "RayoHX"
+        )
+        self.secrets: SecretStore = secrets if secrets is not None else default_secret_store()
+        lock_path = self.paths.data_dir / "runner.lock"
+        self.jobs = JobRepository(self.database)
+        runner = QueueRunner(
+            self.jobs,
+            self.events,
+            self.secrets,
+            download_dir=self.download_dir,
+            lock_path=lock_path,
+            max_active=max_active,
+            downloader_factory=downloader_factory,
+        )
+        #: The persistent download queue. Call ``queue.start()`` to run jobs in this process.
+        self.queue = Queue(
+            self.jobs,
+            runner,
+            self.events,
+            self.secrets,
+            self.settings,
+            download_dir=self.download_dir,
+            runner_lock_path=lock_path,
+        )
         self._announce_start()
 
     def _announce_start(self) -> None:
@@ -76,7 +112,9 @@ class Rayo:
         return self.database.schema_version
 
     def close(self) -> None:
-        """Release the database. Safe to call more than once."""
+        """Stop the queue if it runs here and release the database. Safe to call twice."""
+        if self.queue.running:
+            self.queue.stop()
         self.database.close()
 
     def __enter__(self) -> Self:

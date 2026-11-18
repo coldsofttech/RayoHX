@@ -10,6 +10,10 @@ The platform is the new `rayohx.platform` package: persistent services around th
 
 - `Rayo`, the platform's entry point (`from rayohx import Rayo`), with a local SQLite database (migrations, backup before upgrade, recovery from a damaged file), shared folders (including portable mode and `RAYOHX_HOME`), a saved event log, and a small settings store.
 - Platform events remove secrets from every payload before saving or delivering them.
+- A persistent download queue (`rayo.queue`): priorities, an explicit order, several jobs at once, pause and resume that give up the slot and keep the work, cancel, retry, bulk actions, export and import. Jobs survive restarts and crashes, and a failure never affects other jobs.
+- Failed jobs are retried after a growing delay when the error may pass; every run is recorded.
+- Job secrets (cookies, secret headers, proxy credentials) are kept in a secret store (system credential store with the optional `keyring` package, else memory) and never in the database.
+- `DownloadConfig` can be saved as plain data and rebuilt (`rayohx.platform.jobs.config_to_options`, `config_from_options`).
 
 ### Added
 

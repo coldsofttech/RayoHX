@@ -1,6 +1,393 @@
 {
   "components": {
     "schemas": {
+      "Attempt": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "number"
+          }
+        },
+        "required": [
+          "attempt",
+          "started_at"
+        ],
+        "title": "Attempt",
+        "type": "object"
+      },
+      "BulkOutcome": {
+        "properties": {
+          "done": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Done",
+            "type": "array"
+          },
+          "failed": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Job id to the reason it was not changed.",
+            "title": "Failed",
+            "type": "object"
+          }
+        },
+        "required": [
+          "done",
+          "failed"
+        ],
+        "title": "BulkOutcome",
+        "type": "object"
+      },
+      "CleanRequest": {
+        "properties": {
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "older_than_days": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Older Than Days",
+            "type": "number"
+          }
+        },
+        "title": "CleanRequest",
+        "type": "object"
+      },
+      "CleanResponse": {
+        "properties": {
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "folders": {
+            "items": {
+              "$ref": "#/components/schemas/CleanedFolder"
+            },
+            "title": "Folders",
+            "type": "array"
+          },
+          "freed_bytes": {
+            "title": "Freed Bytes",
+            "type": "integer"
+          },
+          "skipped_in_use": {
+            "title": "Skipped In Use",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dry_run",
+          "folders",
+          "freed_bytes",
+          "skipped_in_use"
+        ],
+        "title": "CleanResponse",
+        "type": "object"
+      },
+      "CleanedFolder": {
+        "properties": {
+          "age_days": {
+            "title": "Age Days",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "size_bytes",
+          "age_days"
+        ],
+        "title": "CleanedFolder",
+        "type": "object"
+      },
+      "Defaults": {
+        "description": "Options used for every download unless the request sets its own. Passwords are not kept.",
+        "properties": {
+          "engine": {
+            "$ref": "#/components/schemas/Engine"
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Output"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/Storage"
+          }
+        },
+        "title": "Defaults",
+        "type": "object"
+      },
+      "DownloadCreate": {
+        "properties": {
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "engine": {
+            "$ref": "#/components/schemas/Engine"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "File name inside the download folder. Folders are not accepted.",
+            "title": "Filename"
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Output"
+          },
+          "playlist_text": {
+            "anyOf": [
+              {
+                "maxLength": 1000000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Text"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/Storage"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "urls": {
+            "description": "Download each.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Urls",
+            "type": "array"
+          }
+        },
+        "title": "DownloadCreate",
+        "type": "object"
+      },
+      "Engine": {
+        "properties": {
+          "allow_file_keys": {
+            "default": false,
+            "description": "Needs local paths enabled.",
+            "title": "Allow File Keys",
+            "type": "boolean"
+          },
+          "concurrency": {
+            "anyOf": [
+              {
+                "maximum": 64.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concurrency"
+          },
+          "resume": {
+            "default": true,
+            "title": "Resume",
+            "type": "boolean"
+          }
+        },
+        "title": "Engine",
+        "type": "object"
+      },
+      "EngineEvent": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "segment": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "time": {
+            "title": "Time",
+            "type": "number"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "type",
+          "state"
+        ],
+        "title": "EngineEvent",
+        "type": "object"
+      },
+      "EventCategory": {
+        "description": "Which part of the platform an event belongs to.",
+        "enum": [
+          "system",
+          "queue",
+          "download",
+          "verification",
+          "automation",
+          "scheduling",
+          "storage",
+          "diagnostics",
+          "notification",
+          "browser",
+          "plugin"
+        ],
+        "title": "EventCategory",
+        "type": "string"
+      },
+      "EventList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformEvent"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_id": {
+            "description": "Pass as after_id to get only newer events.",
+            "title": "Last Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "last_id"
+        ],
+        "title": "EventList",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "HealthResponse": {
         "properties": {
           "status": {
@@ -11,6 +398,1237 @@
           }
         },
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "InspectRequest": {
+        "properties": {
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "playlist_text": {
+            "anyOf": [
+              {
+                "maxLength": 1000000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Text"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "urls": {
+            "description": "Download each.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Urls",
+            "type": "array"
+          }
+        },
+        "title": "InspectRequest",
+        "type": "object"
+      },
+      "InspectResponse": {
+        "description": "A master or media playlist as plain data (see ``rayohx.serialization``).",
+        "properties": {
+          "playlist": {
+            "additionalProperties": true,
+            "title": "Playlist",
+            "type": "object"
+          }
+        },
+        "required": [
+          "playlist"
+        ],
+        "title": "InspectResponse",
+        "type": "object"
+      },
+      "Job": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          },
+          "output_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Size Bytes"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Progress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "number"
+          },
+          "url": {
+            "description": "The address with any signing token removed.",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "state",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Job",
+        "type": "object"
+      },
+      "JobDetail": {
+        "properties": {
+          "attempt_history": {
+            "items": {
+              "$ref": "#/components/schemas/Attempt"
+            },
+            "title": "Attempt History",
+            "type": "array"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "needs_credentials": {
+            "description": "Its secrets were lost; supply them to go on.",
+            "title": "Needs Credentials",
+            "type": "boolean"
+          },
+          "not_before": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A retry waits until this time.",
+            "title": "Not Before"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          },
+          "output_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Size Bytes"
+          },
+          "priority": {
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Progress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "number"
+          },
+          "recovered": {
+            "description": "Found half way after a crash and put back in the queue.",
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "number"
+          },
+          "url": {
+            "description": "The address with any signing token removed.",
+            "title": "Url",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "state",
+          "created_at",
+          "updated_at",
+          "priority",
+          "rank",
+          "attempts",
+          "max_attempts",
+          "verification",
+          "recovered",
+          "needs_credentials",
+          "attempt_history"
+        ],
+        "title": "JobDetail",
+        "type": "object"
+      },
+      "JobList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Job"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "JobList",
+        "type": "object"
+      },
+      "JobState": {
+        "description": "Where a queued job is.",
+        "enum": [
+          "queued",
+          "preparing",
+          "downloading",
+          "paused",
+          "finalizing",
+          "verifying",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "title": "JobState",
+        "type": "string"
+      },
+      "MoveRequest": {
+        "properties": {
+          "before": {
+            "description": "Put the job just before this one.",
+            "title": "Before",
+            "type": "string"
+          }
+        },
+        "required": [
+          "before"
+        ],
+        "title": "MoveRequest",
+        "type": "object"
+      },
+      "Network": {
+        "description": "How requests are made. Every field is optional; unset ones use the engine's defaults.",
+        "properties": {
+          "backoff": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backoff"
+          },
+          "ca_bundle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needs local paths enabled.",
+            "title": "Ca Bundle"
+          },
+          "client_cert": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needs local paths enabled.",
+            "title": "Client Cert"
+          },
+          "client_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needs local paths enabled.",
+            "title": "Client Key"
+          },
+          "client_key_password": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Key Password"
+          },
+          "connect_timeout": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connect Timeout"
+          },
+          "cookie_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Netscape cookies.txt on the server. Needs local paths enabled.",
+            "title": "Cookie File"
+          },
+          "cookies": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 64,
+            "title": "Cookies",
+            "type": "object"
+          },
+          "credential_hosts": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Credential Hosts",
+            "type": "array"
+          },
+          "env_proxy": {
+            "default": false,
+            "title": "Env Proxy",
+            "type": "boolean"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 32,
+            "title": "Headers",
+            "type": "object"
+          },
+          "insecure": {
+            "default": false,
+            "title": "Insecure",
+            "type": "boolean"
+          },
+          "max_redirects": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Redirects"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
+          "proxy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Proxy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rate_limit": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bytes per second, all workers.",
+            "title": "Rate Limit"
+          },
+          "read_timeout": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read Timeout"
+          },
+          "referer": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referer"
+          },
+          "retries": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retries"
+          },
+          "timeout": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total time allowed.",
+            "title": "Timeout"
+          },
+          "user_agent": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
+          }
+        },
+        "title": "Network",
+        "type": "object"
+      },
+      "Output": {
+        "properties": {
+          "directory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sub-folder of the download folder.",
+            "title": "Directory"
+          },
+          "ffmpeg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needs local paths enabled.",
+            "title": "Ffmpeg"
+          },
+          "format": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "ts",
+              "mp4",
+              "segments"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "overwrite": {
+            "default": false,
+            "title": "Overwrite",
+            "type": "boolean"
+          },
+          "remux_backend": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "native",
+              "ffmpeg"
+            ],
+            "title": "Remux Backend",
+            "type": "string"
+          },
+          "validate": {
+            "default": true,
+            "title": "Validate",
+            "type": "boolean"
+          }
+        },
+        "title": "Output",
+        "type": "object"
+      },
+      "PlatformEvent": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "number"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "category",
+          "severity",
+          "timestamp",
+          "payload"
+        ],
+        "title": "PlatformEvent",
+        "type": "object"
+      },
+      "Progress": {
+        "properties": {
+          "active_workers": {
+            "default": 0,
+            "title": "Active Workers",
+            "type": "integer"
+          },
+          "average_speed": {
+            "default": 0.0,
+            "title": "Average Speed",
+            "type": "number"
+          },
+          "completed_segments": {
+            "default": 0,
+            "title": "Completed Segments",
+            "type": "integer"
+          },
+          "downloaded_bytes": {
+            "default": 0,
+            "title": "Downloaded Bytes",
+            "type": "integer"
+          },
+          "eta_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Seconds"
+          },
+          "fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraction"
+          },
+          "speed": {
+            "default": 0.0,
+            "title": "Speed",
+            "type": "number"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "total_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Bytes"
+          },
+          "total_segments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Segments"
+          },
+          "written_bytes": {
+            "default": 0,
+            "title": "Written Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "Progress",
+        "type": "object"
+      },
+      "Proxy": {
+        "properties": {
+          "password": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "url": {
+            "description": "http://, https://, socks5:// or socks5h:// address.",
+            "maxLength": 2048,
+            "title": "Url",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "Proxy",
+        "type": "object"
+      },
+      "QueueAction": {
+        "properties": {
+          "action": {
+            "enum": [
+              "pause",
+              "resume",
+              "cancel",
+              "retry",
+              "remove",
+              "priority",
+              "top",
+              "bottom"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needed for the priority action.",
+            "title": "Priority"
+          }
+        },
+        "required": [
+          "action",
+          "ids"
+        ],
+        "title": "QueueAction",
+        "type": "object"
+      },
+      "QueueAdd": {
+        "properties": {
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "engine": {
+            "$ref": "#/components/schemas/Engine"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "File name inside the download folder. Folders are not accepted.",
+            "title": "Filename"
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Output"
+          },
+          "playlist_text": {
+            "anyOf": [
+              {
+                "maxLength": 1000000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Text"
+          },
+          "priority": {
+            "default": "normal",
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "retry": {
+            "$ref": "#/components/schemas/Retry"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/Storage"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "urls": {
+            "description": "Download each.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Urls",
+            "type": "array"
+          }
+        },
+        "title": "QueueAdd",
+        "type": "object"
+      },
+      "QueueJob": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "needs_credentials": {
+            "description": "Its secrets were lost; supply them to go on.",
+            "title": "Needs Credentials",
+            "type": "boolean"
+          },
+          "not_before": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A retry waits until this time.",
+            "title": "Not Before"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          },
+          "output_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Size Bytes"
+          },
+          "priority": {
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Progress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "number"
+          },
+          "recovered": {
+            "description": "Found half way after a crash and put back in the queue.",
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "number"
+          },
+          "url": {
+            "description": "The address with any signing token removed.",
+            "title": "Url",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "state",
+          "created_at",
+          "updated_at",
+          "priority",
+          "rank",
+          "attempts",
+          "max_attempts",
+          "verification",
+          "recovered",
+          "needs_credentials"
+        ],
+        "title": "QueueJob",
+        "type": "object"
+      },
+      "QueueList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueJob"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/QueueStats"
+          }
+        },
+        "required": [
+          "items",
+          "stats"
+        ],
+        "title": "QueueList",
+        "type": "object"
+      },
+      "QueueSettings": {
+        "properties": {
+          "max_active": {
+            "description": "Jobs that run at once.",
+            "maximum": 16.0,
+            "minimum": 1.0,
+            "title": "Max Active",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_active"
+        ],
+        "title": "QueueSettings",
+        "type": "object"
+      },
+      "QueueStats": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "integer"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "max_active": {
+            "title": "Max Active",
+            "type": "integer"
+          },
+          "runner": {
+            "enum": [
+              "this process",
+              "another process",
+              "none"
+            ],
+            "title": "Runner",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "counts",
+          "total",
+          "active",
+          "max_active",
+          "runner"
+        ],
+        "title": "QueueStats",
         "type": "object"
       },
       "ReadyResponse": {
@@ -32,6 +1650,379 @@
         ],
         "title": "ReadyResponse",
         "type": "object"
+      },
+      "Retry": {
+        "description": "When a failed job is run again.",
+        "properties": {
+          "factor": {
+            "default": 2,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Factor",
+            "type": "number"
+          },
+          "initial_delay": {
+            "default": 10,
+            "description": "Seconds.",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Initial Delay",
+            "type": "number"
+          },
+          "max_attempts": {
+            "default": 3,
+            "description": "Runs in total; 1 means never.",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "max_delay": {
+            "default": 600,
+            "description": "Seconds.",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Max Delay",
+            "type": "number"
+          }
+        },
+        "title": "Retry",
+        "type": "object"
+      },
+      "Selection": {
+        "description": "Which tracks to download. ``variant`` cannot be combined with the other stream filters.",
+        "properties": {
+          "audio": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Audio",
+            "type": "array"
+          },
+          "audio_names": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Audio Names",
+            "type": "array"
+          },
+          "bandwidth": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact bits per second.",
+            "title": "Bandwidth"
+          },
+          "codec": {
+            "anyOf": [
+              {
+                "enum": [
+                  "h264",
+                  "hevc",
+                  "vp9",
+                  "av1"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codec"
+          },
+          "max_bitrate": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bits per second.",
+            "title": "Max Bitrate"
+          },
+          "max_frame_rate": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Frame Rate"
+          },
+          "max_resolution": {
+            "anyOf": [
+              {
+                "pattern": "(?i)^\\d{3,4}p$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Resolution"
+          },
+          "quality": {
+            "default": "best",
+            "pattern": "(?i)^(best|worst|auto|\\d{3,4}p)$",
+            "title": "Quality",
+            "type": "string"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "pattern": "(?i)^\\d{2,5}x\\d{2,5}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
+          "subtitle_names": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Subtitle Names",
+            "type": "array"
+          },
+          "subtitles": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Subtitles",
+            "type": "array"
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stream number, from 1.",
+            "title": "Variant"
+          },
+          "variant_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variant Name"
+          },
+          "video_only": {
+            "default": false,
+            "title": "Video Only",
+            "type": "boolean"
+          },
+          "video_range": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sdr",
+                  "pq",
+                  "hlg",
+                  "hdr"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Range"
+          }
+        },
+        "title": "Selection",
+        "type": "object"
+      },
+      "SettingsView": {
+        "properties": {
+          "allow_local_paths": {
+            "title": "Allow Local Paths",
+            "type": "boolean"
+          },
+          "defaults": {
+            "additionalProperties": true,
+            "description": "Only the options that were set.",
+            "title": "Defaults",
+            "type": "object"
+          },
+          "defaults_file": {
+            "title": "Defaults File",
+            "type": "string"
+          },
+          "download_dir": {
+            "title": "Download Dir",
+            "type": "string"
+          },
+          "max_active_downloads": {
+            "title": "Max Active Downloads",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "download_dir",
+          "max_active_downloads",
+          "allow_local_paths",
+          "defaults_file",
+          "version",
+          "defaults"
+        ],
+        "title": "SettingsView",
+        "type": "object"
+      },
+      "Storage": {
+        "properties": {
+          "buffer_bytes": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Bytes"
+          },
+          "keep_state": {
+            "default": true,
+            "title": "Keep State",
+            "type": "boolean"
+          },
+          "max_temp_bytes": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Temp Bytes"
+          },
+          "reserve_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reserve Bytes"
+          },
+          "space_check": {
+            "default": true,
+            "title": "Space Check",
+            "type": "boolean"
+          },
+          "strategy": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "direct",
+              "streaming",
+              "buffered",
+              "temporary",
+              "hybrid"
+            ],
+            "title": "Strategy",
+            "type": "string"
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sub-folder of the download folder.",
+            "title": "Workspace"
+          }
+        },
+        "title": "Storage",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
       }
     }
   },
@@ -42,6 +2033,1007 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/clean": {
+      "post": {
+        "description": "Only looks inside the download folder. Folders of running downloads are never removed.",
+        "operationId": "clean_api_v1_clean_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Remove working folders left by interrupted downloads",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/downloads": {
+      "get": {
+        "operationId": "list_downloads_api_v1_downloads_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List downloads, newest first",
+        "tags": [
+          "v1"
+        ]
+      },
+      "post": {
+        "operationId": "create_download_api_v1_downloads_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Start one download for each address",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/downloads/{job_id}": {
+      "delete": {
+        "operationId": "remove_download_api_v1_downloads__job_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Forget a finished download",
+        "tags": [
+          "v1"
+        ]
+      },
+      "get": {
+        "operationId": "get_download_api_v1_downloads__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "One download",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/downloads/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_download_api_v1_downloads__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Cancel a download",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/downloads/{job_id}/events": {
+      "get": {
+        "operationId": "download_events_api_v1_downloads__job_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Follow a download as server-sent events",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/downloads/{job_id}/log": {
+      "get": {
+        "operationId": "download_log_api_v1_downloads__job_id__log_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EngineEvent"
+                  },
+                  "title": "Response Download Log Api V1 Downloads  Job Id  Log Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "What the engine reported, most recent last",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/downloads/{job_id}/pause": {
+      "post": {
+        "operationId": "pause_download_api_v1_downloads__job_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Pause a download",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/downloads/{job_id}/resume": {
+      "post": {
+        "operationId": "resume_download_api_v1_downloads__job_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Resume a paused download",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/inspect": {
+      "post": {
+        "operationId": "inspect_playlist_api_v1_inspect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Look at a playlist without downloading it",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "operationId": "read_settings_api_v1_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Server settings and saved default options",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/settings/defaults": {
+      "put": {
+        "description": "Only options that are set are saved. Proxy logins and passwords are never saved.",
+        "operationId": "save_defaults_api_v1_settings_defaults_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Defaults"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Replace the saved default options",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v2/events": {
+      "get": {
+        "operationId": "list_events_api_v2_events_get",
+        "parameters": [
+          {
+            "description": "Only events after this id.",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Only events after this id.",
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "title": "After Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "job_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EventCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "The saved event log, oldest first",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue": {
+      "get": {
+        "operationId": "list_queue_api_v2_queue_get",
+        "parameters": [
+          {
+            "description": "Only these states.",
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/JobState"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only these states.",
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "newest_first",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Newest First",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List queued jobs in the order they will run",
+        "tags": [
+          "v2"
+        ]
+      },
+      "post": {
+        "operationId": "add_to_queue_api_v2_queue_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Add a job for each address",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/actions": {
+      "post": {
+        "operationId": "queue_action_api_v2_queue_actions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkOutcome"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Pause, resume, cancel, retry, remove or reorder jobs",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/settings": {
+      "put": {
+        "operationId": "change_queue_settings_api_v2_queue_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Change how many jobs run at once",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/stats": {
+      "get": {
+        "operationId": "queue_stats_api_v2_queue_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Counts by state and how many jobs run at once",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/{job_id}": {
+      "get": {
+        "operationId": "get_job_api_v2_queue__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "One job, with every run it has had",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/{job_id}/move": {
+      "post": {
+        "operationId": "move_job_api_v2_queue__job_id__move_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Put a job just before another",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "description": "Return 200 while the process is running.",

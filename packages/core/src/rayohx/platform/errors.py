@@ -26,3 +26,23 @@ class SchemaTooNewError(PersistenceError):
             f"{supported}.",
             hint="Update RayoHX. The database was not changed.",
         )
+
+
+class QueueError(RayoHXError):
+    """The queue could not do what was asked."""
+
+    error_code: ClassVar[str] = "QUEUE_ERROR"
+    category: ClassVar[ErrorCategory] = ErrorCategory.INTERNAL
+
+
+class RunnerLockedError(QueueError):
+    """Another process is already running the queue for this data folder."""
+
+    error_code: ClassVar[str] = "QUEUE_RUNNER_LOCKED"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Another RayoHX process is already running the queue.",
+            hint="Only one process runs downloads at a time. Control it with the same commands, "
+            "or stop it first.",
+        )

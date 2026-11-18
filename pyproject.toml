@@ -62,6 +62,10 @@ select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 "packages/core/tests/integration/**" = ["SIM117"]  # the client is built from the running server's address
 "scripts/**" = ["S603", "S607", "T201"]  # scripts call the trusted gh CLI and print progress
 
+[[tool.mypy.overrides]]
+module = ["keyring", "keyring.*"]
+ignore_missing_imports = true
+
 [tool.mypy]
 strict = true
 explicit_package_bases = true

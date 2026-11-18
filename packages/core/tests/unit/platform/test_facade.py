@@ -70,3 +70,16 @@ def test_closing_twice_is_fine(tmp_path: Path) -> None:
 
 def test_the_top_level_package_exports_rayo() -> None:
     assert rayohx.Rayo is Rayo
+
+
+def test_the_download_folder_comes_from_the_argument_then_the_environment(tmp_path: Path) -> None:
+    with Rayo(home=tmp_path / "a", environ={"RAYOHX_DOWNLOAD_DIR": str(tmp_path / "env")}) as rayo:
+        assert rayo.download_dir == tmp_path / "env"
+    with Rayo(
+        home=tmp_path / "b",
+        download_dir=tmp_path / "arg",
+        environ={"RAYOHX_DOWNLOAD_DIR": str(tmp_path / "env")},
+    ) as rayo:
+        assert rayo.download_dir == tmp_path / "arg"
+    with Rayo(home=tmp_path / "c", environ={}) as rayo:
+        assert rayo.download_dir.name == "RayoHX"

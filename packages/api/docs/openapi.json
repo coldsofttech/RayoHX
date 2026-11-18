@@ -1,6 +1,93 @@
 {
   "components": {
     "schemas": {
+      "Attempt": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "number"
+          }
+        },
+        "required": [
+          "attempt",
+          "started_at"
+        ],
+        "title": "Attempt",
+        "type": "object"
+      },
+      "BulkOutcome": {
+        "properties": {
+          "done": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Done",
+            "type": "array"
+          },
+          "failed": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Job id to the reason it was not changed.",
+            "title": "Failed",
+            "type": "object"
+          }
+        },
+        "required": [
+          "done",
+          "failed"
+        ],
+        "title": "BulkOutcome",
+        "type": "object"
+      },
       "CleanRequest": {
         "properties": {
           "dry_run": {
@@ -248,6 +335,46 @@
         "title": "EngineEvent",
         "type": "object"
       },
+      "EventCategory": {
+        "description": "Which part of the platform an event belongs to.",
+        "enum": [
+          "system",
+          "queue",
+          "download",
+          "verification",
+          "automation",
+          "scheduling",
+          "storage",
+          "diagnostics",
+          "notification",
+          "browser",
+          "plugin"
+        ],
+        "title": "EventCategory",
+        "type": "string"
+      },
+      "EventList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformEvent"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_id": {
+            "description": "Pass as after_id to get only newer events.",
+            "title": "Last Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "last_id"
+        ],
+        "title": "EventList",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -419,6 +546,178 @@
         "title": "Job",
         "type": "object"
       },
+      "JobDetail": {
+        "properties": {
+          "attempt_history": {
+            "items": {
+              "$ref": "#/components/schemas/Attempt"
+            },
+            "title": "Attempt History",
+            "type": "array"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "needs_credentials": {
+            "description": "Its secrets were lost; supply them to go on.",
+            "title": "Needs Credentials",
+            "type": "boolean"
+          },
+          "not_before": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A retry waits until this time.",
+            "title": "Not Before"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          },
+          "output_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Size Bytes"
+          },
+          "priority": {
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Progress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "number"
+          },
+          "recovered": {
+            "description": "Found half way after a crash and put back in the queue.",
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "number"
+          },
+          "url": {
+            "description": "The address with any signing token removed.",
+            "title": "Url",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "state",
+          "created_at",
+          "updated_at",
+          "priority",
+          "rank",
+          "attempts",
+          "max_attempts",
+          "verification",
+          "recovered",
+          "needs_credentials",
+          "attempt_history"
+        ],
+        "title": "JobDetail",
+        "type": "object"
+      },
       "JobList": {
         "properties": {
           "items": {
@@ -433,6 +732,36 @@
           "items"
         ],
         "title": "JobList",
+        "type": "object"
+      },
+      "JobState": {
+        "description": "Where a queued job is.",
+        "enum": [
+          "queued",
+          "preparing",
+          "downloading",
+          "paused",
+          "finalizing",
+          "verifying",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "title": "JobState",
+        "type": "string"
+      },
+      "MoveRequest": {
+        "properties": {
+          "before": {
+            "description": "Put the job just before this one.",
+            "title": "Before",
+            "type": "string"
+          }
+        },
+        "required": [
+          "before"
+        ],
+        "title": "MoveRequest",
         "type": "object"
       },
       "Network": {
@@ -732,6 +1061,67 @@
         "title": "Output",
         "type": "object"
       },
+      "PlatformEvent": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "number"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "category",
+          "severity",
+          "timestamp",
+          "payload"
+        ],
+        "title": "PlatformEvent",
+        "type": "object"
+      },
       "Progress": {
         "properties": {
           "active_workers": {
@@ -858,6 +1248,389 @@
         "title": "Proxy",
         "type": "object"
       },
+      "QueueAction": {
+        "properties": {
+          "action": {
+            "enum": [
+              "pause",
+              "resume",
+              "cancel",
+              "retry",
+              "remove",
+              "priority",
+              "top",
+              "bottom"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needed for the priority action.",
+            "title": "Priority"
+          }
+        },
+        "required": [
+          "action",
+          "ids"
+        ],
+        "title": "QueueAction",
+        "type": "object"
+      },
+      "QueueAdd": {
+        "properties": {
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "engine": {
+            "$ref": "#/components/schemas/Engine"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "File name inside the download folder. Folders are not accepted.",
+            "title": "Filename"
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Output"
+          },
+          "playlist_text": {
+            "anyOf": [
+              {
+                "maxLength": 1000000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Text"
+          },
+          "priority": {
+            "default": "normal",
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "retry": {
+            "$ref": "#/components/schemas/Retry"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/Storage"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "urls": {
+            "description": "Download each.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Urls",
+            "type": "array"
+          }
+        },
+        "title": "QueueAdd",
+        "type": "object"
+      },
+      "QueueJob": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "needs_credentials": {
+            "description": "Its secrets were lost; supply them to go on.",
+            "title": "Needs Credentials",
+            "type": "boolean"
+          },
+          "not_before": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A retry waits until this time.",
+            "title": "Not Before"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          },
+          "output_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Size Bytes"
+          },
+          "priority": {
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Progress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "number"
+          },
+          "recovered": {
+            "description": "Found half way after a crash and put back in the queue.",
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "number"
+          },
+          "url": {
+            "description": "The address with any signing token removed.",
+            "title": "Url",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "state",
+          "created_at",
+          "updated_at",
+          "priority",
+          "rank",
+          "attempts",
+          "max_attempts",
+          "verification",
+          "recovered",
+          "needs_credentials"
+        ],
+        "title": "QueueJob",
+        "type": "object"
+      },
+      "QueueList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueJob"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/QueueStats"
+          }
+        },
+        "required": [
+          "items",
+          "stats"
+        ],
+        "title": "QueueList",
+        "type": "object"
+      },
+      "QueueSettings": {
+        "properties": {
+          "max_active": {
+            "description": "Jobs that run at once.",
+            "maximum": 16.0,
+            "minimum": 1.0,
+            "title": "Max Active",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_active"
+        ],
+        "title": "QueueSettings",
+        "type": "object"
+      },
+      "QueueStats": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "integer"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "max_active": {
+            "title": "Max Active",
+            "type": "integer"
+          },
+          "runner": {
+            "enum": [
+              "this process",
+              "another process",
+              "none"
+            ],
+            "title": "Runner",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "counts",
+          "total",
+          "active",
+          "max_active",
+          "runner"
+        ],
+        "title": "QueueStats",
+        "type": "object"
+      },
       "ReadyResponse": {
         "properties": {
           "status": {
@@ -876,6 +1649,44 @@
           "version"
         ],
         "title": "ReadyResponse",
+        "type": "object"
+      },
+      "Retry": {
+        "description": "When a failed job is run again.",
+        "properties": {
+          "factor": {
+            "default": 2,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Factor",
+            "type": "number"
+          },
+          "initial_delay": {
+            "default": 10,
+            "description": "Seconds.",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Initial Delay",
+            "type": "number"
+          },
+          "max_attempts": {
+            "default": 3,
+            "description": "Runs in total; 1 means never.",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "max_delay": {
+            "default": 600,
+            "description": "Seconds.",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Max Delay",
+            "type": "number"
+          }
+        },
+        "title": "Retry",
         "type": "object"
       },
       "Selection": {
@@ -1777,6 +2588,449 @@
         "summary": "Replace the saved default options",
         "tags": [
           "v1"
+        ]
+      }
+    },
+    "/api/v2/events": {
+      "get": {
+        "operationId": "list_events_api_v2_events_get",
+        "parameters": [
+          {
+            "description": "Only events after this id.",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Only events after this id.",
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "title": "After Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "job_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EventCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "The saved event log, oldest first",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue": {
+      "get": {
+        "operationId": "list_queue_api_v2_queue_get",
+        "parameters": [
+          {
+            "description": "Only these states.",
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/JobState"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only these states.",
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "newest_first",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Newest First",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List queued jobs in the order they will run",
+        "tags": [
+          "v2"
+        ]
+      },
+      "post": {
+        "operationId": "add_to_queue_api_v2_queue_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Add a job for each address",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/actions": {
+      "post": {
+        "operationId": "queue_action_api_v2_queue_actions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkOutcome"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Pause, resume, cancel, retry, remove or reorder jobs",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/settings": {
+      "put": {
+        "operationId": "change_queue_settings_api_v2_queue_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Change how many jobs run at once",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/stats": {
+      "get": {
+        "operationId": "queue_stats_api_v2_queue_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Counts by state and how many jobs run at once",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/{job_id}": {
+      "get": {
+        "operationId": "get_job_api_v2_queue__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "One job, with every run it has had",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/queue/{job_id}/move": {
+      "post": {
+        "operationId": "move_job_api_v2_queue__job_id__move_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Put a job just before another",
+        "tags": [
+          "v2"
         ]
       }
     },

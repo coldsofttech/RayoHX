@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = []
     #: Folder downloads are saved in. Clients choose file names, never folders.
     download_dir: Path = Path.home() / "Downloads" / "RayoHX"
+    #: Folder for the queue database and other platform data. Empty means the per-user folders.
+    home: Path | None = None
     #: Where default options are saved between runs. Empty means the per-user config folder.
     defaults_file: Path | None = None
     #: Let requests name files on this machine (cookie files, certificates, FFmpeg, file keys).

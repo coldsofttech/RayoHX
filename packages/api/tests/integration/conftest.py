@@ -16,7 +16,7 @@ def _free_port() -> int:
 
 
 @pytest.fixture(scope="session")
-def base_url() -> Iterator[str]:
+def base_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
     """Run the real API in a subprocess, the way users start it on its own."""
     port = _free_port()
     env = {
@@ -24,6 +24,8 @@ def base_url() -> Iterator[str]:
         "RAYOHX_API_PORT": str(port),
         "RAYOHX_API_HOST": "127.0.0.1",
         "RAYOHX_API_AUTH_MODE": "none",
+        "RAYOHX_API_HOME": str(tmp_path_factory.mktemp("platform")),
+        "RAYOHX_API_DOWNLOAD_DIR": str(tmp_path_factory.mktemp("downloads")),
         # The contract test reads the OpenAPI document from the running server.
         "RAYOHX_API_DOCS_ENABLED": "true",
     }

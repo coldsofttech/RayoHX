@@ -56,6 +56,10 @@ select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 "tests/**" = ["S101", "S105", "S106", "S603"]  # assert, subprocess and fake passwords are fine in tests
 "tests/integration/**" = ["SIM117"]  # the client is built from the running server's address
 
+[[tool.mypy.overrides]]
+module = ["keyring", "keyring.*"]
+ignore_missing_imports = true
+
 [tool.mypy]
 strict = true
 explicit_package_bases = true

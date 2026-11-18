@@ -32,17 +32,31 @@ if TYPE_CHECKING:
         Severity,
     )
     from rayohx.platform.facade import Rayo
+    from rayohx.platform.jobs import (
+        BulkResult,
+        JobRecord,
+        JobState,
+        QueuePriority,
+        RetryPolicy,
+    )
     from rayohx.platform.paths import PlatformPaths, resolve_paths
     from rayohx.platform.persistence import Database, SettingsStore
+    from rayohx.platform.queue import Queue
 
 _EXPORTS = {
+    "BulkResult": "rayohx.platform.jobs",
     "Database": "rayohx.platform.persistence",
     "EventBus": "rayohx.platform.events",
     "EventCategory": "rayohx.platform.events",
     "EventStore": "rayohx.platform.events",
     "PersistenceError": "rayohx.platform.errors",
     "PlatformEvent": "rayohx.platform.events",
+    "JobRecord": "rayohx.platform.jobs",
+    "JobState": "rayohx.platform.jobs",
     "PlatformPaths": "rayohx.platform.paths",
+    "Queue": "rayohx.platform.queue",
+    "QueuePriority": "rayohx.platform.jobs",
+    "RetryPolicy": "rayohx.platform.jobs",
     "Rayo": "rayohx.platform.facade",
     "SchemaTooNewError": "rayohx.platform.errors",
     "SettingsStore": "rayohx.platform.persistence",
@@ -66,14 +80,20 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "BulkResult",
     "Database",
     "EventBus",
     "EventCategory",
     "EventStore",
+    "JobRecord",
+    "JobState",
     "PersistenceError",
     "PlatformEvent",
     "PlatformPaths",
+    "Queue",
+    "QueuePriority",
     "Rayo",
+    "RetryPolicy",
     "SchemaTooNewError",
     "SettingsStore",
     "Severity",

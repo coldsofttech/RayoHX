@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `rayohx queue`: a download queue that survives restarts (`add`, `list`, `show`, `stats`, `pause`, `resume`, `cancel`, `retry`, `remove`, `clear`, `priority`, `move`, `export`, `import`, `run`).
 - `rayohx clean` removes leftover working folders, and `rayohx config` shows the settings in effect.
 - Read a playlist from a local file (`rayohx info master.m3u8 --base-url URL`), also for `download`.
 - `--events` writes download events as JSON lines on stderr.

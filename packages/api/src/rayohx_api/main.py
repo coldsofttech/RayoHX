@@ -1,5 +1,9 @@
 """Application factory."""
 
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from rayohx import __version__
@@ -8,8 +12,22 @@ from rayohx_api.auth import authenticate, embedded_principal
 from rayohx_api.config import get_settings
 from rayohx_api.errors import register_error_handlers
 from rayohx_api.logs import RequestIdMiddleware, configure_logging
-from rayohx_api.routers import health, v1
+from rayohx_api.routers import health, v1, v2
 from rayohx_api.security import BodyLimitMiddleware, SecurityHeadersMiddleware
+from rayohx_api.service import ensure_runner, reset_state
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Run queued jobs while the API is up, and put running ones back when it stops."""
+    try:
+        ensure_runner()
+    except Exception:
+        logger.exception("The queue could not be started.")
+    yield
+    reset_state()
 
 
 def create_app(*, embedded: bool = False) -> FastAPI:
@@ -31,6 +49,7 @@ def create_app(*, embedded: bool = False) -> FastAPI:
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url="/redoc" if settings.docs_enabled else None,
         openapi_url="/openapi.json" if settings.docs_enabled else None,
+        lifespan=lifespan,
     )
 
     # Middleware added last runs first, so the order below reads from innermost to outermost:
@@ -49,6 +68,7 @@ def create_app(*, embedded: bool = False) -> FastAPI:
     register_error_handlers(app)
     app.include_router(health.router)
     app.include_router(v1.router, prefix="/api/v1")
+    app.include_router(v2.router, prefix="/api/v2")
     if embedded:
         app.dependency_overrides[authenticate] = embedded_principal
     return app

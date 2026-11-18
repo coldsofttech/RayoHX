@@ -84,8 +84,24 @@ CREATE INDEX events_category ON events (category, id);
 CREATE INDEX events_ts ON events (ts);
 """
 
+_QUEUE = """
+ALTER TABLE jobs ADD COLUMN url TEXT NOT NULL DEFAULT '';
+ALTER TABLE jobs ADD COLUMN secret_ref TEXT;
+ALTER TABLE jobs ADD COLUMN needs_credentials INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE jobs ADD COLUMN recovered INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE jobs ADD COLUMN output_path TEXT;
+ALTER TABLE jobs ADD COLUMN output_size INTEGER;
+ALTER TABLE jobs ADD COLUMN not_before REAL;
+ALTER TABLE jobs ADD COLUMN control_request TEXT;
+ALTER TABLE jobs ADD COLUMN progress_json TEXT;
+CREATE INDEX jobs_ready ON jobs (state, not_before);
+"""
+
 #: Every migration this version of RayoHX knows, oldest first.
-MIGRATIONS: tuple[Migration, ...] = (Migration(1, "initial", _INITIAL),)
+MIGRATIONS: tuple[Migration, ...] = (
+    Migration(1, "initial", _INITIAL),
+    Migration(2, "queue", _QUEUE),
+)
 
 
 def latest_version(migrations: tuple[Migration, ...] = MIGRATIONS) -> int:

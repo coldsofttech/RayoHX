@@ -56,7 +56,7 @@ def test_unknown_download_is_404(client: TestClient) -> None:
 def test_defaults_are_saved_merged_and_secret_free(
     client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("rayohx_api.jobs.Downloader", FakeDownloader)
+    monkeypatch.setattr("rayohx_api.service.Downloader", FakeDownloader)
     saved = client.put(
         "/api/v1/settings/defaults",
         json={
@@ -102,18 +102,18 @@ def test_engine_log(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None
     from rayohx.enums import DownloadState, EventType
     from rayohx.events import DownloadEvent
 
-    monkeypatch.setattr("rayohx_api.jobs.Downloader", FakeDownloader)
-    job = post(client).json()["items"][0]
-    from rayohx_api.routers.v1 import manager
+    from rayohx_api.service import rayo
 
-    rec = manager().get(job["id"])
-    rec.downloader.events.emit(  # type: ignore[union-attr]
+    monkeypatch.setattr("rayohx_api.service.Downloader", FakeDownloader)
+    job = post(client).json()["items"][0]
+    rayo().events.forward(
         DownloadEvent(
             type=EventType.DOWNLOAD_STARTED, download_id=job["id"], state=DownloadState.INSPECTING
-        )
+        ),
+        job_id=job["id"],
     )
     log = client.get(f"/api/v1/downloads/{job['id']}/log").json()
-    assert log[0]["type"] == "download_started"
+    assert "download_started" in [item["type"] for item in log]
     client.post(f"/api/v1/downloads/{job['id']}/cancel")
 
 
@@ -166,7 +166,7 @@ class FakeDownloader:
 def test_download_lifecycle(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     import time
 
-    monkeypatch.setattr("rayohx_api.jobs.Downloader", FakeDownloader)
+    monkeypatch.setattr("rayohx_api.service.Downloader", FakeDownloader)
     created = client.post(
         "/api/v1/downloads",
         json={"url": "https://cdn.example.com/m.m3u8?token=secret", "filename": "a.mp4"},
@@ -225,7 +225,7 @@ def test_playlist_text_needs_base_url(client: TestClient) -> None:
 
 
 def test_batch_and_options(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("rayohx_api.jobs.Downloader", FakeDownloader)
+    monkeypatch.setattr("rayohx_api.service.Downloader", FakeDownloader)
     response = client.post(
         "/api/v1/downloads",
         json={
@@ -274,7 +274,7 @@ def test_local_paths_allowed(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     monkeypatch.setenv("RAYOHX_API_DEFAULTS_FILE", str(tmp_path / "defaults.json"))
     get_settings.cache_clear()
     reset_state()
-    monkeypatch.setattr("rayohx_api.jobs.Downloader", FakeDownloader)
+    monkeypatch.setattr("rayohx_api.service.Downloader", FakeDownloader)
     client = TestClient(create_app())
     response = client.post(
         "/api/v1/downloads",

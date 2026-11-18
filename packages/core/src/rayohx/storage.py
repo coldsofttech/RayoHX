@@ -16,7 +16,12 @@ from pathlib import Path
 
 from rayohx._download._workspace import FOLDER_PREFIX, LOCK_FILE, STATE_FILE, _FileLock
 
+#: An exclusive, non-blocking lock on a file, released when the process ends. Front ends and the
+#: platform use it to make sure only one process does a job, such as running a queue.
+FileLock = _FileLock
+
 __all__ = [
+    "FileLock",
     "WorkspaceInfo",
     "clean_workspaces",
     "find_workspaces",

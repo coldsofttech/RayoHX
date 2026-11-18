@@ -19,7 +19,7 @@ Checked in CI by `packages/core/tests/unit/test_architecture.py`:
 
 When a front end needs something that lives in a private module, promote it to a public module (as `rayohx.storage` and `rayohx.redaction` were) instead of importing the private one.
 
-## What exists today (phase 2-1)
+## What exists today
 
 | Part | Where | Purpose |
 | --- | --- | --- |
@@ -28,6 +28,8 @@ When a front end needs something that lives in a private module, promote it to a
 | Database | `rayohx.platform.persistence` | SQLite in WAL mode, numbered migrations, a backup before any change to existing data, and recovery from a damaged file. |
 | Events | `rayohx.platform.events` | `PlatformEvent` (secrets removed from every payload), a saved event log you can follow by id, and a bus that isolates failing listeners. |
 | Errors | `rayohx.errors` | Every error has a stable `code` and a `category`. |
+| Queue | `rayohx.platform.queue` | The persistent job queue, its scheduler and the runner (below). |
+| Secrets | `rayohx.platform.secrets` | Where job secrets live: the system credential store (optional `keyring`) or memory. |
 
 ## The database
 
@@ -55,3 +57,37 @@ with Rayo() as rayo:
 ```
 
 Events at `DEBUG` severity (such as one per downloaded segment) are delivered to listeners but not saved, so the log stays small.
+
+## The queue
+
+```python
+from rayohx import Rayo
+
+with Rayo() as rayo:
+    job = rayo.queue.add("https://example.com/master.m3u8", priority="high")
+    rayo.queue.start()        # run jobs in this process
+    rayo.queue.wait_idle()
+```
+
+**Jobs and states.** A job is `queued`, then `preparing`, `downloading`, `finalizing` and `verifying` while it runs, and ends `completed`, `failed` or `cancelled`. It can be `paused` from `queued` or while running. The queue has its own state, separate from the engine's `DownloadState`; the runner maps engine events onto it.
+
+**Order.** `pick_next` (a pure function) chooses what starts: higher priority first, then the user's order (rank), then the job added first, then the smaller id. Resource checks may skip a job but never reorder the rest.
+
+**One runner.** A runner holds `runner.lock` in the data folder; a second one gets `RunnerLockedError`. Other processes read and change jobs in the database. To pause or cancel a job that a runner is working on, they write a `control_request` that the runner applies within a poll interval. If no runner exists, a job left in a running state by a crash is changed directly.
+
+**Pause is a hard pause.** The run is cancelled with its resume state kept (the queue forces `keep_state_on_failure`), the job leaves its slot and releases its workspace lock, and resuming continues from the last written segment. The engine's token pause, which keeps the slot, is not used by the queue.
+
+**Recovery.** `queue.start()` puts jobs left in a running state by a crash back in the queue, marked `recovered`. A graceful `stop()` puts them back without counting the interrupted run as an attempt.
+
+**Retries.** A failed run is repeated after a growing delay when the error's category is retryable (network, HTTP, segment) and the error itself says a retry may help. Configuration, authentication and storage errors fail at once. Each run is recorded in `job_attempts`.
+
+**Settings and secrets.** A job stores its `DownloadConfig` as JSON (`config_to_options`). Cookies, secret headers, proxy credentials and key passwords are split out into the secret store and never written to the database or to exports. The address is stored as given, because the job needs it; the database folder is created private.
+
+**Events.** The runner publishes `queue.*` events (`job_added`, `job_state_changed`, `job_retry_scheduled`, `job_recovered`, `job_completed`, `job_failed`, `completed`, ...) and forwards the engine's events with the job id, so `event_store.query(job_id=...)` is a per-job log.
+
+## Migrations so far
+
+| Version | Name | Adds |
+| --- | --- | --- |
+| 1 | `initial` | settings, jobs, job attempts, events |
+| 2 | `queue` | job columns for the display address, secret reference, recovery, output, retry time, control requests and progress |

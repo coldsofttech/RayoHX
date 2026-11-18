@@ -112,7 +112,7 @@ def from_download_event(
         severity = Severity.DEBUG
     else:
         severity = Severity.INFO
-    payload: dict[str, Any] = {"state": event.state.value}
+    payload: dict[str, Any] = {"engine_type": event.type.value, "state": event.state.value}
     if event.message:
         payload["message"] = redact_text(event.message)
     if event.segment_index is not None:
