@@ -39,6 +39,8 @@ def api_router() -> APIRouter:
     request, so the standalone API key check is switched off for this process.
     """
     os.environ["RAYOHX_API_AUTH_MODE"] = AuthMode.NONE
+    # The only client is the person at this window, so files on this machine may be named.
+    os.environ["RAYOHX_API_ALLOW_LOCAL_PATHS"] = "true"
     get_settings.cache_clear()
     router = APIRouter(prefix="/v1")
     router.include_router(v1.router)

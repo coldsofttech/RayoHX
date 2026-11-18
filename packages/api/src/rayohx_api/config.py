@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     cors_origins: list[str] = []
     #: Folder downloads are saved in. Clients choose file names, never folders.
     download_dir: Path = Path.home() / "Downloads" / "RayoHX"
+    #: Let requests name files on this machine (cookie files, certificates, FFmpeg, file keys).
+    #: Off for a network service, because a client could then make the server read its own files.
+    #: The desktop window turns it on, since there the client is you.
+    allow_local_paths: bool = False
     #: Downloads that run at once; the rest wait in the queue.
     max_active_downloads: int = Field(default=2, ge=1, le=16)
 

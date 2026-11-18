@@ -13,12 +13,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from rayohx import __version__
 from rayohx._download._workspace import FOLDER_PREFIX, LOCK_FILE, STATE_FILE, _FileLock
-from rayohx.config import NetworkConfig
 from rayohx.errors import RayoHXError
-from rayohx.playlist.inspection import inspect
+from rayohx.playlist.inspection import inspect, inspect_text
 from rayohx.serialization import playlist_to_dict
 
 from rayohx_api.auth import authenticate
+from rayohx_api.build import network_config, sources
 from rayohx_api.config import Settings, get_settings
 from rayohx_api.jobs import JobManager, JobRecord, UnsafeFilenameError
 from rayohx_api.schemas_v1 import (
@@ -99,10 +99,16 @@ def _find(jobs: JobManager, job_id: str) -> JobRecord:
 
 
 @router.post("/inspect", summary="Look at a playlist without downloading it")
-async def inspect_playlist(body: InspectRequest) -> InspectResponse:
-    network = NetworkConfig(headers=dict(body.network.headers))
+async def inspect_playlist(
+    body: InspectRequest, settings: Annotated[Settings, Depends(get_settings)]
+) -> InspectResponse:
     try:
-        playlist = await asyncio.to_thread(inspect, body.url, network)
+        address = sources(body)[0]
+        if body.playlist_text is not None:
+            playlist = inspect_text(body.playlist_text, address)
+        else:
+            network = network_config(body.network, local=settings.allow_local_paths)
+            playlist = await asyncio.to_thread(inspect, address, network)
     except RayoHXError as exc:
         raise _problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
     return InspectResponse(playlist=playlist_to_dict(playlist))
@@ -110,18 +116,24 @@ async def inspect_playlist(body: InspectRequest) -> InspectResponse:
 
 @router.get("/downloads", summary="List downloads, newest first")
 async def list_downloads(jobs: Jobs) -> JobList:
-    return JobList(items=[to_job(r) for r in jobs.list()])
+    return JobList(items=[to_job(r) for r in jobs.all()])
 
 
-@router.post("/downloads", status_code=status.HTTP_202_ACCEPTED, summary="Start a download")
-async def create_download(body: DownloadCreate, jobs: Jobs) -> Job:
+@router.post(
+    "/downloads",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Start one download for each address",
+)
+async def create_download(
+    body: DownloadCreate, jobs: Jobs, settings: Annotated[Settings, Depends(get_settings)]
+) -> JobList:
     try:
-        record = jobs.create(body, concurrency=prefs().concurrency)
-    except UnsafeFilenameError as exc:
+        records = jobs.create(
+            body, concurrency=prefs().concurrency, local_paths=settings.allow_local_paths
+        )
+    except (UnsafeFilenameError, RayoHXError) as exc:
         raise _problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
-    except RayoHXError as exc:
-        raise _problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
-    return to_job(record)
+    return JobList(items=[to_job(r) for r in records])
 
 
 @router.get("/downloads/{job_id}", summary="One download")
@@ -189,6 +201,7 @@ def _view(settings: Settings) -> SettingsView:
     return SettingsView(
         download_dir=str(settings.download_dir),
         max_active_downloads=settings.max_active_downloads,
+        allow_local_paths=settings.allow_local_paths,
         concurrency=p.concurrency,
         quality=p.quality,
         overwrite=p.overwrite,

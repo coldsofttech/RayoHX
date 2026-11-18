@@ -10,17 +10,20 @@ import time
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from typing import Any
 
 from rayohx import CancellationToken
 from rayohx._redaction import redact_url
-from rayohx.config import DownloadConfig, NetworkConfig, OutputConfig, SelectionConfig
 from rayohx.downloader import Downloader
-from rayohx.enums import DownloadState, OutputFormat
+from rayohx.downloader.batch import batch_outputs
+from rayohx.enums import DownloadState
+from rayohx.errors import ConfigurationError
 from rayohx.events import DownloadEvent
 from rayohx.serialization import progress_to_dict
 
+from rayohx_api.build import download_config, sources
 from rayohx_api.schemas_v1 import DownloadCreate
 
 MAX_JOBS = 200
@@ -60,7 +63,7 @@ class JobManager:
         self._jobs: OrderedDict[str, JobRecord] = OrderedDict()
         self._lock = threading.RLock()
 
-    def list(self) -> list[JobRecord]:
+    def all(self) -> list[JobRecord]:
         with self._lock:
             return list(reversed(self._jobs.values()))
 
@@ -68,40 +71,47 @@ class JobManager:
         with self._lock:
             return self._jobs.get(job_id)
 
-    def create(self, request: DownloadCreate, *, concurrency: int) -> JobRecord:
+    def create(
+        self, request: DownloadCreate, *, concurrency: int, local_paths: bool
+    ) -> list[JobRecord]:
+        """Start one job for each address in the request."""
+        urls = sources(request)
+        if request.filename and len(urls) > 1:
+            raise ConfigurationError("A file name can only be given for a single download.")
         filename = safe_filename(request.filename) if request.filename else None
         self.directory.mkdir(parents=True, exist_ok=True)
-        config = DownloadConfig(
-            concurrency=concurrency,
-            network=NetworkConfig(headers=dict(request.network.headers)),
-            output=OutputConfig(
-                directory=self.directory,
-                format=OutputFormat(request.format),
-                overwrite=request.overwrite,
-            ),
-            selection=SelectionConfig(
-                quality=request.quality,
-                audio_languages=tuple(request.audio),
-                subtitle_languages=tuple(request.subtitles),
-                video_only=request.video_only,
-            ),
+        config = download_config(
+            request, base=self.directory, local=local_paths, concurrency=concurrency
         )
-        record = JobRecord(id=uuid.uuid4().hex[:12], url=redact_url(request.url))
-        output = self.directory / filename if filename else None
-        downloader = Downloader(
-            request.url,
-            output=output,
-            config=config,
-            cancel=record.token,
-            download_id=record.id,
-        )
-        record.downloader = downloader
-        downloader.events.subscribe(lambda event: self._on_event(record, event))
+        folder = config.output.directory or self.directory
+        folder.mkdir(parents=True, exist_ok=True)
+        if filename:
+            outputs: list[Path | None] = [folder / filename]
+        elif len(urls) > 1:
+            outputs = list(batch_outputs(urls, folder))
+        else:
+            outputs = [None]
+        records = []
+        for url, output in zip(urls, outputs, strict=True):
+            record = JobRecord(id=uuid.uuid4().hex[:12], url=redact_url(url))
+            downloader = Downloader(
+                url,
+                output=output,
+                config=config,
+                cancel=record.token,
+                download_id=record.id,
+                playlist_text=request.playlist_text,
+            )
+            record.downloader = downloader
+            downloader.events.subscribe(partial(self._on_event, record))
+            records.append(record)
         with self._lock:
-            self._jobs[record.id] = record
+            for record in records:
+                self._jobs[record.id] = record
             self._trim()
-        threading.Thread(target=self._run, args=(record,), daemon=True).start()
-        return record
+        for record in records:
+            threading.Thread(target=self._run, args=(record,), daemon=True).start()
+        return records
 
     def _trim(self) -> None:
         for key in [k for k, j in self._jobs.items() if j.state.is_terminal]:
