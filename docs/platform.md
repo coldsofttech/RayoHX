@@ -134,6 +134,29 @@ Metadata is written by FFmpeg, so it goes into Matroska and audio files, and int
 
 `rayohx.media.inspect_media(url, ...)` describes a stream without downloading it: duration, segment count and container, encryption, every variant (with the chosen one marked), the video (codec and profile from the playlist's codec string, resolution, frame rate, range), audio and subtitle tracks (with the ones a download would pick marked), the metadata above and a size. With ffprobe installed it also examines the first segment, which fills in the details a playlist does not state (pixel format, channels, sample rate); each value says whether it came from the `playlist` or the `probe`. `size.kind` is `exact` (every byte accounted for), `estimated` (with the basis: average or peak bandwidth times duration) or `unavailable` (a live stream, or no bit rate), and an estimate is never presented as exact. `check_compatibility(info, format)` lists what to know before saving in a format: FFmpeg needed, codecs the built-in MP4 remuxer cannot copy, separate audio that the format cannot hold, live and SAMPLE-AES streams.
 
+## Storage management
+
+`rayo.storage` keeps track of disk space and reacts before the disk fills.
+
+* **Policy.** `StoragePolicy` has three optional free-space thresholds for the downloads disk: `warn_below`, `pause_below` and `stop_below` (largest first), plus `low_storage_mode`. Sizes are bytes or text such as `5GB`. With no thresholds the queue only counts and reports. Easing back needs `resume_margin` (10% by default) of extra room, so the level does not flap around a threshold.
+* **Admission and reservations.** A job only starts when the room left, after what running downloads still have to write (`total_bytes` x 1.05 minus `written_bytes`, taken from live progress), stays above the pause threshold. A job that does not fit waits in the queue.
+* **Reacting.** Below `pause_below` running jobs are paused by the queue itself (`auto_paused`) and go on by themselves when room returns; a job you paused yourself is never resumed for you. Below `stop_below` jobs fail with `STORAGE_LOW`, keeping their resume state. Each change of level is an event (`storage.low`, `storage.paused`, `storage.stopped`, `storage.recovered`).
+* **Low-storage mode.** Asked for, or entered when the disk is low: jobs use the streaming strategy and cap their temporary data at 256 MiB.
+* **Accounting.** `rayo.storage.snapshot()` reports free space, finished output, working folders (and the part no finished download needs), reserved bytes, the peak temporary use and the platform's own data. The engine announces each working folder (`workspace_opened` event) so the queue knows which job owns it (`job_workspaces`).
+* **Cleanup.** `rayo.storage.cleanup()` looks first (`dry_run=True` is the default). It removes only working folders that no running or resumable job owns and that are older than a limit, and old diagnostic reports. It never touches downloaded files, and it lists what it kept and why.
+
+## Diagnostics
+
+`rayo.diagnostics` answers "why did this fail?" without exposing secrets.
+
+* `explain(code)` and `explain_job(id)` give a title, what happened, the likely cause, what was tried and what to do next, for every stable error code (`HTTP_*` codes by status). Unknown codes get their category's explanation.
+* `network(url, job_id=...)` checks name lookup, connection, TLS (with certificate expiry), proxy and the first response, using a job's headers and proxy. `stream(url)` describes a playlist and lists what is unusual (live, discontinuities, encryption, missing codecs).
+* `report(job_id=...)` collects the environment, queue, storage, recent problems, the job (settings, attempt history, failed segments, verification and finalization) and optional network and stream checks into one JSON file in the reports folder (mode 0600). Every string is sanitized: URL query values, headers, cookies, proxy credentials and the literal secrets of the job (also percent-encoded) are removed, home folders become `~`, and only the *names* of protected settings are listed. A test seeds a token, cookie and header into a failing job and checks none of them reaches the report.
+
+## Metrics
+
+`rayo.metrics()` returns counts and sizes from the database and live progress: queue (queued, active, completed, failed, wait time, average duration), downloads (bytes, throughput, retries, failures), storage (level, free, working and reserved bytes) and verification. `rayohx.platform.metrics.to_prometheus()` writes the same numbers as Prometheus text (`rayohx_<section>_<name>`).
+
 ## Migrations so far
 
 | Version | Name | Adds |
@@ -141,3 +164,4 @@ Metadata is written by FFmpeg, so it goes into Matroska and audio files, and int
 | 1 | `initial` | settings, jobs, job attempts, events |
 | 2 | `queue` | job columns for the display address, secret reference, recovery, output, retry time, control requests and progress |
 | 3 | `profiles` | the profiles table, and the profile a job came from |
+| 4 | `storage_diagnostics` | `auto_paused` on jobs, the `job_workspaces` table, and the `diagnostic_reports` table |

@@ -4,8 +4,8 @@ import asyncio
 from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request, status
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from rayohx.capabilities import detect
 from rayohx.enums import OutputFormat
 from rayohx.errors import RayoHXError
@@ -13,7 +13,9 @@ from rayohx.media import check_compatibility, inspect_media
 from rayohx.platform import JobRecord, JobState, QueuePriority, RetryPolicy
 from rayohx.platform.errors import QueueError
 from rayohx.platform.events import EventCategory
+from rayohx.platform.metrics import to_prometheus
 from rayohx.platform.profiles import DownloadProfile, validate
+from rayohx.platform.storage import StoragePolicy
 
 from rayohx_api.auth import authenticate
 from rayohx_api.build import DEFAULT_CONCURRENCY, download_config
@@ -24,12 +26,14 @@ from rayohx_api.schemas_v2 import (
     Attempt,
     BulkOutcome,
     CapabilitiesOut,
+    CleanupRequest,
     CompatibilityOut,
     EventList,
     JobDetail,
     MediaInfoRequest,
     MediaInfoResponse,
     MoveRequest,
+    NetworkCheckRequest,
     PlatformEvent,
     ProfileList,
     ProfileOut,
@@ -39,6 +43,8 @@ from rayohx_api.schemas_v2 import (
     QueueList,
     QueueSettings,
     QueueStats,
+    ReportRequest,
+    StoragePolicyBody,
     VerificationOut,
 )
 from rayohx_api.service import enqueue, rayo
@@ -331,3 +337,155 @@ async def stream_events(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
     )
+
+
+# --- storage ----------------------------------------------------------------------------------
+
+
+def _unprocessable(exc: RayoHXError) -> HTTPException:
+    return _problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc)
+
+
+@router.get("/storage", summary="Free space, what downloads use and the low-space policy")
+def storage_status() -> dict[str, Any]:
+    return rayo().storage.snapshot().to_dict()
+
+
+@router.put("/storage/policy", summary="Change the warn, pause and stop thresholds")
+def set_storage_policy(body: StoragePolicyBody) -> dict[str, Any]:
+    try:
+        policy = StoragePolicy.from_dict(body.model_dump())
+        return rayo().storage.set_policy(policy).to_dict()
+    except RayoHXError as exc:
+        raise _unprocessable(exc) from exc
+
+
+@router.get("/storage/workspaces", summary="Working folders and whether each can be removed")
+def storage_workspaces() -> list[dict[str, Any]]:
+    return [w.to_dict() for w in rayo().storage.workspaces()]
+
+
+@router.post("/storage/cleanup", summary="Preview or remove abandoned working data")
+def storage_cleanup(body: CleanupRequest) -> dict[str, Any]:
+    """Never removes downloaded files, running jobs' folders or anything it cannot attribute."""
+    try:
+        result = rayo().storage.cleanup(
+            dry_run=body.dry_run,
+            older_than_days=body.older_than_days,
+            report_days=body.report_days,
+        )
+    except RayoHXError as exc:
+        raise _unprocessable(exc) from exc
+    return result.to_dict()
+
+
+# --- diagnostics ------------------------------------------------------------------------------
+
+
+@router.get("/diagnostics/explain/{code}", summary="What an error code means")
+def explain_code(code: Annotated[str, Path(max_length=64)]) -> dict[str, Any]:
+    return rayo().diagnostics.explain(code).to_dict()
+
+
+@router.get("/diagnostics/jobs/{job_id}", summary="Why a job failed, and what was tried")
+def explain_job(job_id: Annotated[str, Path(max_length=64)]) -> dict[str, Any]:
+    found = rayo().diagnostics.explain_job(job_id)
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such job.")
+    return found
+
+
+def _network_for(body: NetworkCheckRequest, settings: Settings) -> Any:
+    """The network settings a check should use, built the way a download's are."""
+    if body.job_id or body.network is None:
+        return None
+    address = body.url or "https://example.invalid/"
+    request = DownloadCreate(url=address, network=body.network)
+    return download_config(
+        request,
+        base=settings.download_dir,
+        local=settings.allow_local_paths,
+        concurrency=DEFAULT_CONCURRENCY,
+    ).network
+
+
+@router.post("/diagnostics/network", summary="Check each step of reaching a server")
+def check_network(
+    body: NetworkCheckRequest, settings: Annotated[Settings, Depends(get_settings)]
+) -> dict[str, Any]:
+    address = body.url
+    try:
+        if address is None:
+            job = rayo().queue.get(body.job_id) if body.job_id else None
+            if job is None:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Give url or a job_id.")
+            address = job.spec.url
+        return (
+            rayo()
+            .diagnostics.network(
+                address,
+                job_id=body.job_id,
+                config=_network_for(body, settings),
+                timeout=body.timeout,
+            )
+            .to_dict()
+        )
+    except RayoHXError as exc:
+        raise _unprocessable(exc) from exc
+
+
+@router.post("/diagnostics/stream", summary="Describe a stream and what is unusual about it")
+def check_stream(
+    body: NetworkCheckRequest, settings: Annotated[Settings, Depends(get_settings)]
+) -> dict[str, Any]:
+    address = body.url
+    try:
+        if address is None:
+            job = rayo().queue.get(body.job_id) if body.job_id else None
+            if job is None:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Give url or a job_id.")
+            address = job.spec.url
+        return (
+            rayo()
+            .diagnostics.stream(address, job_id=body.job_id, config=_network_for(body, settings))
+            .to_dict()
+        )
+    except RayoHXError as exc:
+        raise _unprocessable(exc) from exc
+
+
+@router.post("/diagnostics/report", summary="A report with no secrets in it, safe to share")
+def make_report(body: ReportRequest) -> dict[str, Any]:
+    try:
+        report = rayo().diagnostics.report(
+            body.job_id,
+            url=body.url,
+            include_network=body.include_network,
+            include_stream=body.include_stream,
+            save=body.save,
+        )
+    except RayoHXError as exc:
+        raise _unprocessable(exc) from exc
+    return {"path": report.path.name if report.path else None, "report": report.data}
+
+
+@router.get("/diagnostics/reports", summary="The reports that were saved")
+def list_reports() -> list[dict[str, object]]:
+    return rayo().diagnostics.reports()
+
+
+# --- metrics ----------------------------------------------------------------------------------
+
+
+@router.get("/metrics", summary="Queue, download, storage and verification numbers")
+def metrics() -> dict[str, Any]:
+    return rayo().metrics()
+
+
+@router.get(
+    "/metrics/prometheus",
+    summary="The same numbers as Prometheus text",
+    response_class=PlainTextResponse,
+)
+def metrics_prometheus() -> str:
+    return to_prometheus(rayo().metrics())

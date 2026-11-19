@@ -139,6 +139,8 @@ class JobRecord:
     recovered: bool = False
     needs_credentials: bool = False
     control_request: str | None = None
+    #: Paused by the queue itself because disk space ran low; it resumes by itself.
+    auto_paused: bool = False
     #: The profile the job's settings came from (a snapshot: later edits do not change the job).
     profile_id: str | None = None
     #: How the job ended beyond the file: ``integrity`` (the verification report), ``notes``,
@@ -169,6 +171,7 @@ class JobRecord:
             "not_before": self.not_before,
             "recovered": self.recovered,
             "needs_credentials": self.needs_credentials,
+            "auto_paused": self.auto_paused,
             "profile": self.profile_id,
             "notes": list((self.result or {}).get("notes", [])),
             "progress": dict(self.progress) if self.progress else None,

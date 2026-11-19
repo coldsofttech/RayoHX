@@ -33,20 +33,23 @@ from typing import TYPE_CHECKING, Any
 
 from rayohx.cancellation import CancellationToken
 from rayohx.downloader import Downloader
-from rayohx.enums import DownloadState, VerificationStatus
+from rayohx.enums import DownloadState, EventType, StorageStrategy, VerificationStatus
 from rayohx.errors import ConfigurationError, RayoHXError
 from rayohx.platform.errors import QueueError, RunnerLockedError
 from rayohx.platform.events import EventCategory, Severity
 from rayohx.platform.jobs.model import ACTIVE_STATES, ENGINE_STATE_TO_JOB, JobRecord, JobState
 from rayohx.platform.jobs.options import config_from_options
 from rayohx.platform.queue.scheduler import Candidate, pick_next
+from rayohx.platform.storage.guard import GuardVerdict, StorageGuard, remaining_need
+from rayohx.platform.storage.policy import StorageLevel
+from rayohx.platform.storage.sizes import format_size
 from rayohx.serialization import progress_to_dict
 from rayohx.storage import FileLock
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from rayohx.config import DownloadConfig
+    from rayohx.config import DownloadConfig, StorageConfig
     from rayohx.events import DownloadEvent
     from rayohx.models import DownloadResult
     from rayohx.platform.events import EventBus
@@ -58,6 +61,11 @@ logger = logging.getLogger(__name__)
 PAUSE = "pause"
 CANCEL = "cancel"
 SHUTDOWN = "shutdown"
+#: The queue itself stops a job because the disk is filling up.
+STORAGE_PAUSE = "storage_pause"
+STORAGE_STOP = "storage_stop"
+#: A low-storage download may keep at most this much working data.
+LOW_STORAGE_TEMP_BYTES = 256 * 1024 * 1024
 
 
 @dataclass(slots=True)
@@ -86,6 +94,7 @@ class QueueRunner:
         clock: Callable[[], float] = time.time,
         downloader_factory: Callable[..., Downloader] = Downloader,
         admit: Callable[[Candidate], bool] | None = None,
+        guard: StorageGuard | None = None,
     ) -> None:
         self._repo = repository
         self._bus = bus
@@ -97,6 +106,7 @@ class QueueRunner:
         self._clock = clock
         self._factory = downloader_factory
         self._admit = admit
+        self._guard = guard
         self._cond = threading.Condition(threading.RLock())
         self._active: dict[str, _Active] = {}
         #: Every worker thread until it has fully finished, including its last bookkeeping.
@@ -202,15 +212,23 @@ class QueueRunner:
             active = self._active.get(job_id)
             return dict(active.progress) if active and active.progress else None
 
+    def active_progress(self) -> dict[str, dict[str, Any] | None]:
+        """The latest progress of every running job."""
+        with self._cond:
+            return {job_id: a.progress for job_id, a in self._active.items()}
+
     def request(self, job_id: str, kind: str) -> bool:
         """Stop a running job for ``kind`` (``pause`` or ``cancel``). False if it is not running."""
-        if kind not in {PAUSE, CANCEL}:
+        if kind not in {PAUSE, CANCEL, STORAGE_PAUSE, STORAGE_STOP}:
             raise QueueError(f"Unknown request {kind!r}.")
         with self._cond:
             active = self._active.get(job_id)
             if active is None:
                 return False
-            if active.intent != CANCEL:  # cancelling wins over pausing
+            if kind in {STORAGE_PAUSE, STORAGE_STOP}:
+                if active.intent is None:  # a person's wish comes first
+                    active.intent = kind
+            elif active.intent != CANCEL:  # cancelling wins over pausing
                 active.intent = kind
             active.token.cancel()
             self._cond.notify_all()
@@ -238,6 +256,7 @@ class QueueRunner:
 
     def _tick(self) -> None:
         self._apply_controls()
+        self._enforce_storage()
         self._dispatch()
         self._check_idle()
 
@@ -265,8 +284,56 @@ class QueueRunner:
         if free <= 0:
             return
         now = self._clock()
-        for job_id in pick_next(self._repo.ready(now), free_slots=free, now=now, admit=self._admit):
+        for job_id in pick_next(
+            self._repo.ready(now), free_slots=free, now=now, admit=self._admitted
+        ):
             self._claim(job_id)
+
+    def _admitted(self, candidate: Candidate) -> bool:
+        """Whether a job may start: the caller's rule, then whether the disk has room for it."""
+        if self._admit is not None and not self._admit(candidate):
+            return False
+        if self._guard is None:
+            return True
+        job = self._repo.get(candidate.id)
+        need = remaining_need(job.progress) if job is not None else 0
+        return self._guard.admit(need, self.active_progress())
+
+    def _enforce_storage(self) -> None:
+        """Pause or stop running jobs when the disk is nearly full, and let them go on later."""
+        if self._guard is None:
+            return
+        verdict = self._guard.review(self.active_progress())
+        if verdict.changed:
+            self._announce_level(verdict)
+        for job_id in verdict.pause:
+            self.request(job_id, STORAGE_PAUSE)
+        for job_id in verdict.stop:
+            self.request(job_id, STORAGE_STOP)
+        if verdict.resume:
+            for job_id in self._repo.auto_paused_ids():
+                job = self._repo.get(job_id)
+                if job is not None and self._repo.transition(
+                    job_id, [JobState.PAUSED], JobState.QUEUED, auto_paused=False
+                ):
+                    self._changed(job, JobState.QUEUED)
+
+    def _announce_level(self, verdict: GuardVerdict) -> None:
+        names = {
+            StorageLevel.OK: ("storage.recovered", Severity.INFO),
+            StorageLevel.LOW: ("storage.low", Severity.WARNING),
+            StorageLevel.PAUSE: ("storage.paused", Severity.WARNING),
+            StorageLevel.STOP: ("storage.stopped", Severity.ERROR),
+        }
+        kind, severity = names[verdict.level]
+        self._bus.emit(
+            kind,
+            category=EventCategory.STORAGE,
+            severity=severity,
+            level=verdict.level.name.lower(),
+            previous=verdict.previous.name.lower(),
+            free_bytes=verdict.free_bytes,
+        )
 
     def _claim(self, job_id: str) -> None:
         job = self._repo.get(job_id)
@@ -381,8 +448,23 @@ class QueueRunner:
             job.spec.options, secrets, default_directory=self._download_dir
         )
         # A run that is paused, cancelled or interrupted must keep what it has downloaded.
+        storage = dataclasses.replace(config.storage, keep_state_on_failure=True)
+        if self._guard is not None and self._guard.low_storage():
+            storage = self._thrifty(storage)
+        return dataclasses.replace(config, storage=storage)
+
+    @staticmethod
+    def _thrifty(storage: StorageConfig) -> StorageConfig:
+        """Settings that keep little working data: stream straight to the output."""
+        limit = storage.max_temp_bytes
         return dataclasses.replace(
-            config, storage=dataclasses.replace(config.storage, keep_state_on_failure=True)
+            storage,
+            strategy=(
+                StorageStrategy.STREAMING
+                if storage.strategy is StorageStrategy.AUTO
+                else storage.strategy
+            ),
+            max_temp_bytes=min(limit, LOW_STORAGE_TEMP_BYTES) if limit else LOW_STORAGE_TEMP_BYTES,
         )
 
     def _output_path(self, job: JobRecord, config: DownloadConfig) -> Path | None:
@@ -391,6 +473,8 @@ class QueueRunner:
         return (config.output.directory or self._download_dir) / job.spec.output_name
 
     def _on_event(self, job_id: str, active: _Active, event: DownloadEvent) -> None:
+        if event.type is EventType.WORKSPACE_OPENED and event.data.get("path"):
+            self._repo.add_workspace(job_id, str(event.data["path"]))
         if event.progress is not None:
             active.progress = progress_to_dict(event.progress)
         mapped = ENGINE_STATE_TO_JOB.get(event.state)
@@ -454,7 +538,35 @@ class QueueRunner:
         )
         if cancelled:
             self._end_attempt(attempt_id, active.intent or "cancel", None, None)
-            if active.intent == PAUSE:
+            if active.intent == STORAGE_PAUSE:
+                self._repo.transition(
+                    job_id,
+                    ACTIVE_STATES,
+                    JobState.PAUSED,
+                    progress_json=progress,
+                    attempts=max(0, job.attempts - 1),
+                    auto_paused=True,
+                    control_request=None,
+                )
+                self._changed(job, JobState.PAUSED, reason="the disk is nearly full")
+            elif active.intent == STORAGE_STOP:
+                free = self._guard.free_bytes() if self._guard else None
+                shown = f" ({format_size(free)} free)" if free is not None else ""
+                text = f"Stopped because the disk is nearly full{shown}. Free some space and retry."
+                self._repo.transition(
+                    job_id,
+                    ACTIVE_STATES,
+                    JobState.FAILED,
+                    finished_at=now,
+                    error_code="STORAGE_LOW",
+                    error_message=text,
+                    progress_json=progress,
+                    control_request=None,
+                )
+                self._changed(
+                    job, JobState.FAILED, severity=Severity.ERROR, code="STORAGE_LOW", error=text
+                )
+            elif active.intent == PAUSE:
                 self._repo.transition(
                     job_id,
                     ACTIVE_STATES,
@@ -532,6 +644,12 @@ class QueueRunner:
             return {}
         report = result.integrity
         details: dict[str, Any] = {"notes": list(result.notes)}
+        storage = result.progress.storage
+        details["storage"] = {
+            "peak_temporary_bytes": storage.peak_temporary_bytes,
+            "downloaded_bytes": storage.downloaded_bytes,
+            "written_bytes": storage.written_bytes,
+        }
         if result.output is not None:
             details["processing"] = result.output.processing.value
             details["metadata"] = list(result.output.metadata)

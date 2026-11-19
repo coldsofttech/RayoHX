@@ -214,3 +214,40 @@ class CompatibilityOut(BaseModel):
 class MediaInfoResponse(BaseModel):
     media: dict[str, Any]
     compatibility: list[CompatibilityOut]
+
+
+class StoragePolicyBody(BaseModel):
+    """Free-space thresholds for the downloads disk. Sizes are bytes or text such as ``5GB``."""
+
+    warn_below: str | int | None = Field(default=None, description="Warn under this much free.")
+    pause_below: str | int | None = Field(default=None, description="Pause downloads under this.")
+    stop_below: str | int | None = Field(default=None, description="Stop downloads under this.")
+    low_storage_mode: bool = Field(default=False, description="Prefer ways that keep little data.")
+    resume_margin: float = Field(default=0.1, ge=0, le=1)
+
+
+class CleanupRequest(BaseModel):
+    """What to clean. Downloaded files are never touched."""
+
+    dry_run: bool = Field(default=True, description="Only list what would be removed.")
+    older_than_days: float = Field(default=7, ge=0, le=3650)
+    report_days: float | None = Field(default=30, ge=0, le=3650)
+
+
+class NetworkCheckRequest(BaseModel):
+    """Check reaching a server, with a job's headers and proxy or just the defaults."""
+
+    url: str | None = Field(default=None, max_length=4096)
+    job_id: str | None = Field(default=None, max_length=64)
+    network: Network | None = None
+    timeout: float = Field(default=10, ge=1, le=60)
+
+
+class ReportRequest(BaseModel):
+    """A sanitized report, optionally including checks of one address."""
+
+    job_id: str | None = Field(default=None, max_length=64)
+    url: str | None = Field(default=None, max_length=4096)
+    include_network: bool = False
+    include_stream: bool = False
+    save: bool = True

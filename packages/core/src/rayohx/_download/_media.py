@@ -34,9 +34,15 @@ from rayohx._http import HttpClient
 from rayohx._redaction import redact_url
 from rayohx.cancellation import CancellationToken
 from rayohx.config import DownloadConfig
-from rayohx.enums import ContainerFormat, DownloadState, StorageStrategy, VerifyLevel
+from rayohx.enums import (
+    ContainerFormat,
+    DownloadState,
+    EventType,
+    StorageStrategy,
+    VerifyLevel,
+)
 from rayohx.errors import DownloadError, FinalizationError, UnsupportedPlaylistError
-from rayohx.events import EventBus
+from rayohx.events import DownloadEvent, EventBus
 from rayohx.models import DownloadProgress, MediaPlaylist, StorageMetrics, Variant
 
 logger = logging.getLogger(__name__)
@@ -153,6 +159,7 @@ class MediaDownload:
         if not needs_workspace:
             return self._run(strategy, estimator, signature, None, started)
         workspace = Workspace(root)
+        self._announce_workspace(root)
         with workspace:
             summary = self._run(strategy, estimator, signature, workspace, started)
         workspace.clean(keep_state=False, keep_segments=False)
@@ -256,6 +263,19 @@ class MediaDownload:
             progress=final,
             elapsed_seconds=self._clock() - started,
             output=output,
+        )
+
+    def _announce_workspace(self, root: Path) -> None:
+        """Tell listeners where the working folder is, so it can be accounted for and cleaned."""
+        if self._events is None:
+            return
+        self._events.emit(
+            DownloadEvent(
+                type=EventType.WORKSPACE_OPENED,
+                download_id=self._download_id,
+                state=DownloadState.DOWNLOADING,
+                data={"path": str(root)},
+            )
         )
 
     def _validator(self) -> Callable[[Path], None] | None:

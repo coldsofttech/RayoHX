@@ -132,6 +132,7 @@ def test_events_follow_the_download_through_its_states(tmp_path: Path) -> None:
     assert milestones(events) == [
         EventType.DOWNLOAD_STARTED,
         EventType.PLAYLIST_LOADED,
+        EventType.WORKSPACE_OPENED,
         EventType.FINALIZATION_STARTED,
         EventType.FINALIZATION_COMPLETED,
         EventType.DOWNLOAD_COMPLETED,

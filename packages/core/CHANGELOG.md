@@ -13,6 +13,9 @@ The platform is the new `rayohx.platform` package: persistent services around th
 - A persistent download queue (`rayo.queue`): priorities, an explicit order, several jobs at once, pause and resume that give up the slot and keep the work, cancel, retry, bulk actions, export and import. Jobs survive restarts and crashes, and a failure never affects other jobs.
 - Failed jobs are retried after a growing delay when the error may pass; every run is recorded.
 - Job secrets (cookies, secret headers, proxy credentials) are kept in a secret store (system credential store with the optional `keyring` package, else memory) and never in the database.
+- Storage management (`rayo.storage`): free-space thresholds with hysteresis, admission with reservations, automatic pause and resume, `STORAGE_LOW` stop, low-storage mode, workspace ownership, a safe cleanup planner and a storage snapshot.
+- Diagnostics (`rayo.diagnostics`): failure explanations for every stable code, network and stream checks, retry history, and sanitized reports. `rayo.metrics()` and Prometheus text.
+- The engine emits a `workspace_opened` event with the folder it works in; `rayohx.storage` gains `disk_usage`.
 - Download profiles (`rayo.profiles`): five built in (Best Quality, 1080p, Mobile, Archive, Custom) and your own, with validation, a default profile, file name templates, import and export. `rayo.queue.add(url, profile=..., overrides=...)` copies the settings into the job.
 - `DownloadConfig` can be saved as plain data and rebuilt (`rayohx.platform.jobs.config_to_options`, `config_from_options`).
 

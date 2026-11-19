@@ -123,6 +123,8 @@ def progress_to_dict(progress: DownloadProgress) -> dict[str, Any]:
         "eta_seconds": None if progress.eta_seconds is None else round(progress.eta_seconds, 1),
         "active_workers": progress.active_workers,
         "peak_temporary_bytes": progress.storage.peak_temporary_bytes,
+        "temporary_bytes": progress.storage.temporary_bytes,
+        "working_bytes": progress.storage.working_bytes,
     }
 
 

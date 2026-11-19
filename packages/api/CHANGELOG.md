@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `/api/v2/storage`, `/api/v2/diagnostics/*` and `/api/v2/metrics` (JSON and Prometheus text).
 - `POST /api/v2/media-info`, `GET /api/v2/queue/{id}/verification`, and `verify`, `metadata` and `name_template` on `POST /api/v2/queue`. Jobs report `verification` and `notes`. Jobs queued on `/api/v2` are verified at `basic` and keep the stream's metadata by default.
 - `/api/v2/profiles`, `/api/v2/capabilities`, and a `profile` field on `POST /api/v2/queue`: the profile's settings apply and only the options a request sets override them.
 - The output formats `original`, `mkv` and `audio`.

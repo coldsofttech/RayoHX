@@ -52,6 +52,8 @@ class EventType(StrEnum):
     DOWNLOAD_CANCELLED = "download_cancelled"
     DOWNLOAD_PAUSED = "download_paused"
     DOWNLOAD_RESUMED = "download_resumed"
+    #: A working folder was opened; ``data["path"]`` says where.
+    WORKSPACE_OPENED = "workspace_opened"
     VERIFICATION_STARTED = "verification_started"
     VERIFICATION_COMPLETED = "verification_completed"
     VERIFICATION_FAILED = "verification_failed"

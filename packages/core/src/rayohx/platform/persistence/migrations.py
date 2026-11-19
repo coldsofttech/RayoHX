@@ -110,11 +110,34 @@ CREATE TABLE profiles (
 ALTER TABLE jobs ADD COLUMN profile_id TEXT;
 """
 
+_STORAGE_AND_DIAGNOSTICS = """
+ALTER TABLE jobs ADD COLUMN auto_paused INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE job_workspaces (
+    job_id  TEXT NOT NULL REFERENCES jobs (id) ON DELETE CASCADE,
+    path    TEXT NOT NULL,
+    seen_at REAL NOT NULL,
+    PRIMARY KEY (job_id, path)
+);
+CREATE INDEX job_workspaces_path ON job_workspaces (path);
+
+CREATE TABLE diagnostic_reports (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at REAL NOT NULL,
+    job_id     TEXT,
+    path       TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    summary    TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX diagnostic_reports_created ON diagnostic_reports (created_at);
+"""
+
 #: Every migration this version of RayoHX knows, oldest first.
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "initial", _INITIAL),
     Migration(2, "queue", _QUEUE),
     Migration(3, "profiles", _PROFILES),
+    Migration(4, "storage_and_diagnostics", _STORAGE_AND_DIAGNOSTICS),
 )
 
 

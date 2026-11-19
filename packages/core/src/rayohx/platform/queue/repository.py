@@ -43,6 +43,7 @@ _SETTABLE = frozenset(
         "progress_json",
         "secret_ref",
         "result_json",
+        "auto_paused",
     }
 )
 _ACTIVE_VALUES = tuple(s.value for s in ACTIVE_STATES)
@@ -77,6 +78,7 @@ def _record(row: sqlite3.Row) -> JobRecord:
         needs_credentials=bool(row["needs_credentials"]),
         control_request=row["control_request"],
         profile_id=row["profile_id"],
+        auto_paused=bool(row["auto_paused"]),
         result=json.loads(result) if result else None,
         progress=json.loads(progress) if progress else None,
     )
@@ -181,6 +183,54 @@ class JobRepository:
 
     def now(self) -> float:
         return float(self._clock())
+
+    def add_workspace(self, job_id: str, path: str) -> None:
+        """Remember that a job uses this working folder."""
+        with self._db.transaction() as c:
+            c.execute(
+                "INSERT OR REPLACE INTO job_workspaces (job_id, path, seen_at) VALUES (?, ?, ?)",
+                (job_id, path, self._clock()),
+            )
+
+    def workspace_owners(self) -> dict[str, str]:
+        """Working folder path to the job that last used it."""
+        rows = self._db.fetchall("SELECT path, job_id FROM job_workspaces ORDER BY seen_at ASC")
+        return {r["path"]: r["job_id"] for r in rows}
+
+    def workspaces_of(self, job_id: str) -> list[str]:
+        rows = self._db.fetchall(
+            "SELECT path FROM job_workspaces WHERE job_id = ? ORDER BY seen_at", (job_id,)
+        )
+        return [r["path"] for r in rows]
+
+    def forget_workspace(self, path: str) -> None:
+        with self._db.transaction() as c:
+            c.execute("DELETE FROM job_workspaces WHERE path = ?", (path,))
+
+    def auto_paused_ids(self) -> list[str]:
+        rows = self._db.fetchall(
+            "SELECT id FROM jobs WHERE state = 'paused' AND auto_paused = 1 "
+            "ORDER BY priority DESC, rank ASC, created_at ASC"
+        )
+        return [r["id"] for r in rows]
+
+    def finished_output_bytes(self) -> int:
+        """The size of every output the completed jobs made."""
+        row = self._db.fetchone(
+            "SELECT COALESCE(SUM(output_size), 0) AS n FROM jobs WHERE state = 'completed'"
+        )
+        return int(row["n"]) if row else 0
+
+    def peak_temporary_bytes(self) -> int:
+        """The most working space any finished job used at one time."""
+        peak = 0
+        for row in self._db.fetchall("SELECT result_json FROM jobs WHERE result_json IS NOT NULL"):
+            try:
+                found = json.loads(row["result_json"]).get("storage", {})
+            except ValueError:
+                continue
+            peak = max(peak, int(found.get("peak_temporary_bytes") or 0))
+        return peak
 
     def attempts(self, job_id: str) -> list[dict[str, Any]]:
         rows = self._db.fetchall(

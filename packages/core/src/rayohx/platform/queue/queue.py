@@ -444,6 +444,8 @@ class Queue:
 
     def _pause(self, job: JobRecord) -> None:
         if job.state is JobState.PAUSED:
+            if job.auto_paused:  # the person takes over: it will not resume by itself
+                self._repo.update(job.id, auto_paused=False)
             return
         if job.state.is_terminal:
             raise Refused(f"The job is already {job.state.value}.")
@@ -457,7 +459,7 @@ class Queue:
             if job.state is JobState.QUEUED:
                 return
             raise Refused(f"Only a paused job can be resumed; this one is {job.state.value}.")
-        self._settle(job, JobState.QUEUED, [JobState.PAUSED], not_before=None)
+        self._settle(job, JobState.QUEUED, [JobState.PAUSED], not_before=None, auto_paused=False)
 
     def _cancel(self, job: JobRecord) -> None:
         if job.state.is_terminal:

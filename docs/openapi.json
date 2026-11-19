@@ -228,6 +228,40 @@
         "title": "CleanedFolder",
         "type": "object"
       },
+      "CleanupRequest": {
+        "description": "What to clean. Downloaded files are never touched.",
+        "properties": {
+          "dry_run": {
+            "default": true,
+            "description": "Only list what would be removed.",
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "older_than_days": {
+            "default": 7,
+            "maximum": 3650.0,
+            "minimum": 0.0,
+            "title": "Older Than Days",
+            "type": "number"
+          },
+          "report_days": {
+            "anyOf": [
+              {
+                "maximum": 3650.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 30,
+            "title": "Report Days"
+          }
+        },
+        "title": "CleanupRequest",
+        "type": "object"
+      },
       "CompatibilityOut": {
         "properties": {
           "level": {
@@ -1288,6 +1322,54 @@
         "title": "Network",
         "type": "object"
       },
+      "NetworkCheckRequest": {
+        "description": "Check reaching a server, with a job's headers and proxy or just the defaults.",
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "network": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Network"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeout": {
+            "default": 10,
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Timeout",
+            "type": "number"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "NetworkCheckRequest",
+        "type": "object"
+      },
       "Output": {
         "properties": {
           "directory": {
@@ -2093,6 +2175,52 @@
         "title": "ReadyResponse",
         "type": "object"
       },
+      "ReportRequest": {
+        "description": "A sanitized report, optionally including checks of one address.",
+        "properties": {
+          "include_network": {
+            "default": false,
+            "title": "Include Network",
+            "type": "boolean"
+          },
+          "include_stream": {
+            "default": false,
+            "title": "Include Stream",
+            "type": "boolean"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "save": {
+            "default": true,
+            "title": "Save",
+            "type": "boolean"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "ReportRequest",
+        "type": "object"
+      },
       "Retry": {
         "description": "When a failed job is run again.",
         "properties": {
@@ -2417,6 +2545,71 @@
           }
         },
         "title": "Storage",
+        "type": "object"
+      },
+      "StoragePolicyBody": {
+        "description": "Free-space thresholds for the downloads disk. Sizes are bytes or text such as ``5GB``.",
+        "properties": {
+          "low_storage_mode": {
+            "default": false,
+            "description": "Prefer ways that keep little data.",
+            "title": "Low Storage Mode",
+            "type": "boolean"
+          },
+          "pause_below": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pause downloads under this.",
+            "title": "Pause Below"
+          },
+          "resume_margin": {
+            "default": 0.1,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Resume Margin",
+            "type": "number"
+          },
+          "stop_below": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stop downloads under this.",
+            "title": "Stop Below"
+          },
+          "warn_below": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Warn under this much free.",
+            "title": "Warn Below"
+          }
+        },
+        "title": "StoragePolicyBody",
         "type": "object"
       },
       "ValidationError": {
@@ -3191,6 +3384,281 @@
         ]
       }
     },
+    "/api/v2/diagnostics/explain/{code}": {
+      "get": {
+        "operationId": "explain_code_api_v2_diagnostics_explain__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Explain Code Api V2 Diagnostics Explain  Code  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "What an error code means",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/diagnostics/jobs/{job_id}": {
+      "get": {
+        "operationId": "explain_job_api_v2_diagnostics_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Explain Job Api V2 Diagnostics Jobs  Job Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Why a job failed, and what was tried",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/diagnostics/network": {
+      "post": {
+        "operationId": "check_network_api_v2_diagnostics_network_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NetworkCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Check Network Api V2 Diagnostics Network Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Check each step of reaching a server",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/diagnostics/report": {
+      "post": {
+        "operationId": "make_report_api_v2_diagnostics_report_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Make Report Api V2 Diagnostics Report Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "A report with no secrets in it, safe to share",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/diagnostics/reports": {
+      "get": {
+        "operationId": "list_reports_api_v2_diagnostics_reports_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Reports Api V2 Diagnostics Reports Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "The reports that were saved",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/diagnostics/stream": {
+      "post": {
+        "operationId": "check_stream_api_v2_diagnostics_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NetworkCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Check Stream Api V2 Diagnostics Stream Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Describe a stream and what is unusual about it",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
     "/api/v2/events": {
       "get": {
         "operationId": "list_events_api_v2_events_get",
@@ -3329,6 +3797,60 @@
           }
         ],
         "summary": "Everything a stream offers, and what saving it would need",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/metrics": {
+      "get": {
+        "operationId": "metrics_api_v2_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Metrics Api V2 Metrics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Queue, download, storage and verification numbers",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/metrics/prometheus": {
+      "get": {
+        "operationId": "metrics_prometheus_api_v2_metrics_prometheus_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "The same numbers as Prometheus text",
         "tags": [
           "v2"
         ]
@@ -3796,6 +4318,162 @@
           }
         ],
         "summary": "How a finished job was checked",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/storage": {
+      "get": {
+        "operationId": "storage_status_api_v2_storage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Storage Status Api V2 Storage Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Free space, what downloads use and the low-space policy",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/storage/cleanup": {
+      "post": {
+        "description": "Never removes downloaded files, running jobs' folders or anything it cannot attribute.",
+        "operationId": "storage_cleanup_api_v2_storage_cleanup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Storage Cleanup Api V2 Storage Cleanup Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Preview or remove abandoned working data",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/storage/policy": {
+      "put": {
+        "operationId": "set_storage_policy_api_v2_storage_policy_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoragePolicyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Storage Policy Api V2 Storage Policy Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Change the warn, pause and stop thresholds",
+        "tags": [
+          "v2"
+        ]
+      }
+    },
+    "/api/v2/storage/workspaces": {
+      "get": {
+        "operationId": "storage_workspaces_api_v2_storage_workspaces_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Storage Workspaces Api V2 Storage Workspaces Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Working folders and whether each can be removed",
         "tags": [
           "v2"
         ]

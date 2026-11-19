@@ -462,3 +462,62 @@ def test_media_info_asks_for_a_source(client: TestClient) -> None:
     assert client.post("/api/v2/media-info", json={}).status_code == 422
     assert client.post("/api/v2/media-info", json={"playlist_text": MEDIA}).status_code == 422
     assert client.post("/api/v2/media-info", json={"url": "ftp://x"}).status_code == 422
+
+
+# --- storage, diagnostics and metrics ----------------------------------------------------
+
+
+def test_storage_status_policy_and_cleanup(client: TestClient) -> None:
+    status = client.get("/api/v2/storage").json()
+    assert status["level"] == "ok"
+    updated = client.put(
+        "/api/v2/storage/policy", json={"warn_below": "10GB", "pause_below": "5GB"}
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["pause_below"] == 5 * 1024**3
+    assert client.get("/api/v2/storage").json()["policy"]["warn_below"] == 10 * 1024**3
+    bad = client.put("/api/v2/storage/policy", json={"warn_below": "1GB", "pause_below": "5GB"})
+    assert bad.status_code == 422
+    assert client.get("/api/v2/storage/workspaces").json() == []
+    plan = client.post("/api/v2/storage/cleanup", json={}).json()
+    assert plan["dry_run"] is True
+
+
+def test_diagnostics_explain_codes_and_jobs(client: TestClient) -> None:
+    code = client.get("/api/v2/diagnostics/explain/HTTP_403").json()
+    assert code["code"] == "HTTP_403"
+    assert code["next_steps"]
+    assert client.get("/api/v2/diagnostics/jobs/ghost").status_code == 404
+    job = add(client, "explained")
+    found = client.get(f"/api/v2/diagnostics/jobs/{job['id']}").json()
+    assert found["job"]["id"] == job["id"]
+    assert found["explanation"] is None
+
+
+def test_the_report_is_clean_and_listed(client: TestClient) -> None:
+    secret = "SuperSecretToken123"
+    job = client.post("/api/v2/queue", json={"url": f"{URL.format('s')}?token={secret}"}).json()[
+        "items"
+    ][0]
+    report = client.post("/api/v2/diagnostics/report", json={"job_id": job["id"]})
+    assert report.status_code == 200, report.text
+    assert secret not in report.text
+    assert report.json()["report"]["report"]["sanitized"] is True
+    assert "/" not in report.json()["path"]
+    assert len(client.get("/api/v2/diagnostics/reports").json()) == 1
+    assert client.post("/api/v2/diagnostics/report", json={"job_id": "ghost"}).status_code == 422
+
+
+def test_network_check_needs_an_address(client: TestClient) -> None:
+    assert client.post("/api/v2/diagnostics/network", json={}).status_code == 422
+    refused = client.post("/api/v2/diagnostics/network", json={"url": "ftp://x/y"})
+    assert refused.status_code == 422
+
+
+def test_metrics_as_json_and_prometheus(client: TestClient) -> None:
+    add(client, "m")
+    data = client.get("/api/v2/metrics").json()
+    assert set(data) >= {"queue", "downloads", "storage", "verification"}
+    text = client.get("/api/v2/metrics/prometheus")
+    assert text.headers["content-type"].startswith("text/plain")
+    assert "rayohx_queue_queued" in text.text

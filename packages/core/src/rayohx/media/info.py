@@ -186,6 +186,10 @@ class MediaInfo:
     duration: float | None
     live: bool
     segment_count: int
+    #: Segments that follow a break in the stream (``EXT-X-DISCONTINUITY``).
+    discontinuities: int
+    #: The longest a segment may last, as the playlist promises.
+    target_duration: float | None
     #: How the segments are packaged: ``MPEG-TS``, ``fragmented MP4`` ...
     container: str | None
     #: ``AES-128``, ``SAMPLE-AES`` or ``None``.
@@ -210,6 +214,8 @@ class MediaInfo:
             "duration": self.duration,
             "live": self.live,
             "segment_count": self.segment_count,
+            "discontinuities": self.discontinuities,
+            "target_duration": self.target_duration,
             "container": self.container,
             "encryption": self.encryption,
             "size": self.size.to_dict(),
@@ -464,6 +470,8 @@ def inspect_media(
         duration=media.total_duration if media.is_vod and media.segments else None,
         live=not media.is_vod,
         segment_count=media.segment_count,
+        discontinuities=sum(1 for s in media.segments if s.discontinuity),
+        target_duration=media.target_duration or None,
         container=_LABELS.get(container),
         encryption=encryption,
         size=estimate_size(media, variant, picked_separate),

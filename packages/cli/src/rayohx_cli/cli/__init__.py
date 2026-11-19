@@ -10,10 +10,12 @@ from rayohx_cli import output
 from rayohx_cli.cli import (  # noqa: F401  (registers the commands)
     clean,
     config,
+    diagnostics,
     download,
     info,
     profile,
     queue,
+    storage,
 )
 from rayohx_cli.cli.common import EXIT_CANCELLED, EXIT_FAILED, EXIT_USAGE
 from rayohx_cli.cli.root import app

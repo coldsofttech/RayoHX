@@ -14,15 +14,19 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from rayohx.downloader import Downloader
+from rayohx.platform.diagnostics import DiagnosticsService, ReportRegistry
 from rayohx.platform.events import EventBus, EventCategory, EventStore, Severity
+from rayohx.platform.metrics import collect_metrics
 from rayohx.platform.paths import PlatformPaths, resolve_paths, under
 from rayohx.platform.persistence import Database, SettingsStore
 from rayohx.platform.profiles import ProfileStore
 from rayohx.platform.queue import JobRepository, Queue, QueueRunner
 from rayohx.platform.secrets import SecretStore, default_secret_store
+from rayohx.platform.storage import StorageGuard, StorageService
+from rayohx.platform.storage.policy import load_policy
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -49,6 +53,8 @@ class Rayo:
         secrets: SecretStore | None = None,
         max_active: int = 2,
         downloader_factory: Callable[..., Downloader] = Downloader,
+        free_space: Callable[[Path], int] | None = None,
+        storage_interval: float = 1.0,
     ) -> None:
         if paths is not None:
             self.paths = paths
@@ -72,6 +78,12 @@ class Rayo:
         #: The built-in and saved download profiles.
         self.profiles = ProfileStore(self.database, self.settings)
         self.jobs = JobRepository(self.database)
+        guard = StorageGuard(
+            lambda: load_policy(self.settings),
+            lambda: self.download_dir,
+            free=free_space,
+            interval=storage_interval,
+        )
         runner = QueueRunner(
             self.jobs,
             self.events,
@@ -80,6 +92,7 @@ class Rayo:
             lock_path=lock_path,
             max_active=max_active,
             downloader_factory=downloader_factory,
+            guard=guard,
         )
         #: The persistent download queue. Call ``queue.start()`` to run jobs in this process.
         self.queue = Queue(
@@ -91,6 +104,29 @@ class Rayo:
             self.profiles,
             download_dir=self.download_dir,
             runner_lock_path=lock_path,
+        )
+        self.report_registry = ReportRegistry(self.database)
+        #: Disk space: accounting, the low-space policy and safe cleanup.
+        self.storage = StorageService(
+            self.jobs,
+            self.settings,
+            self.event_store,
+            self.report_registry,
+            self.paths,
+            download_dir=self.download_dir,
+            guard=guard,
+            live_progress=runner.active_progress,
+        )
+        #: Explaining failures, checking the network and streams, and safe reports.
+        self.diagnostics = DiagnosticsService(
+            self.jobs,
+            self.event_store,
+            self.queue,
+            self.storage,
+            self.secrets,
+            self.paths,
+            self.report_registry,
+            download_dir=self.download_dir,
         )
         self._announce_start()
 
@@ -109,6 +145,10 @@ class Rayo:
                 backup=self.database.backup_path,
                 schema_version=self.database.schema_version,
             )
+
+    def metrics(self) -> dict[str, Any]:
+        """Counts and sizes: the queue, downloads, storage and verification."""
+        return collect_metrics(self.database, self.queue, self.storage)
 
     @property
     def schema_version(self) -> int:

@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from rayohx._download._storage import nearest_existing, same_volume
 from rayohx._download._workspace import FOLDER_PREFIX, LOCK_FILE, STATE_FILE, _FileLock
 
 #: An exclusive, non-blocking lock on a file, released when the process ends. Front ends and the
@@ -21,14 +22,17 @@ from rayohx._download._workspace import FOLDER_PREFIX, LOCK_FILE, STATE_FILE, _F
 FileLock = _FileLock
 
 __all__ = [
+    "DiskUsage",
     "FileLock",
     "WorkspaceInfo",
     "clean_workspaces",
+    "disk_usage",
     "find_workspaces",
     "folder_size",
     "inspect_workspace",
     "is_workspace_in_use",
     "last_used",
+    "same_volume",
 ]
 
 _KEY_FOLDER = re.compile(r"^[0-9a-f]{16}$")
@@ -52,6 +56,31 @@ class WorkspaceInfo:
     def safe_to_remove(self) -> bool:
         """Whether no running download holds the folder."""
         return not self.in_use
+
+
+@dataclass(frozen=True, slots=True)
+class DiskUsage:
+    """The disk that holds a folder."""
+
+    path: Path
+    total_bytes: int
+    used_bytes: int
+    free_bytes: int
+
+    def to_dict(self) -> dict[str, int | str]:
+        return {
+            "path": str(self.path),
+            "total_bytes": self.total_bytes,
+            "used_bytes": self.used_bytes,
+            "free_bytes": self.free_bytes,
+        }
+
+
+def disk_usage(path: Path | str) -> DiskUsage:
+    """Total, used and free space on the disk that holds ``path`` (which need not exist yet)."""
+    existing = nearest_existing(Path(path))
+    usage = shutil.disk_usage(existing)
+    return DiskUsage(Path(path), usage.total, usage.used, usage.free)
 
 
 def find_workspaces(folder: Path | str) -> list[Path]:
