@@ -21,14 +21,16 @@ from collections.abc import Callable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+CORE = ROOT / "packages" / "core"
+sys.path.insert(0, str(CORE))
 
-from tests.core.media import ts_payload  # noqa: E402
-from tests.core.servers import LocalServer, Reply, Route  # noqa: E402
+from tests.helpers.media import ts_payload  # noqa: E402
+from tests.helpers.servers import LocalServer, Reply, Route  # noqa: E402
 
-from rayohx import DownloadConfig, Downloader, OutputConfig, OutputFormat  # noqa: E402
+from rayohx import Downloader, OutputFormat  # noqa: E402
+from rayohx.config import DownloadConfig, OutputConfig  # noqa: E402
 
-MEDIA = ROOT / "tests" / "fixtures" / "media" / "h264_aac.ts"
+MEDIA = CORE / "tests" / "fixtures" / "media" / "h264_aac.ts"
 
 
 def _playlist(count: int) -> bytes:
@@ -89,14 +91,116 @@ def scenarios(args: argparse.Namespace) -> list[Callable[[], dict[str, object]]]
     ]
 
 
+class _InstantDownloader:
+    """Finishes at once, so the numbers show the queue's own cost."""
+
+    def __init__(self, url: str, *, config: object, download_id: str, **_: object) -> None:
+        from rayohx.events import EventBus
+
+        self.url, self.config, self.download_id = url, config, download_id
+        self.events = EventBus()
+        self.exception = None
+
+    def run(self) -> object:
+        from rayohx.enums import ContainerFormat, DownloadState
+        from rayohx.models import DownloadProgress, DownloadResult, OutputInfo
+
+        path = Path(self.config.output.directory) / f"{self.download_id}.ts"  # type: ignore[attr-defined]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x")
+        return DownloadResult(
+            download_id=self.download_id,
+            url=self.url,
+            state=DownloadState.COMPLETED,
+            elapsed_seconds=0,
+            progress=DownloadProgress(state=DownloadState.COMPLETED),
+            output=OutputInfo(path=path, container=ContainerFormat.MPEG_TS, size_bytes=1),
+        )
+
+
+def platform_rows(jobs: int, events: int) -> list[dict[str, object]]:
+    """Queue and database costs: adding, listing, running and event records."""
+    from rayohx.platform import Rayo, Severity
+    from rayohx.platform.jobs import JobState
+    from rayohx.platform.secrets import MemorySecretStore
+
+    rows: list[dict[str, object]] = []
+    with tempfile.TemporaryDirectory() as folder:
+        rayo = Rayo(
+            home=Path(folder) / "home",
+            download_dir=Path(folder) / "dl",
+            secrets=MemorySecretStore(),
+            downloader_factory=_InstantDownloader,  # type: ignore[arg-type]
+            max_active=4,
+        )
+        try:
+            started = time.perf_counter()
+            for index in range(jobs):
+                rayo.queue.add(f"https://media.test/{index}/master.m3u8")
+            added = time.perf_counter() - started
+            rows.append(
+                {"scenario": f"add {jobs} jobs", "seconds": round(added, 3),
+                 "ms_per_job": round(added * 1000 / jobs, 2)}
+            )  # fmt: skip
+            started = time.perf_counter()
+            listed = len(rayo.queue.list())
+            rows.append(
+                {
+                    "scenario": f"list {listed} jobs",
+                    "seconds": round(time.perf_counter() - started, 3),
+                }
+            )
+            started = time.perf_counter()
+            rayo.queue.start()
+            rayo.queue.wait_idle(600)
+            ran = time.perf_counter() - started
+            done = len(rayo.queue.list(states=[JobState.COMPLETED]))
+            rayo.queue.stop()
+            rows.append(
+                {"scenario": f"run {jobs} instant jobs", "completed": done,
+                 "seconds": round(ran, 2), "ms_per_job": round(ran * 1000 / jobs, 2)}
+            )  # fmt: skip
+            started = time.perf_counter()
+            for index in range(events):
+                rayo.events.emit("benchmark.event", severity=Severity.INFO, index=index)
+            written = time.perf_counter() - started
+            rows.append(
+                {"scenario": f"write {events} events", "seconds": round(written, 3),
+                 "events_per_second": round(events / written)}
+            )  # fmt: skip
+            started = time.perf_counter()
+            found = rayo.event_store.query(limit=1000, newest_first=True)
+            rows.append(
+                {
+                    "scenario": f"read {len(found)} events",
+                    "seconds": round(time.perf_counter() - started, 4),
+                }
+            )
+            started = time.perf_counter()
+            rayo.metrics()
+            rows.append(
+                {"scenario": "collect metrics", "seconds": round(time.perf_counter() - started, 4)}
+            )
+            rows[-1]["peak_rss_mb"] = round(_peak_memory_mb(), 1)
+        finally:
+            rayo.close()
+    return rows
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0] if __doc__ else None)
     parser.add_argument("--segments", type=int, default=100, help="segments to download")
     parser.add_argument("--segment-kb", type=int, default=256, help="size of each segment")
     parser.add_argument("--concurrency", type=int, default=8, help="parallel downloads")
     parser.add_argument("--json", action="store_true", help="print the results as JSON")
+    parser.add_argument("--platform", action="store_true", help="measure the queue and database")
+    parser.add_argument("--jobs", type=int, default=500, help="jobs for --platform")
+    parser.add_argument("--events", type=int, default=5000, help="event records for --platform")
     args = parser.parse_args(argv)
-    rows = [scenario() for scenario in scenarios(args)]
+    if args.platform:
+        rows = platform_rows(args.jobs, args.events)
+    else:
+        rows = [scenario() for scenario in scenarios(args)]
     if args.json:
         print(json.dumps(rows, indent=2))
     else:

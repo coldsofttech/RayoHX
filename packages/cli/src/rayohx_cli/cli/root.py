@@ -11,7 +11,7 @@ from rayohx import __version__
 from rayohx.errors import ConfigurationError
 
 from rayohx_cli import output
-from rayohx_cli.cli.common import usage_error
+from rayohx_cli.cli.common import set_non_interactive, usage_error
 from rayohx_cli.settings import find_config, load_config
 
 app = typer.Typer(
@@ -78,12 +78,21 @@ def main(
         ),
     ] = None,
     no_config: Annotated[bool, typer.Option("--no-config", help="Ignore settings files.")] = False,
+    non_interactive: Annotated[
+        bool,
+        typer.Option(
+            "--non-interactive",
+            envvar="RAYOHX_NON_INTERACTIVE",
+            help="Never ask questions: a command that needs an answer fails (exit 2) instead.",
+        ),
+    ] = False,
 ) -> None:
     """Options that apply to every command."""
     if verbose and quiet:
         raise typer.BadParameter("--verbose and --quiet cannot be used together.")
     if config is not None and no_config:
         raise typer.BadParameter("--config and --no-config cannot be used together.")
+    set_non_interactive(non_interactive)
     output.configure(no_color=no_color, verbose=verbose, quiet=quiet)
     level = logging.DEBUG if verbose else logging.ERROR if quiet else logging.WARNING
     output.configure_logging(level, verbose=verbose, log_file=log_file)

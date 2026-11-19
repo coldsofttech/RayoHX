@@ -11,7 +11,7 @@ from rayohx.errors import RayoHXError
 
 from rayohx_cli import format as fmt
 from rayohx_cli import output
-from rayohx_cli.cli.common import EXIT_CANCELLED, EXIT_FAILED
+from rayohx_cli.cli.common import EXIT_CANCELLED, EXIT_FAILED, exit_for_error
 
 
 @contextmanager
@@ -83,7 +83,8 @@ def finish(
     exc = downloader.exception
     if isinstance(exc, RayoHXError):
         output.error_from(exc)
-    elif exc is not None:
+        raise typer.Exit(exit_for_error(exc))
+    if exc is not None:
         raise exc  # unexpected: reported once, by run()
     else:
         output.error(result.error or "The download failed.")

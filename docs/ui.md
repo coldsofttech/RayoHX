@@ -6,11 +6,22 @@ The desktop window is hosted by [Cornea Shell](https://github.com/coldsofttech/C
 
 Cornea serves the built files in `src/rayohx_ui/ui/dist`, but the page is a normal single-page app that talks to Python while it runs. `ui/` holds only the interface; everything dynamic lives in `rayohx_api` and `rayohx`:
 
-- **Data:** `fetch('/api/v1/...')` calls the `rayohx_api` routes and gets JSON.
+- **Data:** `fetch('/api/v1/...')` (the New and Settings pages) and `fetch('/api/v2/...')` (the Queue and Storage pages, job details and diagnostics) call the `rayohx_api` routes and get JSON.
 - **Native actions:** `POST /api/bridge/<action>` runs a Python function registered in `rayohx_ui/app.py`. The example is `app_info`. Cornea also provides file and folder pickers, opening links and platform info.
 - **State:** lives in React in the page, and in Python behind the routes.
 
 Cornea hosts the page and the API on one address, behind a start-up token that becomes a session cookie, a host and origin check, and strict response headers. See [security](security.md).
+
+## Pages
+
+| Page | What it does | API |
+| --- | --- | --- |
+| New | Inspect a stream, choose tracks, start a download | `/api/v1` |
+| Queue | Every job with its priority and progress; select several to pause, resume, cancel, retry, remove or set a priority; move a waiting job to the top or bottom; details with the failure explanation, verification checks, runs, events and a report to share | `/api/v2/queue`, `/api/v2/diagnostics`, `/api/v2/events` |
+| Storage | Free space, the low-space policy (warn, pause, stop, low-storage mode), working folders and a cleanup that previews before it removes | `/api/v2/storage` |
+| Settings | The saved default options for new downloads | `/api/v1/settings` |
+
+Profiles are not editable in the window yet (they are managed with `rayohx profile`, and listed by `GET /api/v2/profiles`); moving the New and Settings pages to `/api/v2` and a profile editor are next.
 
 ## Layout
 

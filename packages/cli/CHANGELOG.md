@@ -6,10 +6,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- **Exit codes:** failures that used to exit `1` can now exit `3`, `4` or `5` by kind, and a batch where some downloads failed exits `7`. Set `RAYOHX_EXIT_CODES=legacy` to get `1` for every failure for one more release.
 - `rayohx clean` and the output code use the public `rayohx.storage` and `rayohx.redaction` modules.
 
 ### Added
 
+- `rayohx daemon` runs the queue as a service (JSON logs, `/health`, `/ready`, optional `/metrics`, clean stop on SIGTERM) and `rayohx migrate` shows the result of an upgrade from version 1.
+- `--non-interactive` (or `RAYOHX_NON_INTERACTIVE`): commands never wait for an answer, and `clean --json`.
+- New exit codes `3` verification, `4` authentication, `5` storage, `6` automation and `7` partly failed batch.
 - `rayohx storage` (`status`, `workspaces`, `policy`, `cleanup`) and `rayohx diagnostics` (`explain`, `network`, `stream`, `report`, `reports`).
 - `--verify`, `--checksum`, `--metadata`, `--title` and `--name-template` on `download` and `queue add`; `queue verification`; and `info --media` for the details of a stream and whether it can be saved in a format.
 - `rayohx profile` (list, show, create, edit, duplicate, rename, delete, default, validate, export, import) and `--profile` on `download` and `queue add`. Options you give win over the profile.

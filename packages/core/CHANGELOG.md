@@ -16,6 +16,8 @@ The platform is the new `rayohx.platform` package: persistent services around th
 - Storage management (`rayo.storage`): free-space thresholds with hysteresis, admission with reservations, automatic pause and resume, `STORAGE_LOW` stop, low-storage mode, workspace ownership, a safe cleanup planner and a storage snapshot.
 - Diagnostics (`rayo.diagnostics`): failure explanations for every stable code, network and stream checks, retry history, and sanitized reports. `rayo.metrics()` and Prometheus text.
 - The engine emits a `workspace_opened` event with the folder it works in; `rayohx.storage` gains `disk_usage`.
+- `rayohx.platform.daemon.Daemon` (queue service with health endpoint and JSON logging) and `rayohx.platform.migrate` (version 1 to 2 report and one-time import of the saved defaults as a profile).
+- `scripts/benchmark.py --platform` measures the queue and database; the script works again after the test helpers moved.
 - Download profiles (`rayo.profiles`): five built in (Best Quality, 1080p, Mobile, Archive, Custom) and your own, with validation, a default profile, file name templates, import and export. `rayo.queue.add(url, profile=..., overrides=...)` copies the settings into the job.
 - `DownloadConfig` can be saved as plain data and rebuilt (`rayohx.platform.jobs.config_to_options`, `config_from_options`).
 

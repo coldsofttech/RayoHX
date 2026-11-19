@@ -1,5 +1,6 @@
 """What every command shares: exit codes and turning bad settings into a usage error."""
 
+import os
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -8,7 +9,9 @@ from typing import NoReturn
 
 import typer
 from rayohx.config import DownloadConfig
+from rayohx.enums import ErrorCategory
 from rayohx.errors import ConfigurationError, RayoHXError
+from rayohx.platform.diagnostics import category_of
 from rayohx.redaction import redact_url
 
 from rayohx_cli import output
@@ -16,7 +19,78 @@ from rayohx_cli.values import build_config
 
 EXIT_FAILED = 1
 EXIT_USAGE = 2
+EXIT_VERIFICATION = 3
+EXIT_AUTH = 4
+EXIT_STORAGE = 5
+EXIT_AUTOMATION = 6
+EXIT_PARTIAL = 7
 EXIT_CANCELLED = 130
+
+_BY_CATEGORY = {
+    ErrorCategory.VERIFICATION: EXIT_VERIFICATION,
+    ErrorCategory.AUTHENTICATION: EXIT_AUTH,
+    ErrorCategory.STORAGE: EXIT_STORAGE,
+    ErrorCategory.AUTOMATION: EXIT_AUTOMATION,
+}
+
+
+_STATE = {"non_interactive": False}
+
+
+def set_non_interactive(value: bool) -> None:
+    _STATE["non_interactive"] = value
+
+
+def non_interactive() -> bool:
+    """Whether commands must never wait for an answer (``--non-interactive``, for scripts)."""
+    return _STATE["non_interactive"]
+
+
+def confirm(question: str, *, yes: bool) -> bool:
+    """Ask a yes/no question, unless ``yes`` was given. Never waits when non-interactive."""
+    if yes:
+        return True
+    if non_interactive():
+        usage_error(
+            ConfigurationError(
+                f"{question} needs your confirmation, and this run is non-interactive.",
+                hint="Add --yes to go ahead.",
+            )
+        )
+    return typer.confirm(question, err=True)
+
+
+def legacy_exit_codes() -> bool:
+    """Whether ``RAYOHX_EXIT_CODES=legacy`` asks for the old codes (every failure is 1)."""
+    return os.environ.get("RAYOHX_EXIT_CODES", "").strip().lower() == "legacy"
+
+
+def exit_for_category(category: ErrorCategory | None) -> int:
+    """The exit code for a failure of this kind."""
+    if legacy_exit_codes() or category is None:
+        return EXIT_FAILED
+    return _BY_CATEGORY.get(category, EXIT_FAILED)
+
+
+def exit_for_error(exc: BaseException | None) -> int:
+    """The exit code for an error: its category decides, never its message."""
+    return exit_for_category(exc.category if isinstance(exc, RayoHXError) else None)
+
+
+def exit_for_code(code: str | None) -> int:
+    """The exit code for a stable error code such as ``HTTP_403`` or ``STORAGE_LOW``."""
+    return exit_for_category(category_of(code) if code else None)
+
+
+def exit_for_batch(failures: Sequence[int], succeeded: int) -> int:
+    """One code for several operations: 7 if only some failed, else the shared code (0 if none)."""
+    if not failures:
+        return 0
+    if legacy_exit_codes():
+        return EXIT_FAILED
+    if succeeded:
+        return EXIT_PARTIAL
+    return failures[0] if len(set(failures)) == 1 else EXIT_FAILED
 
 
 def usage_error(exc: RayoHXError) -> NoReturn:

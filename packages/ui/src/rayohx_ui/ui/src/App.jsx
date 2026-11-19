@@ -14,7 +14,8 @@ import { darkTheme, lightTheme } from './theme.js';
 import { getSettings } from './api.js';
 import { toValues } from './options.js';
 import NewDownload from './components/NewDownload.jsx';
-import Downloads from './components/Downloads.jsx';
+import Queue from './components/Queue.jsx';
+import Storage from './components/Storage.jsx';
 import Settings from './components/Settings.jsx';
 
 const useStyles = makeStyles({
@@ -31,7 +32,7 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     borderBottom: `2px solid ${tokens.colorBrandBackground}`,
   },
-  main: { maxWidth: '56rem', margin: '0 auto', padding: tokens.spacingHorizontalXL },
+  main: { maxWidth: '60rem', margin: '0 auto', padding: tokens.spacingHorizontalXL },
   tabs: { marginBottom: tokens.spacingVerticalL },
 });
 
@@ -73,24 +74,26 @@ export default function App() {
             onTabSelect={(_, data) => setTab(data.value)}
           >
             <Tab value="new">New</Tab>
-            <Tab value="downloads">
-              Downloads{' '}
+            <Tab value="queue">
+              Queue{' '}
               {active > 0 && (
                 <Badge appearance="filled" color="brand" size="small">
                   {active}
                 </Badge>
               )}
             </Tab>
+            <Tab value="storage">Storage</Tab>
             <Tab value="settings">Settings</Tab>
           </TabList>
           {tab === 'new' && (
             <NewDownload
               inherited={toValues(settings?.defaults)}
               allowLocalPaths={settings?.allow_local_paths ?? false}
-              onStarted={() => setTab('downloads')}
+              onStarted={() => setTab('queue')}
             />
           )}
-          {tab === 'downloads' && <Downloads onCount={setActive} />}
+          {tab === 'queue' && <Queue onCount={setActive} />}
+          {tab === 'storage' && <Storage />}
           {tab === 'settings' && settings && (
             <Settings settings={settings} onChanged={setSettings} />
           )}

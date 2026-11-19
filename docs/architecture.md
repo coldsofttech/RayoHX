@@ -1,110 +1,93 @@
 # Architecture
 
-How the pieces of this template fit together. For day-to-day commands, see [development](development.md). For one-time repository settings, see [repository setup](repo-setup.md).
+How RayoHX is put together. For day-to-day commands, see [development](development.md); for repository settings, [repository setup](repo-setup.md).
 
-## Overview
-
-A change moves through three layers of checks before it reaches `main`, and a release moves through one more before it reaches PyPI.
+## The pieces
 
 ```mermaid
-flowchart LR
-    A[Commit] -->|pre-commit hooks| B[Push branch]
-    B --> C[Pull request]
-    C --> D{CI and security checks}
-    D -->|pass + review| E[Squash merge to main]
-    E --> F[GitHub release]
-    F --> G[Release workflow]
-    G --> H[PyPI]
+flowchart TB
+    subgraph Front ends
+      CLI[rayohx_cli: rayohx command]
+      API[rayohx_api: /api/v1 and /api/v2]
+      UI[rayohx_ui: window + React]
+    end
+    subgraph Core: the rayohx package
+      PLAT[rayohx.platform: queue, profiles, storage, diagnostics, events, daemon]
+      ENG[engine: playlist, stream, download, mux, verify, media, metadata]
+    end
+    CLI --> PLAT
+    API --> PLAT
+    UI -->|HTTP| API
+    PLAT --> ENG
+    CLI --> ENG
+    API --> ENG
+    PLAT --> DB[(SQLite: jobs, events, profiles, settings)]
+    ENG --> NET[(HLS servers)]
+    ENG --> OUT[(output files)]
 ```
 
-## Layers
-
-| Layer | What runs | Where |
+| Piece | Package | Job |
 | --- | --- | --- |
-| Local | gitleaks, file hygiene, markdownlint, Ruff, `uv lock` check, mypy, Sweepito scan and cleanup | pre-commit hooks |
-| Pull request | `ci` (lint, UI checks, unit and integration tests on Python 3.11 to 3.15 on Ubuntu plus 3.11 on Windows and macOS, Windows UI test, build), dependency review, CodeQL | GitHub Actions |
-| Repository | Branch ruleset, secret scanning with push protection, Dependabot alerts and updates | GitHub settings |
-| Release | Version check, wheel and sdist (core library and command line), trusted publish to PyPI, installers and package-manager updates | `release.yml` |
+| **Engine** | `rayohx` (all but `platform`) | Reads one HLS stream and writes one file: playlist parsing, selection, segment fetching, decryption, remuxing, verification, metadata. Pure library: it never prints, exits or keeps state between downloads. |
+| **Platform** | `rayohx.platform` | Everything that must outlive one download: the persistent queue and runner, profiles, storage policy, diagnostics, events, metrics and the daemon. It lives in the core package so the command line and the API share one implementation. |
+| **Command line** | `rayohx_cli` | Parses arguments, calls the library, prints results (data on stdout, messages on stderr) and chooses the [exit code](../packages/cli/docs/guides/cli/exit-codes.md). |
+| **API** | `rayohx_api` | FastAPI over the library. `/api/v1` keeps its original behavior as a layer over the queue; `/api/v2` exposes the queue, profiles, diagnostics, storage and metrics. |
+| **Window** | `rayohx_ui` + `ui/` | A Cornea window hosting a React page that talks to the API. No logic of its own. |
 
-## Source layout
+## Rules that keep the layers apart
+
+Checked by `packages/core/tests/unit/test_architecture.py`:
+
+- The engine never imports the platform.
+- The platform and the front ends use only public `rayohx.*` modules, never `rayohx._*`.
+- The API never imports the window; the command line does not import the API.
+- A front end holds no download logic: it calls the platform or the engine.
+
+## One job, end to end
+
+1. A front end calls `queue.add(url, profile=..., overrides=...)`. The platform validates the settings, snapshots the profile into the job, stores secrets (cookies, secret headers) in the secret store and the rest in the database, and emits `queue.job_added`.
+2. The **runner** (one per queue, guarded by `runner.lock`, so only one process runs a queue) picks the next job with the pure scheduler (`pick_next`: priority, then rank), checks with the **storage guard** that the disk has room, and starts a `Downloader` on its own thread.
+3. The engine announces its working folder (`workspace_opened`), downloads segments, and reports progress. The runner turns engine events into job state and platform events.
+4. On success the engine verifies the file (`VERIFYING`), writes metadata and finalizes the output. A file that fails verification is kept as `.invalid` and the job fails with `VERIFICATION_FAILED`.
+5. On failure the **retry policy** decides from the error's stable code whether to run again after a growing delay. Every run is recorded in `job_attempts`.
+6. Pause is a *hard* pause: the engine stops, keeps its resume state and frees the slot. Stopping the runner (Ctrl-C, SIGTERM) does the same to every running job, and crash recovery requeues jobs that were running when the process died.
+
+## Data and where it lives
+
+| What | Where | Notes |
+| --- | --- | --- |
+| Jobs, attempts, events, profiles, settings, reports index | SQLite in the data folder (`RAYOHX_HOME` moves everything) | WAL mode; numbered migrations in code; a backup is made before every upgrade; a damaged file is moved aside and rebuilt. |
+| Secrets | System credential store (optional `keyring`), else memory | Never in the database, events, logs or reports. |
+| Working folders | Next to the output (or the configured workspace) | One per download; owned by a job via `job_workspaces`. |
+| Reports | `reports/` in the data folder | Sanitized, mode 0600. |
+
+## Events
+
+Everything notable is a `PlatformEvent` with a category, severity and a payload that has been scrubbed of secrets *before* it is stored. Events go to the database, to subscribers in the same process (the CLI, the daemon's log, tests) and to HTTP clients: `GET /api/v2/events` pages through the log with a cursor, and `/api/v2/events/stream` follows it as server-sent events.
+
+## Storage and diagnostics
+
+The **storage guard** reads free space and the policy thresholds. It admits a job only if the room left after running downloads' remaining needs stays above the pause threshold; below it, running jobs are paused by the queue (and resumed by it), and below the stop threshold they fail with `STORAGE_LOW` and keep their progress. **Diagnostics** turn stable error codes into explanations, probe the network step by step, describe streams, and write reports through a single sanitizer. See [platform](platform.md).
+
+## Running it
+
+| Mode | Command | Notes |
+| --- | --- | --- |
+| One download | `rayohx download URL` | No queue. |
+| A queue in a terminal | `rayohx queue run` | Stops with Ctrl-C. |
+| A service | `rayohx daemon` | Health endpoint, JSON logs, clean stop on SIGTERM. [Operations guide](operations.md). |
+| API | `python -m rayohx_api` | Runs the queue itself unless another process does. |
+| Window | `rayohx-ui` (Windows) | Hosts the React page and the API. |
+
+## Repository and releases
 
 ```text
-src/rayohx/           typed library: all the logic, never prints or exits
-src/rayohx_cli/       Typer + Rich command line over the library
-src/rayohx_api/       FastAPI app over the library: routers, schemas, errors, settings
-src/rayohx_ui/        Cornea Shell wiring and the `rayohx-ui` command
-src/rayohx_ui/ui/     React + Vite frontend (JavaScript); `dist/` is built, not committed
-installer/               window spec and NSIS script, shared helpers and pinned tool versions (the command line's are in packages/cli/installer/)
-scripts/                 repository settings, OpenAPI export, installer build and manifest generation
-tests/<component>/     pytest unit tests with coverage (80% minimum), one folder each for core, cli, api and ui
-tests/<component>/integration/   tests marked `integration`: skipped by default and in pre-commit, run in CI
-pyproject.toml         metadata, dev dependencies and tool configuration
-uv.lock                locked dependency set, checked by CI with --locked
+packages/core/src/rayohx/       engine + platform (one wheel: rayohx)
+packages/cli/src/rayohx_cli/    command line
+packages/api/src/rayohx_api/    HTTP API
+packages/ui/src/rayohx_ui/      window; ui/ is the React frontend
+packages/docker/                container image
+scripts/                        OpenAPI export, benchmark, installer build
 ```
 
-The version lives in one place, `__version__` in the package, and Hatchling reads it at build time. The release workflow compares it with the release tag.
-
-## Library and CLI layers
-
-```mermaid
-flowchart LR
-    U[User] --> C[rayohx_cli]
-    C -->|calls| L[rayohx]
-    C --> O[Rich consoles]
-```
-
-- `rayohx_cli` parses arguments with Typer, calls `rayohx`, and writes all output through the shared Rich consoles: data to stdout, messages and errors to stderr.
-- `rayohx` holds the logic. It raises exceptions instead of printing or exiting, so other front ends can reuse it.
-- The console script `rayohx` and `python -m rayohx_cli` both enter through `rayohx_cli.cli:app`. Both packages ship in one wheel and share the version in `rayohx.__version__`.
-
-## UI and API layers
-
-```mermaid
-flowchart LR
-    W[Window: React] -->|fetch| S[Cornea Shell]
-    S -->|mounts| A[rayohx_api]
-    S -->|actions| U[rayohx_ui]
-    B[Browser, other client] -->|HTTP| A
-    A -->|calls| L[rayohx]
-    U -->|calls| L
-```
-
-- `rayohx_api` validates input, calls `rayohx` and shapes responses. It runs on its own on any system, or is mounted inside Cornea.
-- `rayohx_ui` only wires Cornea to the API and the library, and holds the `rayohx-ui` entry point. It is the one place there that shows output and sets exit codes.
-- `rayohx` and `rayohx_api` never import `rayohx_ui`, and `rayohx` never imports `rayohx_api`. The Windows-only dependency (`cornea-shell`) is imported lazily.
-
-## Workflows
-
-| Workflow | Trigger | Purpose |
-| --- | --- | --- |
-| `ci.yml` | Pull request, push to `main` | Runs `lint`, `ui`, `test`, `integration`, `ui-windows` and `build`. A final `ci` job gates on all of them and is the only check the ruleset requires. |
-| `api-compat.yml` | Pull request that changes `docs/openapi.json` | Reports breaking API changes with oasdiff. Not required. |
-| `security.yml` | Pull request, push, weekly | Semgrep, uploaded as code scanning results. Not required. |
-| `dependency-review.yml` | Pull request | Blocks pull requests that add vulnerable dependencies. |
-| `audit.yml` | Weekly, manual, and pull requests that change a lock file | Runs `pip-audit` and `npm audit` on the locked dependencies to catch newly published vulnerabilities. |
-| `build.yml` | Pull request that touches the installers | Builds the Windows setups and Linux packages, installs each, runs it and uninstalls it. Not required. |
-| `release.yml` | GitHub release published | Checks the tag matches the version, builds the wheel (core library and command line), publishes to PyPI, builds and optionally signs the installers, attaches them with checksums to the release, and opens Homebrew, Scoop and winget pull requests when switched on. |
-| `init.yml` | Manual | One-time: replaces the owner and repository name, renames the example packages and commands to your name, regenerates the lock file and generated docs, and opens a pull request. Skipped in the template itself. |
-
-CodeQL runs through GitHub's default setup rather than a workflow file.
-
-## Branch governance
-
-The `main` ruleset in `.github/rulesets/main.json` is applied by `scripts/apply_repo_settings.py`. It requires:
-
-- a pull request with a code owner review and resolved conversations, squash merge only
-- the `ci` and `dependency-review` checks, with the branch up to date
-- CodeQL results
-- no deletion and no force push
-
-Repository admins can bypass through a pull request so a solo maintainer is not locked out.
-
-## Release flow
-
-1. Bump `__version__` and update `CHANGELOG.md` in a pull request.
-2. After merge, publish a GitHub release tagged `v<version>`.
-3. `release.yml` builds the sdist and wheel (the core library and the command line only; the API and the window ship in the installers) in one job, then a second job in the `pypi` environment publishes them using OpenID Connect. No API token is stored, and only the publish job gets the `id-token` permission.
-
-## Template lifecycle
-
-GitHub copies files, not settings. A new repo therefore needs these steps: run **Init** with a name and title, which replaces the owner and repository name and renames the example packages and commands ([development](development.md)); replace the icon; run the settings script to apply protections and the ruleset; and optionally switch on signing and the package-manager channels ([releasing](releasing.md)).
+The version lives in `__version__`; the release workflow compares it with the tag. Checks run in layers: pre-commit hooks locally, `ci.yml` on pull requests (lint, UI checks, unit and integration tests on Python 3.11 to 3.15, Windows UI test, build), then the repository ruleset. [Releasing](releasing.md) covers publishing and the installers; [development](development.md) covers tooling.

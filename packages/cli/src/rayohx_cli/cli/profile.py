@@ -20,7 +20,7 @@ from rayohx.platform.profiles import (
 from rayohx.platform.profiles.rules import default_options
 
 from rayohx_cli import output, params
-from rayohx_cli.cli.common import EXIT_FAILED, EXIT_USAGE, usage_error
+from rayohx_cli.cli.common import EXIT_FAILED, EXIT_USAGE, confirm, usage_error
 from rayohx_cli.cli.queue import Home, open_platform
 from rayohx_cli.cli.root import app
 
@@ -297,7 +297,7 @@ def delete(
     home: Home = None,
 ) -> None:
     """Delete a profile of yours. Jobs already queued keep their settings."""
-    if not yes and not typer.confirm(f"Delete the profile {ref!r}?"):
+    if not confirm(f"Delete the profile {ref!r}?", yes=yes):
         raise typer.Exit(EXIT_FAILED)
     run_store(home, lambda rayo: rayo.profiles.delete(ref))
     output.message("Deleted.")

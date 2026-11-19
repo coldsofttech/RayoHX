@@ -21,7 +21,15 @@ from rayohx.platform.events import PlatformEvent
 
 from rayohx_cli import format as fmt
 from rayohx_cli import output, params
-from rayohx_cli.cli.common import EXIT_FAILED, EXIT_USAGE, gather_urls, make_config, usage_error
+from rayohx_cli.cli.common import (
+    EXIT_FAILED,
+    EXIT_USAGE,
+    exit_for_batch,
+    exit_for_code,
+    gather_urls,
+    make_config,
+    usage_error,
+)
 from rayohx_cli.cli.overrides import overrides_from
 from rayohx_cli.cli.root import app
 
@@ -515,12 +523,13 @@ def run(
         output.message("Stopping..." if not finished else "The queue is empty.")
         rayo.queue.stop()
         failed = rayo.queue.list(states=[JobState.FAILED])
+        done = len(rayo.queue.list(states=[JobState.COMPLETED]))
     finally:
         signal.signal(signal.SIGINT, previous)
         signal.signal(signal.SIGTERM, previous_term)
         rayo.close()
     if failed and until_empty:
-        raise typer.Exit(EXIT_FAILED)
+        raise typer.Exit(exit_for_batch([exit_for_code(j.error_code) for j in failed], done))
 
 
 def wait_until(rayo: Rayo, stop: dict[str, bool], until_empty: bool) -> bool:

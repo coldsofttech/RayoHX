@@ -16,7 +16,9 @@ from rayohx.errors import ConfigurationError
 from rayohx_cli import output, params
 from rayohx_cli.cli.common import (
     EXIT_CANCELLED,
+    EXIT_FAILED,
     Source,
+    exit_for_batch,
     gather_urls,
     make_config,
     open_source,
@@ -251,7 +253,9 @@ def run_many(
     if output_path is not None:
         output_path.mkdir(parents=True, exist_ok=True)
     documents: list[dict[str, object]] = []
-    code = 0
+    failures: list[int] = []
+    succeeded = 0
+    cancelled = False
     for position, (source, downloader) in enumerate(
         zip(targets, downloaders, strict=True), start=1
     ):
@@ -259,10 +263,18 @@ def run_many(
         try:
             run_one(source, None, config, progress, json_output, documents, downloader, events)
         except typer.Exit as exit_:
-            code = EXIT_CANCELLED if exit_.exit_code == EXIT_CANCELLED else code or exit_.exit_code
-            if exit_.exit_code == EXIT_CANCELLED or stop_on_error:
+            if exit_.exit_code == EXIT_CANCELLED:
+                cancelled = True
                 break
+            failures.append(exit_.exit_code or EXIT_FAILED)
+            if stop_on_error:
+                break
+        else:
+            succeeded += 1
     if json_output:
         output.print_json(documents)
+    if cancelled:
+        raise typer.Exit(EXIT_CANCELLED)
+    code = exit_for_batch(failures, succeeded)
     if code:
         raise typer.Exit(code)

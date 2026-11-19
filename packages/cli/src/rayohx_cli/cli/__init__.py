@@ -10,6 +10,7 @@ from rayohx_cli import output
 from rayohx_cli.cli import (  # noqa: F401  (registers the commands)
     clean,
     config,
+    daemon,
     diagnostics,
     download,
     info,

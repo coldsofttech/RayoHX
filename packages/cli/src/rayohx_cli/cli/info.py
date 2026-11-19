@@ -15,7 +15,7 @@ from rayohx.errors import ConfigurationError, RayoHXError
 from rayohx.media import check_compatibility, inspect_media
 
 from rayohx_cli import output, params, render
-from rayohx_cli.cli.common import EXIT_FAILED, make_config, open_source, usage_error
+from rayohx_cli.cli.common import exit_for_error, make_config, open_source, usage_error
 from rayohx_cli.cli.root import app
 
 
@@ -138,7 +138,7 @@ def info(
         usage_error(exc)
     except RayoHXError as exc:
         output.error_from(exc)
-        raise typer.Exit(EXIT_FAILED) from exc
+        raise typer.Exit(exit_for_error(exc)) from exc
     data = playlist_to_dict(playlist, selection)
     details: dict[str, Any] | None = None
     notes: list[dict[str, str]] = []
@@ -154,7 +154,7 @@ def info(
             usage_error(exc)
         except RayoHXError as exc:
             output.error_from(exc)
-            raise typer.Exit(EXIT_FAILED) from exc
+            raise typer.Exit(exit_for_error(exc)) from exc
         details = found.to_dict()
         notes = [n.to_dict() for n in check_compatibility(found, format_)]
     if json_output:

@@ -59,7 +59,7 @@ def test_one_failure_does_not_stop_the_rest_but_sets_the_exit_code(
 ) -> None:
     serve(two_streams())
     result = runner.invoke(app, ["download", GONE, TWO, "-o", str(tmp_path / "o")])
-    assert result.exit_code == 1
+    assert result.exit_code == 7  # some failed, some saved
     assert len(result.stdout.split()) == 1  # only TWO was saved
     assert "Error" in result.stderr
 
@@ -78,7 +78,7 @@ def test_stop_on_error_leaves_the_rest_alone(
 def test_json_output_is_one_array(runner: CliRunner, serve: Serve, tmp_path: Path) -> None:
     serve(two_streams())
     result = runner.invoke(app, ["download", ONE, GONE, "-o", str(tmp_path / "o"), "--json"])
-    assert result.exit_code == 1
+    assert result.exit_code == 7
     documents = json.loads(result.stdout)
     assert [doc["success"] for doc in documents] == [True, False]
 

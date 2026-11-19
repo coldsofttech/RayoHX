@@ -1,0 +1,33 @@
+# /etc/systemd/system/rayohx.service  (or ~/.config/systemd/user/rayohx.service)
+#
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now rayohx
+#   journalctl -u rayohx -f            # JSON log lines
+#   curl http://127.0.0.1:8765/health  # liveness
+[Unit]
+Description=RayoHX download queue
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rayohx
+# One folder holds the database, backups, reports and the queue lock.
+Environment=RAYOHX_HOME=/var/lib/rayohx
+Environment=RAYOHX_DOWNLOAD_DIR=/srv/media/rayohx
+ExecStart=/usr/bin/rayohx --non-interactive daemon --port 8765 --metrics
+# SIGTERM puts running downloads back in the queue; give them time to stop.
+KillSignal=SIGTERM
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=5
+
+# Hardening: the service needs the network and its two folders, nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/rayohx /srv/media/rayohx
+
+[Install]
+WantedBy=multi-user.target

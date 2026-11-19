@@ -30,6 +30,7 @@ file=$(rayohx download https://cdn.example.com/vod/master.m3u8 --quiet)
 | [download](cli/download.md) | `rayohx download`: every option, output files, progress, resume, examples |
 | [profile](cli/profile.md) | `rayohx profile`: saved, reusable settings: built-in and your own, file name templates, import and export |
 | [queue](cli/queue.md) | `rayohx queue`: a download queue that survives restarts: priorities, pause and resume, retries, running several at once |
+| [daemon](cli/daemon.md) | `rayohx daemon` and `rayohx migrate`: run the queue as a service, check an upgrade |
 | [storage](cli/storage.md) | `rayohx storage`: disk use, low-space policy and safe cleanup |
 | [diagnostics](cli/diagnostics.md) | `rayohx diagnostics`: explain failures, check the network or a stream, make a report that is safe to share |
 | [clean](cli/clean.md) | `rayohx clean`: remove leftover working folders from interrupted downloads |
@@ -79,6 +80,8 @@ copy (see [download](cli/download.md#output-files)).
 | `rayohx download URL` | Download a stream to a file or a folder of segments | [download](cli/download.md) |
 | `rayohx profile ...` | Save and reuse settings (`--profile NAME` on `download` and `queue add`) | [profile](cli/profile.md) |
 | `rayohx queue ...` | Queue downloads, order them and run them | [queue](cli/queue.md) |
+| `rayohx daemon` | Run the queue as a service with a health endpoint | [daemon](cli/daemon.md) |
+| `rayohx migrate` | Check the database after an upgrade from version 1 | [daemon](cli/daemon.md) |
 | `rayohx storage ...` | Disk space, the low-space policy and cleanup | [storage](cli/storage.md) |
 | `rayohx diagnostics ...` | Explain failures and make a safe report | [diagnostics](cli/diagnostics.md) |
 | `rayohx --version` | Show the version and exit | [Global options](cli/global-options.md) |

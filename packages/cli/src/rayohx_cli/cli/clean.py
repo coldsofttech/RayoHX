@@ -9,7 +9,8 @@ import typer
 from rayohx.storage import find_workspaces, folder_size, is_workspace_in_use, last_used
 
 from rayohx_cli import format as fmt
-from rayohx_cli import output
+from rayohx_cli import output, params
+from rayohx_cli.cli.common import confirm
 from rayohx_cli.cli.root import app
 
 DAY = 86400
@@ -40,6 +41,7 @@ def clean(
         bool, typer.Option("--dry-run", help="Only list what would be removed.")
     ] = False,
     yes: Annotated[bool, typer.Option("--yes", "-y", help="Do not ask first.")] = False,
+    json_output: params.JsonOutput = False,
 ) -> None:
     """Remove working folders left by interrupted downloads.
 
@@ -58,6 +60,8 @@ def clean(
             if age >= older_than:
                 candidates.append((workspace, folder_size(workspace), age))
     if not candidates:
+        if json_output:
+            output.print_json({"removed": [], "bytes": 0})
         output.message("Nothing to clean." + (f" {skipped} in use." if skipped else ""))
         return
     total = sum(size for _, size, _ in candidates)
@@ -66,11 +70,12 @@ def clean(
     if dry_run:
         output.message(f"Would remove {len(candidates)} folder(s), {fmt.size(total)}.")
         return
-    if not yes and not typer.confirm(
-        f"Remove {len(candidates)} folder(s) ({fmt.size(total)})?", err=True
-    ):
+    if not confirm(f"Remove {len(candidates)} folder(s) ({fmt.size(total)})?", yes=yes):
         raise typer.Exit(1)
     for path, _, _ in candidates:
         shutil.rmtree(path, ignore_errors=True)
-        output.data(str(path))
+        if not json_output:
+            output.data(str(path))
+    if json_output:
+        output.print_json({"removed": [str(p) for p, _, _ in candidates], "bytes": total})
     output.message(f"Removed {len(candidates)} folder(s), {fmt.size(total)}.", style="green")

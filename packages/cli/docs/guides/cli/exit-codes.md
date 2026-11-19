@@ -11,8 +11,19 @@ goes wrong.
 |---|---|
 | `0` | Success. |
 | `1` | The operation failed: a network error, a missing playlist, an existing output file, an unsupported stream, and so on. |
-| `2` | Invalid usage or settings, such as an unknown option, a bad value, a wrong key in the settings file, or `--verbose` together with `--quiet`. |
+| `2` | Invalid usage or settings, such as an unknown option, a bad value, a wrong key in the settings file, `--verbose` together with `--quiet`, or a question asked under `--non-interactive`. |
+| `3` | Verification failed: the finished file did not pass its checks (it is kept as `.invalid`). |
+| `4` | Authentication failed: the server refused the credentials (HTTP 401 or 403). |
+| `5` | Not enough storage: the disk is too full for the download, or the storage policy stopped it. |
+| `6` | An automation failed (reserved for the automation features). |
+| `7` | Some of several downloads failed and some succeeded. If every one failed for the same reason, that reason's code is used instead. |
 | `130` | Cancelled. The first Ctrl+C stops the download cleanly; a second one quits at once. |
+
+The code comes from the kind of error, never from its message, so it is the same in every language and release. `rayohx queue run --until-empty` and `rayohx download` with several addresses apply the same rules to the whole batch.
+
+### Scripts written for version 1
+
+Version 1 only knew `0`, `1`, `2` and `130`. Set `RAYOHX_EXIT_CODES=legacy` and every failure is `1` again (a partly failed batch too). This switch is temporary and will be removed in a later release; move scripts to the new codes when you can.
 
 ```bash
 if rayohx download "$URL" --quiet; then
@@ -21,6 +32,10 @@ else
     case $? in
         1) echo "the download failed" ;;
         2) echo "check the command" ;;
+        3) echo "the file did not pass verification" ;;
+        4) echo "log in again: the server refused access" ;;
+        5) echo "free some disk space" ;;
+        7) echo "some downloads failed" ;;
         130) echo "stopped" ;;
     esac
 fi

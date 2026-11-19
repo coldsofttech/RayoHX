@@ -24,6 +24,7 @@ from rayohx.platform.profiles import deep_merge
 from rayohx_api.build import DEFAULT_CONCURRENCY, download_config, sources
 from rayohx_api.config import Settings, get_settings
 from rayohx_api.defaults import DefaultsStore, default_file, merge
+from rayohx_api.migrate import import_v1_defaults
 from rayohx_api.schemas_v1 import DownloadCreate
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,12 @@ def _state() -> tuple[Rayo, DefaultsStore]:
         max_active=settings.max_active_downloads,
         downloader_factory=_downloader,
     )
-    return rayo, DefaultsStore(settings.defaults_file or default_file())
+    store = DefaultsStore(settings.defaults_file or default_file())
+    try:
+        import_v1_defaults(rayo, store)  # once, and it keeps the old file
+    except Exception:
+        logger.warning("Importing the saved default options failed.", exc_info=True)
+    return rayo, store
 
 
 def reset_state() -> None:

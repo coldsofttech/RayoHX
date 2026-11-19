@@ -23,6 +23,11 @@ const PLAYLIST = {
   video_tracks: [],
 };
 
+const QUEUE = {
+  items: [],
+  stats: { counts: { queued: 0 }, total: 0, active: 0, max_active: 2, runner: 'this process' },
+};
+
 function json(body, status = 200) {
   return Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(body) });
 }
@@ -42,7 +47,7 @@ describe('App', () => {
   beforeEach(() => {
     mockApi({
       'GET /api/v1/settings': () => json(SETTINGS),
-      'GET /api/v1/downloads': () => json({ items: [] }),
+      'GET /api/v2/queue': () => json(QUEUE),
       'POST /api/v1/inspect': () => json({ playlist: PLAYLIST }),
       'POST /api/v1/downloads': () => json({ id: 'abc' }, 202),
     });
@@ -76,7 +81,7 @@ describe('App', () => {
       );
       expect(JSON.parse(call[1].body).selection.audio).toEqual(['en']);
     });
-    expect(await screen.findByRole('heading', { name: 'Downloads' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Queue' })).toBeInTheDocument();
   });
 
   it('shows an error from the API', async () => {
@@ -91,16 +96,21 @@ describe('App', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Not an HLS playlist.');
   });
 
-  it('lists downloads and offers controls', async () => {
+  it('lists the queue and offers controls', async () => {
     mockApi({
       'GET /api/v1/settings': () => json(SETTINGS),
-      'GET /api/v1/downloads': () =>
+      'GET /api/v2/queue': () =>
         json({
+          ...QUEUE,
           items: [
             {
               id: 'j1',
               url: 'https://x/m.m3u8',
               state: 'downloading',
+              priority: 'normal',
+              verification: 'not_requested',
+              attempts: 1,
+              max_attempts: 3,
               progress: { fraction: 0.5, speed: 1048576, eta_seconds: 30 },
             },
           ],
@@ -108,7 +118,7 @@ describe('App', () => {
     });
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('tab', { name: /Downloads/ }));
+    await user.click(screen.getByRole('tab', { name: /Queue/ }));
     expect(await screen.findByText('50%')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pause j1' })).toBeInTheDocument();
   });

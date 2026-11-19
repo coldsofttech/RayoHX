@@ -521,3 +521,29 @@ def test_metrics_as_json_and_prometheus(client: TestClient) -> None:
     text = client.get("/api/v2/metrics/prometheus")
     assert text.headers["content-type"].startswith("text/plain")
     assert "rayohx_queue_queued" in text.text
+
+
+# --- version 1 saved defaults -------------------------------------------------------------
+
+
+def test_saved_v1_defaults_become_a_profile_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import json
+
+    defaults = tmp_path / "defaults.json"
+    defaults.write_text(json.dumps({"selection": {"max_resolution": "480p"}}))
+    monkeypatch.setenv("RAYOHX_API_DOWNLOAD_DIR", str(tmp_path / "dl"))
+    monkeypatch.setenv("RAYOHX_API_DEFAULTS_FILE", str(defaults))
+    get_settings.cache_clear()
+    reset_state()
+    client = TestClient(create_app())
+    profiles = client.get("/api/v2/profiles").json()["items"]
+    imported = [p for p in profiles if p["id"] == "default"]
+    assert len(imported) == 1
+    assert imported[0]["options"]["selection"]["max_resolution"] == "480p"
+    assert defaults.exists()  # the old file is kept
+    reset_state()
+    TestClient(create_app()).get("/api/v2/profiles")
+    again = TestClient(create_app()).get("/api/v2/profiles").json()["items"]
+    assert len([p for p in again if p["id"].startswith("default")]) == 1

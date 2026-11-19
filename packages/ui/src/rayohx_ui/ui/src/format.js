@@ -23,4 +23,12 @@ export function duration(seconds) {
 
 export const bitrate = (bps) => (bps ? `${(bps / 1e6).toFixed(1)} Mbps` : '–');
 
-export const ACTIVE = ['queued', 'inspecting', 'preparing', 'downloading', 'finalizing', 'verifying', 'paused'];
+export const ACTIVE = [
+  'queued',
+  'inspecting',
+  'preparing',
+  'downloading',
+  'finalizing',
+  'verifying',
+  'paused',
+];
