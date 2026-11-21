@@ -32,8 +32,10 @@ runs:
         Check ((Get-ChildItem "$dir/lib" -Recurse -File).Count -gt $alone) "the window added no files of its own"
         & "$dir/$env:CLI_NAME.exe" --version
         Check ($LASTEXITCODE -eq 0) "$env:CLI_NAME failed after installing both"
-        & "$dir/$env:UI_NAME.exe" --version
-        Check ($LASTEXITCODE -eq 0) "$env:UI_NAME failed after installing both"
+        # The window is a GUI program: & would not wait for it, and it would still hold its files
+        # when the uninstaller runs.
+        $window = Start-Process -Wait -PassThru -FilePath "$dir/$env:UI_NAME.exe" -ArgumentList '--version'
+        Check ($window.ExitCode -eq 0) "$env:UI_NAME failed after installing both"
         Check (Test-Path "$dir/uninstall.exe") "no uninstaller"
 
         # Removing the window keeps the command line and the shared lib working.

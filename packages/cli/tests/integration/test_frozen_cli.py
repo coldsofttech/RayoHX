@@ -1,5 +1,6 @@
 """Smoke test of the built command line: it starts and answers. Needs the installer build."""
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -40,7 +41,8 @@ def test_shows_help_for_a_command(folder: str) -> None:
     result = _run(locate(folder, "rayohx"), "download", "--help")
 
     assert result.returncode == 0
-    assert "--output" in result.stdout
+    # Rich styles each option, which splits "--output" with color codes when colors are forced.
+    assert "--output" in re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
 
 
 @pytest.mark.parametrize("folder", FOLDERS)
