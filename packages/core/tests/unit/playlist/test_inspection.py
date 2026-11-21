@@ -2,7 +2,7 @@ import pytest
 
 from rayohx import MasterPlaylist, MediaPlaylist
 from rayohx.errors import ConfigurationError, InvalidPlaylistError
-from rayohx.playlist.inspection import inspect_playlist
+from rayohx.playlist.inspection import inspect_playlist, inspect_text
 from tests.helpers.hls import fixture_text
 
 
@@ -92,3 +92,22 @@ def test_inspect_uses_the_http_layer(monkeypatch: pytest.MonkeyPatch) -> None:
         inspect("https://example.com/v/missing.m3u8")
     with pytest.raises(ConfigurationError):
         inspect("not-a-url")
+
+
+def test_inspect_text_resolves_addresses_against_the_base() -> None:
+    playlist = inspect_text(
+        fixture_text("master_basic.m3u8"), " https://example.com/video/master.m3u8 "
+    )
+    assert isinstance(playlist, MasterPlaylist)
+    assert playlist.variants[0].uri == "https://example.com/video/360p/index.m3u8"
+
+
+def test_inspect_text_refuses_a_web_page_with_a_hint() -> None:
+    with pytest.raises(InvalidPlaylistError) as info:
+        inspect_text(fixture_text("web_page.html"), "https://example.com/a")
+    assert info.value.hint
+
+
+def test_inspect_text_refuses_a_bad_base_address() -> None:
+    with pytest.raises(ConfigurationError):
+        inspect_text(fixture_text("media_simple.m3u8"), "ftp://example.com/a.m3u8")

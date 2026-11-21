@@ -62,3 +62,12 @@ def test_import_of_an_unknown_variable_is_refused() -> None:
     text = MEDIA.replace('QUERYPARAM="token"', 'IMPORT="zzz"').replace("{$token}", "x")
     with pytest.raises(InvalidPlaylistError, match="zzz"):
         parse_playlist(text, BASE, variables={})
+
+
+def test_inspect_text_parses_a_playlist_you_have() -> None:
+    from rayohx import inspect_text
+
+    media = inspect_text(MEDIA.replace('QUERYPARAM="token"', 'NAME="token",VALUE="t"'), BASE)
+    assert isinstance(media, MediaPlaylist)
+    with pytest.raises(InvalidPlaylistError, match="EXTM3U"):
+        inspect_text("<html>", BASE)

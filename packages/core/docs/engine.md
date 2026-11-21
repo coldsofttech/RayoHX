@@ -99,7 +99,7 @@ FFmpeg runs as a separate program on files that have already been downloaded, wi
 - `EXT-X-BYTERANGE` ranges without an offset are resolved against the previous range of the same file.
 - The container (MPEG-TS, fMP4, WebVTT) is guessed from the playlist. When it is unclear it stays `UNKNOWN` and the first bytes of a segment settle it.
 
-**Inspecting.** `inspect_playlist(url, fetcher)` downloads no media. The fetcher is any object with `fetch_text(url)`, which returns the text and its final address after redirects. `HttpClient` is the real one. `inspect(url, network_config)` wires them together.
+**Inspecting.** `inspect_playlist(url, fetcher)` downloads no media. The fetcher is any object with `fetch_text(url)`, which returns the text and its final address after redirects. `HttpClient` is the real one. `inspect(url, network_config)` wires them together. `inspect_text(text, base_url)` parses text you already have, with no fetcher.
 
 **Selecting.** `select_stream(master, config)` is a pure function, so the same playlist and settings always give the same answer. If a wish cannot be met, the closest track is used and a note says why.
 

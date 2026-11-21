@@ -10,6 +10,7 @@ result is a typed, frozen object you can read, filter and pass to
 |---|---|---|
 | [`inspect(url, network=None)`](#inspect) | `rayohx` | `MasterPlaylist` or `MediaPlaylist` |
 | [`inspect_playlist(url, fetcher)`](#inspect_playlist) | `rayohx` | `MasterPlaylist` or `MediaPlaylist` |
+| [`inspect_text(text, base_url)`](#inspect_text) | `rayohx` | `MasterPlaylist` or `MediaPlaylist` |
 | [`parse_playlist(text, uri)`](#parse_playlist) | `rayohx` | `MasterPlaylist` or `MediaPlaylist` |
 | [`is_hls_playlist(text)`](#is_hls_playlist) | `rayohx` | `bool` |
 | [`parse_attribute_list(text, *, line=None)`](#parse_attribute_list) | `rayohx.playlist` | `dict[str, str]` |
@@ -99,6 +100,23 @@ playlist = rayohx.inspect_playlist("https://cdn.example.com/vod/360p/index.m3u8"
 
 Errors: `ConfigurationError` for a bad address, `InvalidPlaylistError` when the text is not a
 playlist (the error carries a hint to check the address, headers and cookies).
+
+## inspect_text
+
+```python
+rayohx.inspect_text(text: str, base_url: str) -> Playlist
+```
+
+Parses playlist text you already have, for example one read from a file, without any request.
+Relative addresses in it are resolved against `base_url`, which must be an http(s) address.
+
+```python
+text = Path("master.m3u8").read_text()
+playlist = rayohx.inspect_text(text, "https://cdn.example.com/vod/master.m3u8")
+```
+
+Errors: `ConfigurationError` for a bad `base_url`, `InvalidPlaylistError` when the text is not a
+playlist.
 
 ## PlaylistFetcher
 

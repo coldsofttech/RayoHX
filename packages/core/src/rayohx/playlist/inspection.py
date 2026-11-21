@@ -17,6 +17,28 @@ class PlaylistFetcher(Protocol):
         ...
 
 
+def inspect_text(text: str, base_url: str) -> Playlist:
+    """Parse playlist ``text`` you already have (for example from a file).
+
+    Relative addresses in it are resolved against ``base_url``.
+
+    Raises:
+        ConfigurationError: If ``base_url`` is not an http(s) address.
+        InvalidPlaylistError: If the text is not an HLS playlist.
+    """
+    from rayohx.config import validate_url
+    from rayohx.errors import InvalidPlaylistError
+    from rayohx.playlist.detect import is_hls_playlist
+    from rayohx.playlist.parser import parse_playlist
+
+    if not is_hls_playlist(text):
+        raise InvalidPlaylistError(
+            "This is not an HLS playlist: it does not start with #EXTM3U.",
+            hint="Check that the file is an .m3u8 playlist.",
+        )
+    return parse_playlist(text, validate_url(base_url))
+
+
 def inspect_playlist(url: str, fetcher: PlaylistFetcher) -> Playlist:
     """Fetch and parse the playlist at ``url`` without downloading any media.
 

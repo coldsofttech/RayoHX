@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Download or look at a playlist you already have as text (`Downloader(playlist_text=...)`, `inspect_text`) without fetching it first.
 - A download can be paused and resumed (`Downloader.pause()`, `resume()` and `is_paused`). Segments already running finish first, and `download_paused` and `download_resumed` events report the change.
 - `download_many` saves several streams one after another into a folder and reports how each one ended. `batch_outputs` shows the file names it would use, and `OutputConfig(directory=...)` sets the folder for outputs that are not named.
 - Streams whose AES-128 key is given inside the playlist (`data:` addresses) now download. Local key files (`file:`) can be allowed with `allow_file_keys`, and `key_fetcher` lets you supply keys from anywhere.

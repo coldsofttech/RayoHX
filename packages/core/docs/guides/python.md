@@ -36,7 +36,7 @@ print(result.output.path, result.output.size_bytes)
 
 | Page | What it covers |
 |---|---|
-| [Inspecting streams](python/inspecting.md) | `inspect`, `inspect_playlist`, `parse_playlist`, `is_hls_playlist`, fetchers, parsing rules |
+| [Inspecting streams](python/inspecting.md) | `inspect`, `inspect_playlist`, `inspect_text`, `parse_playlist`, `is_hls_playlist`, fetchers, parsing rules |
 | [Downloading](python/downloading.md) | `download`, `Downloader`, output files, results, what is and is not supported |
 | [Selecting tracks](python/selecting.md) | `select_stream`, `StreamSelection`, how quality, limits and languages are decided |
 | [Settings](python/settings.md) | `DownloadConfig`, `NetworkConfig`, `ProxyConfig`, `OutputConfig`, `StorageConfig`, `SelectionConfig`, constants, secrets |
@@ -128,6 +128,7 @@ from rayohx.errors import PlaylistNotFoundError
 | `rayohx.Downloader(url, ...)` | One download with events, state, pause/resume and cancellation | [Downloading](python/downloading.md#downloader) |
 | `rayohx.inspect(url, network=None)` | Fetch and parse the playlist at a URL | [Inspecting](python/inspecting.md#inspect) |
 | `rayohx.inspect_playlist(url, fetcher)` | The same, with a fetcher you supply | [Inspecting](python/inspecting.md#inspect_playlist) |
+| `rayohx.inspect_text(text, base_url)` | Parse playlist text you already have | [Inspecting](python/inspecting.md#inspect_text) |
 | `rayohx.parse_playlist(text, uri)` | Parse playlist text you already have | [Inspecting](python/inspecting.md#parse_playlist) |
 | `rayohx.is_hls_playlist(text)` | `True` if the text starts with `#EXTM3U` | [Inspecting](python/inspecting.md#is_hls_playlist) |
 | `rayohx.select_stream(master, config)` | Choose the video, audio and subtitle tracks | [Selecting](python/selecting.md) |

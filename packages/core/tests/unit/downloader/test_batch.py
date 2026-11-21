@@ -121,3 +121,18 @@ def test_batch_names_load_without_the_downloader() -> None:
         "assert 'rayohx.downloader.controller' not in sys.modules\n"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_a_playlist_you_already_have_can_be_downloaded(tmp_path: Path) -> None:
+    site = Origin(3, content="ts")
+    text = site.playlist_text().replace("\nseg", f"\n{BASE}seg")
+    downloader = Downloader(
+        BASE + "local.m3u8",
+        output=tmp_path / "out.ts",
+        config=CONFIG,
+        transport=httpx.MockTransport(site),
+        playlist_text=text,
+    )
+    assert downloader.run().success
+    assert (tmp_path / "out.ts").read_bytes() == site.expected()
+    assert "local.m3u8" not in site.log  # the playlist itself was never requested

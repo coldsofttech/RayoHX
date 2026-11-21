@@ -179,6 +179,7 @@ rayohx.Downloader(
     cancel: CancellationToken | None = None,
     download_id: str | None = None,
     transport: httpx.BaseTransport | None = None,
+    playlist_text: str | None = None,
     clock: Callable[[], float] = time.monotonic,
 )
 ```
@@ -201,6 +202,7 @@ the download paused. Cancelling a paused download stops it at once. The same con
 | `cancel` | A token to stop the download; a new one is created if you give none |
 | `download_id` | The identifier for events and log lines; 12 random hex characters if none |
 | `transport` | A replacement `httpx` transport, for tests |
+| `playlist_text` | The playlist text, if you already have it; `url` is then only used to resolve relative addresses and the playlist is not requested |
 | `clock` | A replacement clock, for tests |
 
 | Member | Returns |

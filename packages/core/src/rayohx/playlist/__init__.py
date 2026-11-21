@@ -15,13 +15,14 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from rayohx.playlist.attributes import parse_attribute_list
     from rayohx.playlist.detect import is_hls_playlist
-    from rayohx.playlist.inspection import PlaylistFetcher, inspect_playlist
+    from rayohx.playlist.inspection import PlaylistFetcher, inspect_playlist, inspect_text
     from rayohx.playlist.parser import parse_playlist
 
 _SUBMODULES = frozenset({"attributes", "detect", "inspection", "parser"})
 _EXPORTS = {
     "PlaylistFetcher": "rayohx.playlist.inspection",
     "inspect_playlist": "rayohx.playlist.inspection",
+    "inspect_text": "rayohx.playlist.inspection",
     "is_hls_playlist": "rayohx.playlist.detect",
     "parse_attribute_list": "rayohx.playlist.attributes",
     "parse_playlist": "rayohx.playlist.parser",
@@ -49,6 +50,7 @@ def __dir__() -> list[str]:
 __all__ = [
     "PlaylistFetcher",
     "inspect_playlist",
+    "inspect_text",
     "is_hls_playlist",
     "parse_attribute_list",
     "parse_playlist",

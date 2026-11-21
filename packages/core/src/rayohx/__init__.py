@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from rayohx.playlist import (
         PlaylistFetcher,
         inspect_playlist,
+        inspect_text,
         is_hls_playlist,
         parse_playlist,
     )
@@ -114,6 +115,7 @@ _EXPORTS = {
     "download_many": "rayohx.downloader",
     "inspect": "rayohx.playlist.inspection",
     "inspect_playlist": "rayohx.playlist",
+    "inspect_text": "rayohx.playlist",
     "is_hls_playlist": "rayohx.playlist",
     "parse_playlist": "rayohx.playlist",
     "playlist_to_dict": "rayohx.serialization",
@@ -180,6 +182,7 @@ __all__ = [
     "download_many",
     "inspect",
     "inspect_playlist",
+    "inspect_text",
     "is_hls_playlist",
     "parse_playlist",
     "playlist_to_dict",
