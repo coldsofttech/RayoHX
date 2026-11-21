@@ -1,7 +1,8 @@
 name: Release installer
 
 # Tag installer-vX.Y.Z: builds the full Windows setup (the command line and the desktop window, with the
-# API and the core library) and the command line's portable zip. Nothing goes to PyPI. Attaching
+# API and the core library), the command line's portable zip and its Linux packages (deb and rpm,
+# x86_64 and arm64). Nothing goes to PyPI. Attaching
 # the files to the GitHub release waits for the approval of the `installer` environment. The tag must
 # match the version in installer/build.toml. Called by release.yml.
 on:
@@ -62,9 +63,40 @@ jobs:
             dist/installer/*.json
             dist/installer/*.zip
 
+  installer-linux:
+    name: installer (linux ${{ matrix.arch }})
+    needs: installer-check
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15 # target: under 5 minutes
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          python-version: "3.15"
+          sync-args: --locked --package rayohx-cli --group installer
+      - name: Install installer tools
+        uses: ./.github/actions/install-installer-tools
+      - name: Build the packages and smoke test the executable
+        run: uv run --no-sync python installer/scripts/build.py --smoke
+      - name: Upload the Linux packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: installers-cli-linux-${{ matrix.arch }}
+          path: |
+            dist/installer/*.deb
+            dist/installer/*.rpm
+
   installer-publish:
     name: installer publish (GitHub release)
-    needs: installer-windows
+    needs: [installer-windows, installer-linux]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: installer

@@ -16,6 +16,11 @@ This file covers the repository as a whole. Each package keeps its own changelog
 - Logo and icon artwork in light and dark variants.
 - The project is released under the Apache-2.0 licence.
 
+### Changed
+
+- The Linux packages (deb and rpm) are now built and attached with the installer release instead of the command line release.
+- The step that decides which parts of the project a pull request changes uses a newer version of its action.
+
 ### Security
 
 - Dependencies are audited for known vulnerabilities and checked for disallowed licences on every change.
