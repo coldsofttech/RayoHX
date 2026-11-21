@@ -1,6 +1,6 @@
 # Docker security
 
-How the RayoHX image protects secrets and the machine it runs on. To report a vulnerability, see [SECURITY.md](../../../SECURITY.md). The protections of the download engine itself (redaction, input checks, credentials per host, file names, untrusted media) are in the [project security notes](../../../docs/security.md#download-engine), and those of the command are in the [CLI security notes](../../cli/docs/security.md). They apply unchanged inside the container.
+How the RayoHX image protects secrets and the machine it runs on. To report a vulnerability, see [SECURITY.md](../../../SECURITY.md). The protections of the download engine itself (redaction, input checks, credentials per host, file names, untrusted media) are in the [core security notes](../../core/docs/security.md), and those of the command are in the [CLI security notes](../../cli/docs/security.md). They apply unchanged inside the container.
 
 ## The image
 

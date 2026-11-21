@@ -72,4 +72,4 @@ print(result.output.path, result.output.size_bytes)
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).

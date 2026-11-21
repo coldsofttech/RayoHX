@@ -7,3 +7,4 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - The RayoHX desktop window for Windows, started with `rayohxu`, with the HTTP API built in.
+- Requires Python 3.15 or newer.

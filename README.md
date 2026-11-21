@@ -11,7 +11,7 @@ Download HLS streams from your terminal, your Python code or a desktop window.
 |---|---|---|
 | [rayohx](packages/core) | Python library | `pip install rayohx` |
 | [rayohx-cli](packages/cli) | The `rayohx` command | `uv tool install rayohx-cli` |
-| [rayohxu](packages/ui) | Desktop window (Windows) | Installer |
+| [rayohx-ui](packages/ui) | Desktop window (Windows) | Installer |
 | [rayohx-docker](packages/docker) | The `rayohx` command as a container image | `docker pull ghcr.io/coldsofttech/rayohx` |
 
 ## Quick start
@@ -30,4 +30,4 @@ rayohx download https://cdn.example.com/vod/master.m3u8 -o movie.mp4
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).

@@ -1,6 +1,6 @@
 # CLI packaging and releasing
 
-How the `rayohx` command is packaged and released: the `rayohx-cli` package on PyPI, and an installer for each OS. The parts shared with the window (the build script, the NSIS behaviour in `common.nsh`, the tool versions) are in the [project packaging notes](../../../docs/packaging.md), and how releases are routed for every package is in the [project releasing notes](../../../docs/releasing.md).
+How the `rayohx` command is packaged and released: the `rayohx-cli` package on PyPI, and an installer for each OS. The parts shared with the window (the build script, the NSIS behaviour in `common.nsh`, the tool versions) are described below, and how releases are routed for every package is in the [project releasing notes](../../../docs/releasing.md).
 
 ## What is built
 

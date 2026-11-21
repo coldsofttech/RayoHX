@@ -21,7 +21,7 @@ rayohxu
 
 ## Install
 
-Requires Windows and Python 3.11 or newer. Install it in its own isolated environment:
+Requires Windows and Python 3.15 or newer. Install it in its own isolated environment:
 
 ```sh
 uv tool install rayohx-ui
@@ -44,4 +44,4 @@ Then start it with `rayohxu`.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).

@@ -1,6 +1,6 @@
 # API
 
-`rayohx_api` is a FastAPI app over `rayohx`. It runs on its own on any system, and the same routes are mounted inside the UI window (see [UI](../../../docs/ui.md)). Routes only validate input, call the library and shape the response; logic stays in `rayohx`. For how the pieces fit together, see [architecture](architecture.md); to work on the API, see [development](development.md).
+`rayohx_api` is a FastAPI app over `rayohx`. It runs on its own on any system, and the same routes are mounted inside the UI window (see the [UI architecture](../../ui/docs/architecture.md)). Routes only validate input, call the library and shape the response; logic stays in `rayohx`. For how the pieces fit together, see [architecture](architecture.md); to work on the API, see [development](development.md).
 
 ## Running it
 

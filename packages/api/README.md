@@ -45,4 +45,4 @@ The full list of settings is in the [API guide](docs/api.md).
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).

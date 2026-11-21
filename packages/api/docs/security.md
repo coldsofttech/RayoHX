@@ -1,6 +1,6 @@
 # API security
 
-How the API protects requests when it runs on its own. To report a vulnerability, see [SECURITY.md](../../../SECURITY.md). How requests are protected under the UI window, and in the download engine, is in the [project security notes](../../../docs/security.md).
+How the API protects requests when it runs on its own. To report a vulnerability, see [SECURITY.md](../../../SECURITY.md). How requests are protected under the UI window is in the [UI security notes](../../ui/docs/security.md), and in the download engine in the [core security notes](../../core/docs/security.md).
 
 ## Standalone API
 
@@ -15,4 +15,4 @@ When run alone (`python -m rayohx_api`), Cornea is absent, so the API protects i
 
 ## Under the UI window
 
-When the UI window mounts the API routes, Cornea's security gate guards every request, so the API switches its own key check and duplicate response headers off (`create_app(embedded=True)`). Never expose these routes any other way. The details are in the [project security notes](../../../docs/security.md#under-the-ui-window).
+When the UI window mounts the API routes, Cornea's security gate guards every request, so the API switches its own key check and duplicate response headers off (`create_app(embedded=True)`). Never expose these routes any other way. The details are in the [UI security notes](../../ui/docs/security.md).

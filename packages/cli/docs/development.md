@@ -76,4 +76,4 @@ uv run python packages/cli/scripts/build_installer.py --smoke                   
 uv run python packages/cli/scripts/build_installer.py --format deb,rpm --smoke  # on Linux
 ```
 
-The installer files are in `packages/cli/installer`; see [packaging](../../../docs/packaging.md) for the tools you need and what each file does.
+The installer files are in `packages/cli/installer`; see [packaging](packaging.md) for the tools you need and what each file does.

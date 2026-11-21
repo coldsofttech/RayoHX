@@ -1,6 +1,6 @@
 # CLI security
 
-How the `rayohx` command protects secrets and the machine it runs on. To report a vulnerability, see [SECURITY.md](../../../SECURITY.md). The protections of the download engine itself (redaction, input checks, credentials per host, working folder, file names, FFmpeg, untrusted media) are in the [project security notes](../../../docs/security.md#download-engine); the API's are in the [API security notes](../../api/docs/security.md).
+How the `rayohx` command protects secrets and the machine it runs on. To report a vulnerability, see [SECURITY.md](../../../SECURITY.md). The protections of the download engine itself (redaction, input checks, credentials per host, working folder, file names, FFmpeg, untrusted media) are in the [core security notes](../../core/docs/security.md); the API's are in the [API security notes](../../api/docs/security.md).
 
 ## Secrets you give it
 
