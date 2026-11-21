@@ -5,7 +5,9 @@ name: Security
 # These jobs are not part of the required `ci` check, so a new rule does not block unrelated pull
 # requests. The weekly run catches vulnerabilities published after a merge.
 # Calls one workflow per package (security-core, security-cli, security-api, security-ui,
-# security-docker) and one for the rest of the repository (security-repo).
+# security-docker) and one for the rest of the repository (security-repo). On pull requests,
+# `changes` limits the run to the parts of the repository the change can affect; pushes to main,
+# the weekly run and manual runs scan everything.
 on:
   pull_request:
   push:
@@ -22,7 +24,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/changes.yml
+
   core:
+    needs: changes
+    if: needs.changes.outputs.core == 'true'
     uses: ./.github/workflows/security-core.yml
     permissions:
       contents: read
@@ -30,6 +40,8 @@ jobs:
       actions: read
 
   cli:
+    needs: changes
+    if: needs.changes.outputs.cli == 'true'
     uses: ./.github/workflows/security-cli.yml
     permissions:
       contents: read
@@ -37,6 +49,8 @@ jobs:
       actions: read
 
   api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     uses: ./.github/workflows/security-api.yml
     permissions:
       contents: read
@@ -44,6 +58,8 @@ jobs:
       actions: read
 
   ui:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
     uses: ./.github/workflows/security-ui.yml
     permissions:
       contents: read
@@ -51,6 +67,8 @@ jobs:
       actions: read
 
   docker:
+    needs: changes
+    if: needs.changes.outputs.docker == 'true'
     uses: ./.github/workflows/security-docker.yml
     permissions:
       contents: read
@@ -58,6 +76,8 @@ jobs:
       actions: read
 
   repo:
+    needs: changes
+    if: needs.changes.outputs.repo == 'true'
     uses: ./.github/workflows/security-repo.yml
     permissions:
       contents: read

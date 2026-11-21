@@ -2,7 +2,8 @@ name: CI
 
 # Calls one workflow per package (ci-core, ci-cli, ci-api, ci-ui, ci-docker), one for the rest
 # of the repository (ci-repo) and ci-installer once the cli and ui have passed; `ci` at the end is
-# the single required check for the branch ruleset.
+# the single required check for the branch ruleset. On pull requests, `changes` limits the run to
+# the parts of the repository the change can affect; every other event runs everything.
 on:
   pull_request:
   push:
@@ -16,32 +17,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/changes.yml
+
   core:
+    needs: changes
+    if: needs.changes.outputs.core == 'true'
     uses: ./.github/workflows/ci-core.yml
 
   cli:
+    needs: changes
+    if: needs.changes.outputs.cli == 'true'
     uses: ./.github/workflows/ci-cli.yml
 
   api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     uses: ./.github/workflows/ci-api.yml
 
   ui:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
     uses: ./.github/workflows/ci-ui.yml
 
   docker:
+    needs: changes
+    if: needs.changes.outputs.docker == 'true'
     uses: ./.github/workflows/ci-docker.yml
 
   repo:
+    needs: changes
+    if: needs.changes.outputs.repo == 'true'
     uses: ./.github/workflows/ci-repo.yml
 
   installer:
-    needs: [cli, ui]
+    needs: [changes, cli, ui]
+    if: needs.changes.outputs.installer == 'true' && !cancelled() && !failure()
     uses: ./.github/workflows/ci-installer.yml
 
   ci:
     name: CI result
     if: always()
-    needs: [core, cli, api, ui, docker, repo, installer]
+    needs: [changes, core, cli, api, ui, docker, repo, installer]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -50,4 +70,5 @@ jobs:
           NEEDS: ${{ toJSON(needs) }}
         run: |
           jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
-          jq -e 'all(.[]; .result == "success")' <<< "$NEEDS" > /dev/null
+          # A job skipped because its part of the repository did not change counts as passed.
+          jq -e 'all(.[]; .result == "success" or .result == "skipped")' <<< "$NEEDS" > /dev/null
