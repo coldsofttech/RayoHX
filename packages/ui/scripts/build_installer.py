@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the window's installer: a Windows setup with the command line beside the window.
+"""Build the window's installer: a Windows setup.
 
 What is specific to the window is here: its metadata (packages/ui/installer/projectinfo.py) and
 the frontend build. The rest is shared (scripts/build_installer.py).
@@ -55,11 +55,7 @@ def product() -> shared.Product:
         spec=INSTALLER / "pyinstaller" / "ui.spec",
         nsi=INSTALLER / "windows" / "ui.nsi",
         licence=PACKAGE / "LICENSE",
-        # The window's build holds the command line too, so both are started.
-        smoke=(
-            (ROOT / "packages" / "cli", "tests/integration/test_frozen_cli.py"),
-            (PACKAGE, "tests/integration/test_frozen_ui.py"),
-        ),
+        smoke=((PACKAGE, "tests/integration/test_frozen_ui.py"),),
         add_arguments=add_arguments,
         prepare=prepare,
     )

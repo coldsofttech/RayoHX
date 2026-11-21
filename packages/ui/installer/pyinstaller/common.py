@@ -1,14 +1,11 @@
 """Used by ui.spec: where the window's names, version, icon and dependencies come from.
 
-The window is built together with the command line (the build folder holds both executables).
-Everything is read from packages/ui and packages/cli (see ../projectinfo.py and the command line's
-own), so renaming either needs no edit here.
+Everything is read from packages/ui (see ../projectinfo.py), so renaming it needs no edit here.
 
-- executable names: the ``[project.gui-scripts]`` key of the window and the ``[project.scripts]``
-  key of the command line (the entry scripts are generated from their targets)
-- version and title: the window's from ``[project]`` and ``TITLE``, the command line's likewise
+- executable name: the ``[project.gui-scripts]`` key (the entry script is generated from its target)
+- version and title: ``[project]`` and ``TITLE``
 - icon: the ``.ico`` in ``brand/light``
-- description and author: ``[project]`` of each package
+- description and author: ``[project]``
 """
 
 import importlib.util
@@ -28,7 +25,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def _load(name: str, path: Path) -> ModuleType:
-    """Import a projectinfo.py by path; the window's and the command line's share a file name."""
+    """Import a projectinfo.py by path."""
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         raise SystemExit(f"Cannot load {path}.")
@@ -38,32 +35,20 @@ def _load(name: str, path: Path) -> ModuleType:
 
 
 UI = _load("ui_projectinfo", HERE.parent / "projectinfo.py").load()
-CLI = _load("cli_projectinfo", UI.root / "packages" / "cli" / "installer" / "projectinfo.py").load()
 REPO_ROOT = UI.root
 UI_DIR = UI.frontend_dir
 ICON_SOURCE = next(iter(sorted((REPO_ROOT / "brand" / "light").glob("*.ico"))), None)
 
-CLI_SCRIPT, UI_SCRIPT = CLI.script, UI.script
+UI_SCRIPT = UI.script
+CORE_PACKAGE = "rayohx"
 #: Per executable: (entry point "module:function", pyproject [project], version, title).
 PROGRAMS: dict[str, tuple[str, dict[str, Any], str, str]] = {
-    CLI.script: (CLI.entry_point, CLI.project, CLI.version, CLI.title),
     UI.script: (UI.entry_point, UI.project, UI.version, UI.title),
 }
 WINDOWS = sys.platform == "win32"
 
 # Not part of any program.
 EXCLUDES = ["tkinter", "pytest"]
-# The command line imports neither the API nor the window.
-CLI_EXCLUDES = [
-    *EXCLUDES,
-    UI.api_package,
-    UI.package,
-    "cornea",
-    "webview",
-    "fastapi",
-    "uvicorn",
-]
-
 
 class Collected:
     """Data files, native libraries and hidden imports gathered for one executable."""
@@ -88,20 +73,8 @@ class Collected:
             self.datas.extend(copy_metadata(distribution))
 
 
-def cli_dependencies() -> Collected:
-    """What the command line needs. The window's build includes these too."""
-    collected = Collected()
-    collected.metadata(CLI.project["name"])
-    collected.hiddenimports.extend(collect_submodules(CLI.core_package))
-    collected.hiddenimports.extend(collect_submodules(CLI.package))
-    # rich lazily imports a Unicode-version-specific submodule that static analysis cannot see.
-    collected.package("rich")
-    collected.package("typer")
-    return collected
-
-
 def ui_dependencies() -> Collected:
-    """What the window needs, on top of the command line's. Windows only.
+    """What the window needs. Windows only.
 
     Cornea serves the frontend and the API with uvicorn, FastAPI and Starlette, which load protocol
     and middleware modules by name; pywebview reaches WebView2 through pythonnet and clr_loader.
@@ -126,6 +99,7 @@ def ui_dependencies() -> Collected:
         "fastapi", "starlette", "pydantic", "pydantic_settings", "pydantic_core", "anyio", "h11",
     ):  # fmt: skip
         collected.package(package)
+    collected.hiddenimports.extend(collect_submodules(CORE_PACKAGE))
     collected.hiddenimports.extend(collect_submodules(UI.api_package))
     collected.hiddenimports.extend(collect_submodules(UI.package))
     # The window finds the bundle through its package (Static(package=<ui package>, ...)).
@@ -209,7 +183,7 @@ def executable(
     parts = [collected, *shared]
     analysis = Analysis(
         [_entry_script(script)],
-        pathex=[str(UI.ui_dir / "src"), str(CLI.cli_dir / "src")],
+        pathex=[str(UI.ui_dir / "src")],
         binaries=[item for part in parts for item in part.binaries],
         datas=[item for part in parts for item in part.datas],
         hiddenimports=[item for part in parts for item in part.hiddenimports],

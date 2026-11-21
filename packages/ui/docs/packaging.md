@@ -6,7 +6,7 @@ How the window's installer is built. The window is not published to PyPI: `uv bu
 
 | Product | Contents | Windows | Linux |
 | --- | --- | --- | --- |
-| UI | `rayohxu` (window) and `rayohx` | `rayohxu-<version>-setup.exe` | none (the window needs Windows) |
+| UI | `rayohxu` (window) | `rayohxu-<version>-setup.exe` | none (the window needs Windows) |
 
 macOS gets no installer.
 
@@ -33,7 +33,7 @@ Windows only. `--build-frontend` runs `npm ci` and `npm run build`; `--smoke` st
 
 ## PyInstaller
 
-`ui.spec` makes a one-folder build with `rayohx` and `rayohxu` side by side (about 69 MB). The window has no console, and the built frontend is frozen into `lib/`. The executables carry the icon and file properties taken from the project.
+`ui.spec` makes a one-folder build with `rayohxu` (about 69 MB). The window has no console, and the built frontend is frozen into `lib/`. The executables carry the icon and file properties taken from the project.
 
 ## Windows setup (NSIS)
 
