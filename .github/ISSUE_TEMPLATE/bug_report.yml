@@ -7,10 +7,10 @@ body:
     attributes:
       label: Which part is affected?
       options:
-        - Command line (rayo-cli)
-        - API
-        - UI window (rayo-ui)
-        - Not sure
+        - Python Package
+        - Command Line
+        - UI
+        - Not Sure
     validations:
       required: true
   - type: textarea

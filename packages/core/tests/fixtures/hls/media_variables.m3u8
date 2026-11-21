@@ -1,0 +1,8 @@
+#EXTM3U
+#EXT-X-VERSION:8
+#EXT-X-TARGETDURATION:4
+#EXT-X-DEFINE:NAME="seg",VALUE="https://cdn.example.com/s"
+#EXT-X-DEFINE:QUERYPARAM="token"
+#EXTINF:4.0,
+{$seg}/1.ts?t={$token}
+#EXT-X-ENDLIST

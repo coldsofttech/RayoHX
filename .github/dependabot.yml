@@ -1,7 +1,11 @@
 version: 2
 updates:
+  # The workflows are in /.github/workflows; each composite action has its own folder under
+  # /.github/actions.
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
     cooldown:
@@ -25,7 +29,7 @@ updates:
         patterns: ["*"]
 
   - package-ecosystem: npm
-    directory: /src/rayo_ui/ui
+    directory: /packages/ui/src/rayohx_ui/ui
     schedule:
       interval: weekly
     cooldown:
@@ -34,4 +38,17 @@ updates:
       prefix: "chore(deps)"
     groups:
       npm:
+        patterns: ["*"]
+
+  # The base image of the Docker image (FROM lines in packages/docker/Dockerfile).
+  - package-ecosystem: docker
+    directory: /packages/docker
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      docker:
         patterns: ["*"]

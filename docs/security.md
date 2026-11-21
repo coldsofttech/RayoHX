@@ -1,29 +1,25 @@
 # Security
 
-How the API and the UI window protect requests. To report a vulnerability, see [SECURITY.md](../SECURITY.md).
+A high-level view of how RayoHX is protected. Each package documents its own protections; start there for detail. To report a vulnerability, see [SECURITY.md](../SECURITY.md).
 
-## Under the UI window
+## Packages
 
-Cornea's `SecurityMiddleware` guards every mounted route, so the API adds no token of its own:
+| Package | Protects | Notes |
+| --- | --- | --- |
+| core (`rayohx`) | secrets, requests, files, untrusted media, FFmpeg | [Core security](../packages/core/docs/security.md) |
+| CLI (`rayohx`) | secrets you pass, output and logs, the installers | [CLI security](../packages/cli/docs/security.md) |
+| API (`rayohx_api`) | requests when run on its own: API key, response headers, request size limit | [API security](../packages/api/docs/security.md) |
+| UI (`rayohxu`) | the local window server: host and origin checks, start-up token, content security policy | [UI security](../packages/ui/docs/security.md) |
+| Docker | the image: unprivileged user, minimal runtime, no baked-in secrets | [Docker security](../packages/docker/docs/security.md) |
 
-- the `Host` must be on the allow-list (the bound `127.0.0.1:<port>` only)
-- state-changing requests (POST, PUT, PATCH, DELETE) must carry a matching `Origin`
-- a one-time start-up token is exchanged for an `HttpOnly`, `SameSite=Strict` session cookie
-- responses carry a strict content security policy and other protective headers
-
-`rayo_ui` therefore mounts the routes with API-key checks switched off. Never expose these routes any other way.
-
-## Standalone API
-
-When run alone (`python -m rayo_api`), Cornea is absent, so the API protects itself:
-
-- **API key:** protected routes need an `X-API-Key` header matching `RAYO_API_API_KEYS`. The app will not start without a key unless `RAYO_API_AUTH_MODE=none`, which is for local development only. Keys are compared in constant time and never logged.
-- **Headers:** `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, a restrictive CSP, `Cache-Control: no-store` on `/api/` and HSTS over HTTPS.
-- **Body limit:** requests declaring more than `RAYO_API_MAX_BODY_BYTES` get `413`. Also set a limit at your reverse proxy, since chunked bodies have no declared size.
-- **Docs hidden:** `/docs`, `/redoc` and `/openapi.json` are off unless `RAYO_API_DOCS_ENABLED=true`.
-- **Errors:** a `500` never shows details; they go to the log with the request ID.
-- **Not included:** HTTPS, rate limiting, JWT and multi-user authentication, a database. Add them, or put the API behind a proxy, before exposing it publicly.
+The CLI, API, UI and Docker image all build on the core library, so its protections (redaction, input checks, credentials per host, safe file names) apply to each of them.
 
 ## Supply chain
 
-Dependabot covers Python, npm and Actions. `audit.yml` checks locked dependencies weekly, dependency review blocks vulnerable additions, and the lock files are committed.
+Dependabot covers Python, npm and Actions. Each package has its own audit and security workflows (`audit-<package>.yml`, `security-<package>.yml`) that check locked dependencies weekly and run static analysis. Dependency review blocks vulnerable additions on pull requests, and the lock files are committed. Releases are published with trusted publishing, with no stored token (see [releasing](releasing.md)).
+
+## Rules to keep
+
+- Keep every protection on unless the maintainer says otherwise.
+- Document a new protection in the package's `docs/security.md`.
+- Explain any `# noqa` or `# nosemgrep` with a reason in the comment.

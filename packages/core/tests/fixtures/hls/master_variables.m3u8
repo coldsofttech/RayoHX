@@ -1,0 +1,5 @@
+#EXTM3U
+#EXT-X-DEFINE:NAME="host",VALUE="media.example.com"
+#EXT-X-DEFINE:NAME="quality",VALUE="hd"
+#EXT-X-STREAM-INF:BANDWIDTH=1000,RESOLUTION=1280x720
+https://{$host}/{$quality}/video.m3u8

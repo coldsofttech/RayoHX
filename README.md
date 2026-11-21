@@ -1,104 +1,82 @@
-# Rayo
+# RayoHX
 
-[![CI](https://github.com/coldsofttech/Rayo/actions/workflows/ci.yml/badge.svg)](https://github.com/coldsofttech/Rayo/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/Rayo)](https://pypi.org/project/Rayo/)
-[![Python versions](https://img.shields.io/pypi/pyversions/Rayo)](https://pypi.org/project/Rayo/)
+[![CI](https://github.com/coldsofttech/RayoHX/actions/workflows/ci.yml/badge.svg)](https://github.com/coldsofttech/RayoHX/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/coldsofttech/RayoHX)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![License](https://img.shields.io/github/license/coldsofttech/Rayo)](LICENSE)
-[![Built with Cornea Shell](https://img.shields.io/badge/built%20with-Cornea%20Shell-blue)](https://github.com/coldsofttech/CorneaShell)
-[![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Typer](https://img.shields.io/badge/Typer-CLI-black)](https://typer.tiangolo.com/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
-[![PyInstaller](https://img.shields.io/badge/PyInstaller-installers-blue)](https://pyinstaller.org/)
-[![NSIS](https://img.shields.io/badge/NSIS-Windows%20setup-blue)](https://nsis.sourceforge.io/)
-[![nfpm](https://img.shields.io/badge/nfpm-deb%20%26%20rpm-blue)](https://nfpm.goreleaser.com/)
 
-A ready-to-use starting point for public Python tools that come with a command line, an HTTP API and a desktop window. The window runs a React app on Windows, hosted by [Cornea Shell](https://github.com/coldsofttech/CorneaShell). It also includes automated testing, linting, one-step releases to PyPI, and the community and security files a public repository needs.
+Download HLS streams from your terminal, your Python code or a desktop window.
 
-## What you get
+## What is RayoHX?
 
-- A command line with `--help`, `--version`, `--verbose`, `--quiet`, `--no-color` and shell completion
-- A desktop window (Windows) with an example React app that talks to Python, started with `rayo-ui`
-- An HTTP API you can also run on its own, on any system
-- A separate typed library, so your logic is reused by the command line, the API and the window
-- Fast, reproducible setup with [uv](https://docs.astral.sh/uv/)
-- Linting, formatting and type checking before every commit and in CI
-- Automated tests on Python 3.11 to 3.15 (Ubuntu) and 3.11 (Windows and macOS)
-- Publishing to PyPI when you create a GitHub release, with no stored tokens
-- Contribution, conduct, support and security-reporting guidelines
-- Issue forms, a pull request template and automated dependency updates
+RayoHX is a tool for saving HLS streams (`.m3u8` links) as ordinary video files. Many websites play
+video as a stream made of many small pieces, which is awkward to save by hand. Give RayoHX the
+stream's web address and it looks at what the stream offers, lets you choose the quality, audio and
+subtitles you want, and puts everything together into a single file you can keep and play anywhere.
 
-## Getting started
+## How it helps
 
-1. Click **Use this template** on GitHub and create your new repository.
-2. Run the **Init** workflow from the Actions tab, giving it a short lowercase name (for example `acme`) and a display title, and merge the pull request it opens. This fills in your owner and repository name and renames the example packages and commands to yours. See the [development guide](docs/development.md).
-3. Replace the example React app, API routes, window action and icon with your own, and the placeholder installer icon and wizard images in `brand/`.
-4. Add your contact details in `CODE_OF_CONDUCT.md`, delete `.github/workflows/init.yml`, and replace this description.
-5. Apply the repository protections by following the [setup guide](docs/repo-setup.md). Before your first release, work through the checklist in the [releasing guide](docs/releasing.md).
-6. Install dependencies and commit checks:
+- **See before you download**: check a stream's qualities, audio and subtitle tracks and encryption
+  without downloading any video
+- **Get exactly what you want**: pick a quality, resolution or size limit, and the audio and
+  subtitles you need, instead of taking whatever comes first
+- **Finish what you started**: interrupted downloads continue where they stopped
+- **Safe by default**: it never replaces an existing file unless you allow it, and refuses damaged
+  or unsafe streams with a clear explanation instead of failing in a confusing way
+- **Use it your way**: the same features are available from the terminal, from your own Python code,
+  from a container or from a desktop window
 
-   ```bash
-   uv sync
-   uv run pre-commit install --hook-type pre-commit --hook-type post-commit
-   ```
+## Features
 
-## Installation
+- Inspect a stream's qualities, audio and subtitle tracks and encryption
+- Choose a stream by quality, resolution, bitrate limit or exact number, prefer a video codec or
+  dynamic range, and pick audio and subtitles by language or name
+- Fast downloads with several pieces fetched at once, a progress display and an optional speed limit
+- Resume interrupted downloads, pause and continue a running one, and clean up the folders that
+  interrupted downloads leave behind
+- Download several streams in one go, from a list of addresses or a file
+- Use a playlist file you already have instead of fetching it
+- Save MPEG-TS and fragmented MP4 streams to a file, or keep the pieces as separate files in a
+  folder
+- Join a separate audio track into one MP4 and save subtitles as `.vtt` files, with nothing
+  re-encoded
+- Download encrypted (AES-128) streams, including ones whose key is stored in a local file you allow
+- Clear explanation when a stream is protected (DRM) or live, as these are not supported
+- Proxies (including SOCKS5 and a proxy login), client certificates, custom headers and cookies
+  (including a browser's `cookies.txt`), with automatic retries
+- Keep your usual options in a settings file, and check what is in effect with `rayohx config`
+- Machine-readable output for scripts, including a stream of download events
+- Tokens, cookies and proxy passwords are kept out of logs and error messages
 
-The Python package gives you the command line (`rayo-cli`). Requires Python 3.11 or newer. The recommended way to install a tool is in its own isolated environment:
+## Ways to use RayoHX
 
-```bash
-uv tool install Rayo
+| Package | What it is | Install |
+|---|---|---|
+| [rayohx](packages/core) | Python library | `pip install rayohx` |
+| [rayohx-cli](packages/cli) | The `rayohx` command | `uv tool install rayohx-cli` |
+| [rayohx-ui](packages/ui) | Desktop window (Windows) | `rayohx-<version>-full-setup.exe` |
+| [rayohx-docker](packages/docker) | The `rayohx` command as a container image | `docker pull ghcr.io/coldsofttech/rayohx` |
+
+- **Python package**: use RayoHX inside your own programs and scripts.
+- **Command line**: run `rayohx info`, `rayohx download`, `rayohx clean` and `rayohx config` from a
+  terminal or a script.
+- **Docker**: the same command line without installing Python, handy for servers and automation.
+- **Desktop window**: work with streams from a window on Windows, no terminal needed.
+
+## Quick start
+
+```sh
+rayohx info https://cdn.example.com/vod/master.m3u8
+rayohx download https://cdn.example.com/vod/master.m3u8 -o movie.mp4
 ```
 
-Or with pipx:
+## Learn more
 
-```bash
-pipx install Rayo
-```
-
-For the desktop window, use the Windows installer. The API and the window are not part of the Python package. Or use a ready-made installer from the [releases page](https://github.com/coldsofttech/Rayo/releases), where each file has a checksum in `SHA256SUMS.txt`:
-
-- **Windows:** the setup program installs for you or for everyone, and can add the command to your PATH. winget and Scoop are available once the maintainer enables them.
-- **Linux:** a `.deb` (Debian, Ubuntu) or `.rpm` (Fedora) package.
-- **macOS:** Homebrew, once the maintainer enables it.
-
-See the [releasing guide](docs/releasing.md) for the install commands of each.
-
-The window needs Windows 10 or 11 with the Microsoft Edge WebView2 runtime, which is already installed on current versions. You do not need Node to use the installed tool.
-
-## Usage
-
-```console
-$ rayo-cli hello Ada
-Hello, Ada!
-$ rayo-ui
-```
-
-`rayo-ui` opens the app window. `rayo-ui --no-window` prints an address you can open in a browser instead. On other systems it explains that the window needs Windows; the command line and the API work everywhere.
-
-See the [CLI reference](docs/cli.md) for every command, option and exit code, and the [API guide](docs/api.md) to run the API on its own.
-
-> After renaming the commands, update the examples above. Once you have written your tool's real behavior, replace this example with a short walkthrough.
-
-## Development
-
-```bash
-git clone https://github.com/coldsofttech/Rayo.git
-cd Rayo
-uv sync
-npm ci --prefix src/rayo_ui/ui
-npm run build --prefix src/rayo_ui/ui
-uv run python -m rayo_ui
-```
-
-See the [development guide](docs/development.md) for testing, hot reload, linting and releasing.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). Please report security issues privately as described in [SECURITY.md](SECURITY.md).
+- [Python guide](packages/core/docs/guides/python.md)
+- [Command line guide](packages/cli/docs/guides/cli.md)
+- [Docker guide](packages/docker/docs/docker.md)
+- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Support](SUPPORT.md)
 
 ## License
 
-Released under the [MIT License](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).
