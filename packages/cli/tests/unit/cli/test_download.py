@@ -273,7 +273,9 @@ def test_the_space_check_is_on_by_default_and_can_be_turned_off(
 ) -> None:
     serve(hls_site("ts", "ts"))
     calls: list[int] = []
-    monkeypatch.setattr("rayohx._download._media.check_disk_space", lambda *a, **k: calls.append(1))
+    monkeypatch.setattr(
+        "rayohx._download._storage.check_disk_space", lambda *a, **k: calls.append(1)
+    )
     runner.invoke(app, ["download", MASTER, "-o", str(tmp_path / "a.mp4")])
     assert calls
     calls.clear()

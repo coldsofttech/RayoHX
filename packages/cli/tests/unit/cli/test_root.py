@@ -116,7 +116,7 @@ def test_retries_are_visible_and_secrets_are_not(
         options["transport"] = httpx.MockTransport(flaky)
         return HttpClient(config, **options)  # type: ignore[arg-type]
 
-    monkeypatch.setattr("rayohx.downloader.controller.HttpClient", factory)
+    monkeypatch.setattr("rayohx._http.HttpClient", factory)
     log = tmp_path / "run.log"
     result = runner.invoke(
         app,

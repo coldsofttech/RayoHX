@@ -67,7 +67,6 @@ def serve(monkeypatch: pytest.MonkeyPatch) -> Callable[[Site], Site]:
             options["transport"] = httpx.MockTransport(site)
             return HttpClient(config, **options)
 
-        monkeypatch.setattr("rayohx.downloader.controller.HttpClient", factory)
         monkeypatch.setattr("rayohx._http.HttpClient", factory)
         return site
 

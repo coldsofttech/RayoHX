@@ -9,7 +9,7 @@ import rayohx
 from tests.frozen import locate, skip_if_blocked
 
 # cli.spec builds the command line alone; ui.spec builds it again beside the window.
-FOLDERS = ["rayohx", "rayohx-ui"]
+FOLDERS = ["rayohx", "rayohxu"]
 
 
 def _run(exe: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
