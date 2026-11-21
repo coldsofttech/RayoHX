@@ -37,6 +37,19 @@ another. The two can be combined.
 - Each saved path is printed on stdout. With `--json`, stdout holds one JSON array with a document
   per download.
 
+## A playlist you already have
+
+`--playlist-file PATH` reads the playlist from a file instead of fetching it. Give the address it
+came from as well: relative addresses inside the playlist (segments, keys, tracks) are resolved
+against it, and the playlist itself is never requested. It works with one address, not with
+several or `--input-file`.
+
+```bash
+rayohx download https://cdn.example.com/vod/master.m3u8 --playlist-file master.m3u8
+```
+
+It does the same work as `Downloader(playlist_text=...)` in the [Python guide](../python/downloading.md#downloader).
+
 ## What it prints
 
 - On **stdout**: the path of the saved file, and nothing else. With `--json`, one JSON document
@@ -137,6 +150,7 @@ Options are grouped the same way in `rayohx download --help`.
 | `--subtitle-name` | | Save the subtitle track with this exact name (repeatable). |
 | `--video-only` | | Download only the video, leaving out separate audio and subtitle tracks. |
 | `--input-file` | `-i` | Also download the addresses listed in this file (see [Several streams](#several-streams)). |
+| `--playlist-file` | | Read the playlist from this file instead of fetching it (see [A playlist you already have](#a-playlist-you-already-have)). |
 | `--stop-on-error` | | With several addresses, stop at the first failure. |
 
 If a wish cannot be met (no audio in the language you asked for), the closest track is used and a

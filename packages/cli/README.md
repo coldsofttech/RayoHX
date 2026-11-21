@@ -28,6 +28,7 @@ printed on stdout, so it is easy to use in a script.
 - Join a separate audio track into one MP4, with nothing re-encoded
 - Continue interrupted downloads where they stopped
 - Download several streams with one command, from addresses or a list file (`--input-file`)
+- Use a playlist you already have, from a file, instead of fetching it (`--playlist-file`)
 - Watch a progress bar, or get machine-readable output with `--json`
 - Keep settings in a file or `RAYOHX_` environment variables
 - Use `--verbose`, `--quiet`, `--no-color` and shell completion

@@ -87,9 +87,15 @@ class FakeDownloader:
     error: Exception | None = None
 
     def __init__(
-        self, url: str, *, output: Path | None = None, config: DownloadConfig | None = None
+        self,
+        url: str,
+        *,
+        output: Path | None = None,
+        config: DownloadConfig | None = None,
+        playlist_text: str | None = None,
     ) -> None:
         self.url = url
+        self.playlist_text = playlist_text
         self.requested_output = output
         self.config = config
         self.events = EventBus()

@@ -5,13 +5,14 @@ from rayohx import MasterPlaylist, inspect, playlist_to_dict, select_stream
 from rayohx.errors import ConfigurationError, RayoHXError
 
 from rayohx_cli import output, params, render
-from rayohx_cli.cli.common import EXIT_FAILED, make_config, usage_error
+from rayohx_cli.cli.common import EXIT_FAILED, make_config, read_playlist_file, usage_error
 from rayohx_cli.cli.root import app
 
 
 @app.command()
 def info(
     url: params.Url,
+    playlist_file: params.PlaylistFile = None,
     quality: params.Quality = "best",
     max_resolution: params.MaxResolution = None,
     max_bitrate: params.MaxBitrate = None,
@@ -96,7 +97,13 @@ def info(
         credential_host=credential_host or [],
     )
     try:
-        playlist = inspect(url, config.network)
+        from rayohx import inspect_text
+
+        playlist = (
+            inspect(url, config.network)
+            if playlist_file is None
+            else inspect_text(read_playlist_file(playlist_file), url)
+        )
         selection = (
             select_stream(playlist, config.selection)
             if isinstance(playlist, MasterPlaylist)

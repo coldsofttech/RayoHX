@@ -34,6 +34,15 @@ def make_config(**options: object) -> DownloadConfig:
         usage_error(exc)
 
 
+def read_playlist_file(path: Path) -> str:
+    """The playlist text in ``path``, or a usage error if it cannot be read."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        usage_error(ConfigurationError(f"The playlist file {path} cannot be read."))
+        raise exc  # unreachable: usage_error exits
+
+
 def gather_urls(urls: Sequence[str], input_file: Path | None) -> list[str]:
     """The addresses given as arguments, then those listed in ``input_file`` (``-`` is stdin)."""
     found = list(urls)

@@ -8,7 +8,13 @@ from rayohx import Downloader, OutputFormat, RemuxBackend, StorageStrategy
 from rayohx.errors import ConfigurationError
 
 from rayohx_cli import output, params
-from rayohx_cli.cli.common import EXIT_CANCELLED, gather_urls, make_config, usage_error
+from rayohx_cli.cli.common import (
+    EXIT_CANCELLED,
+    gather_urls,
+    make_config,
+    read_playlist_file,
+    usage_error,
+)
 from rayohx_cli.cli.lifecycle import finish, graceful_interrupt, pause_toggle
 from rayohx_cli.cli.root import app
 from rayohx_cli.progress import MODES, make_reporter
@@ -78,6 +84,7 @@ def download(
     json_output: params.JsonOutput = False,
     progress: params.ProgressMode = "auto",
     input_file: params.InputFile = None,
+    playlist_file: params.PlaylistFile = None,
     stop_on_error: params.StopOnError = False,
 ) -> None:
     """Download one or more streams to files.
@@ -146,12 +153,22 @@ def download(
         allow_file_keys=allow_file_keys,
     )
     targets = gather_urls(urls or [], input_file)
+    playlist_text = None
+    if playlist_file is not None:
+        if len(targets) > 1:
+            usage_error(
+                ConfigurationError(
+                    "--playlist-file works with one address.",
+                    hint="Give the address the playlist came from, and nothing else.",
+                )
+            )
+        playlist_text = read_playlist_file(playlist_file)
     if directory is not None:
         directory.mkdir(parents=True, exist_ok=True)
         if len(targets) > 1 and output_path is None:
             output_path = directory
     if len(targets) == 1:
-        run_one(targets[0], output_path, config, progress, json_output)
+        run_one(targets[0], output_path, config, progress, json_output, playlist_text=playlist_text)
         return
     run_many(targets, output_path, config, progress, json_output, stop_on_error)
 
@@ -164,10 +181,13 @@ def run_one(
     json_output: bool,
     documents: list[dict[str, object]] | None = None,
     downloader: Downloader | None = None,
+    playlist_text: str | None = None,
 ) -> None:
     """Download one address with a progress display, then report how it ended."""
     try:
-        downloader = downloader or Downloader(url, output=output_path, config=config)
+        downloader = downloader or Downloader(
+            url, output=output_path, config=config, playlist_text=playlist_text
+        )
     except ConfigurationError as exc:
         usage_error(exc)
     reporter = make_reporter(

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import httpx
 
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 MEDIA = Path(__file__).resolve().parents[3] / "core" / "tests" / "fixtures" / "media"
 
 
@@ -25,6 +26,11 @@ class Site:
         if path in self.files:
             return httpx.Response(200, content=self.files[path])
         return httpx.Response(404)
+
+
+def fixture(name: str) -> bytes:
+    """The bytes of a file in this package's ``tests/fixtures``."""
+    return (FIXTURES / name).read_bytes()
 
 
 def media(name: str) -> bytes:

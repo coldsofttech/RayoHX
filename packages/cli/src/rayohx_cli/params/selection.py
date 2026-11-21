@@ -32,6 +32,15 @@ InputFile = Annotated[
         rich_help_panel=SELECTION,
     ),
 ]
+PlaylistFile = Annotated[
+    Path | None,
+    typer.Option(
+        "--playlist-file",
+        help="Read the playlist from this file instead of fetching it. The address is still "
+        "needed: relative addresses in the playlist are resolved against it.",
+        rich_help_panel=SELECTION,
+    ),
+]
 StopOnError = Annotated[
     bool,
     typer.Option(

@@ -1,12 +1,14 @@
 """The ``info`` command: what a stream offers, and what the options would pick."""
 
+from pathlib import Path
+
 import httpx
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
 from tests.conftest import parsed
 from tests.helpers.cli import BASE, MASTER, Serve
-from tests.helpers.site import Site, hls_site
+from tests.helpers.site import Site, fixture, hls_site
 
 
 def test_info_lists_the_streams_and_the_choice(runner: CliRunner, serve: Serve) -> None:
@@ -123,24 +125,16 @@ def test_info_failures(runner: CliRunner, serve: Serve) -> None:
 
 # --- choosing a stream exactly --------------------------------------------------------------------
 
-LADDER = (
-    "#EXTM3U\n"
-    '#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360,NAME="low"\nlow.m3u8\n'
-    '#EXT-X-STREAM-INF:BANDWIDTH=2800000,RESOLUTION=1280x720,NAME="mid"\nmid.m3u8\n'
-    '#EXT-X-STREAM-INF:BANDWIDTH=3500000,RESOLUTION=1280x720,NAME="alt"\nalt.m3u8\n'
-    "#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080\nhigh.m3u8\n"
-)
-
 
 def _chosen(runner: CliRunner, serve: Serve, *options: str) -> int:
-    serve(Site({"m/master.m3u8": LADDER.encode()}))
+    serve(Site({"m/master.m3u8": fixture("ladder.m3u8")}))
     result = runner.invoke(app, ["info", BASE + "m/master.m3u8", "--json", *options])
     assert result.exit_code == 0, result.stderr
     return int(parsed(result.stdout)["selection"]["variant"])
 
 
 def test_streams_are_numbered_from_one(runner: CliRunner, serve: Serve) -> None:
-    serve(Site({"m/master.m3u8": LADDER.encode()}))
+    serve(Site({"m/master.m3u8": fixture("ladder.m3u8")}))
     data = parsed(runner.invoke(app, ["info", BASE + "m/master.m3u8", "--json"]).stdout)
     assert [v["index"] for v in data["variants"]] == [1, 2, 3, 4]
     table = runner.invoke(app, ["info", BASE + "m/master.m3u8", "--variant", "2"]).stdout
@@ -159,8 +153,36 @@ def test_a_stream_can_be_chosen_by_number_size_bandwidth_or_name(
 
 
 def test_a_choice_that_matches_nothing_is_explained(runner: CliRunner, serve: Serve) -> None:
-    serve(Site({"m/master.m3u8": LADDER.encode()}))
+    serve(Site({"m/master.m3u8": fixture("ladder.m3u8")}))
     result = runner.invoke(app, ["info", BASE + "m/master.m3u8", "--resolution", "800x600"])
     assert result.exit_code == 2
     assert "No stream has size 800x600" in result.stderr
     assert "1: 640x360" in result.stderr
+
+
+def test_info_reads_a_playlist_file_without_fetching_it(
+    runner: CliRunner, serve: Serve, tmp_path: Path
+) -> None:
+    site = serve(hls_site("ts", "ts"))
+    playlist = tmp_path / "master.m3u8"
+    playlist.write_bytes(site.files["ts/master.m3u8"])
+    site.files.clear()  # any request would now fail
+    result = runner.invoke(app, ["info", MASTER, "--playlist-file", str(playlist)])
+    assert result.exit_code == 0, result.stderr
+    assert "Master playlist: " + MASTER in result.stdout
+
+
+def test_info_refuses_a_playlist_file_that_is_not_a_playlist(
+    runner: CliRunner, tmp_path: Path
+) -> None:
+    page = tmp_path / "page.html"
+    page.write_text("<html></html>", encoding="utf-8")
+    result = runner.invoke(app, ["info", MASTER, "--playlist-file", str(page)])
+    assert result.exit_code == 1
+    assert "EXTM3U" in result.stderr
+
+
+def test_info_cannot_read_a_missing_playlist_file(runner: CliRunner, tmp_path: Path) -> None:
+    result = runner.invoke(app, ["info", MASTER, "--playlist-file", str(tmp_path / "no.m3u8")])
+    assert result.exit_code == 2
+    assert "The playlist file" in result.stderr

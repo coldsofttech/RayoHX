@@ -297,3 +297,29 @@ def test_the_space_check_is_on_by_default_and_can_be_turned_off(
     assert result.exit_code == 0
     assert not calls
     assert "space check is turned off" in result.stderr
+
+
+def test_a_playlist_file_is_given_to_the_downloader(
+    runner: CliRunner, fake_downloader: type[FakeDownloader], tmp_path: Path
+) -> None:
+    playlist = tmp_path / "local.m3u8"
+    playlist.write_text("#EXTM3U\n", encoding="utf-8")
+    result = runner.invoke(app, ["download", MASTER, "--playlist-file", str(playlist)])
+    assert result.exit_code == 0, result.output
+    assert last(fake_downloader).playlist_text == "#EXTM3U\n"
+
+
+def test_a_playlist_file_that_cannot_be_read(runner: CliRunner, tmp_path: Path) -> None:
+    result = runner.invoke(app, ["download", MASTER, "--playlist-file", str(tmp_path / "no.m3u8")])
+    assert result.exit_code == 2
+    assert "The playlist file" in result.stderr
+
+
+def test_a_playlist_file_needs_exactly_one_address(runner: CliRunner, tmp_path: Path) -> None:
+    playlist = tmp_path / "local.m3u8"
+    playlist.write_text("#EXTM3U\n", encoding="utf-8")
+    result = runner.invoke(
+        app, ["download", MASTER, BASE + "b/master.m3u8", "--playlist-file", str(playlist)]
+    )
+    assert result.exit_code == 2
+    assert "one address" in result.stderr
