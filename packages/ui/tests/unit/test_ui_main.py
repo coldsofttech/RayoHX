@@ -52,4 +52,4 @@ def test_version(capsys: pytest.CaptureFixture[str]) -> None:
         ui_main.main(["--version"])
 
     assert exit_info.value.code == 0
-    assert capsys.readouterr().out.startswith("rayohx-ui ")
+    assert capsys.readouterr().out.startswith("rayohxu ")

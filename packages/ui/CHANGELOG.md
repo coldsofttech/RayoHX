@@ -6,4 +6,4 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- The RayoHX desktop window for Windows, started with `rayohx-ui`, with the HTTP API built in.
+- The RayoHX desktop window for Windows, started with `rayohxu`, with the HTTP API built in.

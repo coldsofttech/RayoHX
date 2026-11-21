@@ -1,4 +1,4 @@
-"""Start the UI with ``rayohx-ui`` or ``python -m rayohx_ui``.
+"""Start the UI with ``rayohxu`` or ``python -m rayohx_ui``.
 
 This is the one place in ``rayohx_ui`` that shows output and sets the exit code, so the rest of
 the package stays free of both and the UI executable can be built from ``main``.
@@ -19,8 +19,8 @@ def _show_ready(line: str) -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the UI and return the exit code."""
-    parser = argparse.ArgumentParser(prog="rayohx-ui", description="Open the app.")
-    parser.add_argument("--version", action="version", version=f"rayohx-ui {__version__}")
+    parser = argparse.ArgumentParser(prog="rayohxu", description="Open the app.")
+    parser.add_argument("--version", action="version", version=f"rayohxu {__version__}")
     parser.add_argument(
         "--dev", action="store_true", help="run the Vite dev server for hot reload (needs Node)"
     )

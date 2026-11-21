@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "rayohxu"
+name = "rayohx-ui"
 version = "0.1.0"
 description = "RayoHX native window, with the HTTP API built in."
 readme = "README.md"
@@ -26,18 +26,25 @@ dependencies = [
 ]
 
 [project.gui-scripts]
-rayohx-ui = "rayohx_ui.__main__:main"
+rayohxu = "rayohx_ui.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/coldsofttech/RayoHX"
 Issues = "https://github.com/coldsofttech/RayoHX/issues"
 Changelog = "https://github.com/coldsofttech/RayoHX/blob/main/CHANGELOG.md"
 
+# Read by installer/projectinfo.py: the API package the window hosts, and the setup's publisher and folder.
+[tool.installer]
+api-package = "rayohx_api"
+publisher = "ColdSoft Technologies"
+install-dir = "ColdSoft Technologies/RayoHX/UI"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/rayohx_ui"]
 
 [dependency-groups]
 dev = [
+  "httpx2>=2.16.2",
   "mypy>=1.13",
   "pytest>=8.3",
   "pytest-cov>=6.0",
@@ -47,7 +54,7 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-src = ["src", "tests"]
+src = ["src", "tests", "../core/src", "../api/src"]
 target-version = "py311"
 
 [tool.ruff.lint]
