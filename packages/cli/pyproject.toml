@@ -37,13 +37,6 @@ Changelog = "https://github.com/coldsofttech/RayoHX/blob/main/CHANGELOG.md"
 [tool.hatch.version]
 path = "src/rayohx_cli/__init__.py"
 
-# Read by installer/projectinfo.py: the product name of the executable and the core library package.
-[tool.installer]
-title = "RayoHX CLI"
-publisher = "ColdSoft Technologies"
-install-dir = "ColdSoft Technologies/RayoHX/CLI"
-core-package = "rayohx"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/rayohx_cli"]
 

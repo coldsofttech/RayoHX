@@ -4,7 +4,7 @@
 #   nfpm package --config packages/cli/installer/linux/nfpm.yaml --packager deb --target dist/
 #   nfpm package --config packages/cli/installer/linux/nfpm.yaml --packager rpm --target dist/
 #
-# nfpm fills the ${...} values from the environment; packages/cli/scripts/build_installer.py sets them from
+# nfpm fills the ${...} values from the environment; installer/scripts/build.py sets them from
 # pyproject.toml and the code, so renaming the project needs no edit here:
 #
 #   PKG_NAME          package and command name, from [project.scripts] (rayohx)

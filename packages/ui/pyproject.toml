@@ -33,12 +33,6 @@ Homepage = "https://github.com/coldsofttech/RayoHX"
 Issues = "https://github.com/coldsofttech/RayoHX/issues"
 Changelog = "https://github.com/coldsofttech/RayoHX/blob/main/CHANGELOG.md"
 
-# Read by installer/projectinfo.py: the API package the window hosts, and the setup's publisher and folder.
-[tool.installer]
-api-package = "rayohx_api"
-publisher = "ColdSoft Technologies"
-install-dir = "ColdSoft Technologies/RayoHX/UI"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/rayohx_ui"]
 

@@ -1,7 +1,7 @@
-name: Release CLI
+﻿name: Release CLI
 
-# Tag cli-vX.Y.Z: builds the command line (rayohx-cli) and its installers (setup.exe on Windows, deb
-# and rpm on Linux, optionally signed). Publishing the package to PyPI and attaching the installers to
+# Tag cli-vX.Y.Z: builds the command line (rayohx-cli) and its Linux installers (deb
+# and rpm, optionally signed; the Windows setup is built by release-installer.yml). Publishing the package to PyPI and attaching the installers to
 # the GitHub release waits for the approval of the `cli` environment. Release core first: rayohx-cli
 # depends on the rayohx package on PyPI. Called by release.yml.
 on:
@@ -33,35 +33,6 @@ jobs:
           name: dist
           path: dist/
 
-  cli-installer-windows:
-    name: cli installer (windows)
-    needs: cli-build
-    runs-on: windows-latest
-    timeout-minutes: 30 # target: under 10 minutes
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Read project names
-        uses: ./.github/actions/project-info
-      - name: Set up uv
-        uses: ./.github/actions/setup-uv
-        with:
-          python-version: "3.15"
-          sync-args: --locked --package rayohx-cli --group installer
-      - name: Install installer tools
-        uses: ./.github/actions/install-installer-tools
-      - name: Build, sign (if SIGN_COMMAND is set) and smoke test the installer
-        env:
-          SIGN_COMMAND: ${{ vars.SIGN_COMMAND }}
-        run: uv run --no-sync python packages/cli/scripts/build_installer.py --smoke
-      - name: Upload the Windows installers
-        uses: actions/upload-artifact@v7
-        with:
-          name: installers-cli-windows
-          path: |
-            dist/installer/*.exe
-            dist/installer/*.zip
-
   cli-installer-linux:
     name: cli installer (linux ${{ matrix.arch }})
     needs: cli-build
@@ -84,7 +55,7 @@ jobs:
       - name: Install installer tools
         uses: ./.github/actions/install-installer-tools
       - name: Build the packages and smoke test the executable
-        run: uv run --no-sync python packages/cli/scripts/build_installer.py --smoke
+        run: uv run --no-sync python installer/scripts/build.py --smoke
       - name: Upload the Linux packages
         uses: actions/upload-artifact@v7
         with:
@@ -95,7 +66,7 @@ jobs:
 
   cli-publish:
     name: cli publish (PyPI, GitHub release)
-    needs: [cli-build, cli-installer-windows, cli-installer-linux]
+    needs: [cli-build, cli-installer-linux]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: cli

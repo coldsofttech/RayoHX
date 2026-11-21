@@ -40,7 +40,7 @@ Run these from the repository root. Scope them to the package you changed rather
 | The command line (`packages/cli`) | The Python checks above for `cli`; if commands, options or exit codes changed, update the [command line guide](packages/cli/docs/guides/cli.md) |
 | The API (`packages/api`) | The Python checks above for `api`, then `uv run python packages/api/scripts/export_openapi.py` and commit `packages/api/docs/openapi.json` |
 | The frontend (`packages/ui/src/rayohx_ui/ui`) | `npm ci`, `npm run lint`, `npm test` and `npm run build` in that folder |
-| The installers (`packages/cli` or `packages/ui`) | `uv run python packages/<cli or ui>/scripts/build_installer.py --sync --smoke` |
+| The installers (`installer/`) | `uv run python installer/scripts/build.py --sync --smoke` |
 | The Docker image (`packages/docker`) | See `packages/docker/docs/development.md` |
 
 You need Node for frontend work and Windows only to open the real window. The UI's Python tests use a stand-in for the window and run anywhere. See `docs/development.md` and each package's `docs/development.md` for the details.

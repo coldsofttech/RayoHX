@@ -1,4 +1,4 @@
-"""Smoke test of the built command line: it starts and answers. Needs ``cli.spec`` / ``ui.spec``."""
+"""Smoke test of the built command line: it starts and answers. Needs the installer build."""
 
 import subprocess
 from pathlib import Path
@@ -8,8 +8,8 @@ import rayohx
 
 from tests.frozen import locate, skip_if_blocked
 
-# cli.spec builds the command line alone; ui.spec builds it again beside the window.
-FOLDERS = ["rayohx", "rayohxu"]
+# rayohx.spec builds the command line and, on Windows, the window; both are in one folder.
+FOLDERS = ["rayohx"]
 
 
 def _run(exe: Path, *arguments: str) -> subprocess.CompletedProcess[str]:

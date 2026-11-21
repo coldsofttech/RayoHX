@@ -4,13 +4,13 @@ name: Release
 # the approval of its own environment (Settings > Environments) before it publishes anything:
 #
 #   vX.Y.Z          core    the rayohx package to PyPI                       environment: core
-#   cli-vX.Y.Z      cli     the rayohx-cli package to PyPI, and the setup.exe, deb and rpm
-#                           installers on the GitHub release                  environment: cli
-#   ui-vX.Y.Z       ui      the Windows installer (window, API and core)
-#                           on the GitHub release                            environment: ui
+#   cli-vX.Y.Z      cli     the rayohx-cli package to PyPI, and the deb and rpm
+#                           packages on the GitHub release                  environment: cli
+#   installer-vX.Y.Z installer the full Windows setup (command line and window) and
+#                           the portable zip on the GitHub release           environment: installer
 #   docker-vX.Y.Z   docker  the image to GHCR                                environment: docker
 #
-# The tag must match the version in the package's pyproject.toml. Release core before cli, because
+# The tag must match the version in the package's pyproject.toml (installer/build.toml for the installer). Release core before cli, because
 # rayohx-cli depends on the rayohx package on PyPI. SIGN_COMMAND (repository variable) optionally
 # signs the installers; {file} marks where the path of one file goes. Homebrew, Scoop and winget
 # are not updated for now.
@@ -40,9 +40,9 @@ jobs:
       contents: write
       id-token: write
 
-  ui:
-    if: startsWith(github.event.release.tag_name, 'ui-v')
-    uses: ./.github/workflows/release-ui.yml
+  installer:
+    if: startsWith(github.event.release.tag_name, 'installer-v')
+    uses: ./.github/workflows/release-installer.yml
     permissions:
       contents: write
 

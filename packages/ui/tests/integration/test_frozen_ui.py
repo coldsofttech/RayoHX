@@ -21,7 +21,7 @@ STARTUP_SECONDS = 30
 @pytest.fixture
 def address(tmp_path: Path) -> Iterator[str]:
     """Start ``rayohxu --no-window`` and return its first URL; stop it afterwards."""
-    exe = locate("rayohxu", "rayohxu")
+    exe = locate("rayohx", "rayohxu")
     out = tmp_path / "out.txt"
     with out.open("w", encoding="utf-8") as stdout:
         try:

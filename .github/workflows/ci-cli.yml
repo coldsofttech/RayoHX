@@ -106,8 +106,8 @@ jobs:
       - name: Smoke test the built wheel
         run: uvx --find-links dist --from dist/${CLI_PACKAGE}-*.whl "$CLI_NAME" --version
 
-  # Builds the setup.exe (Windows) and the deb and rpm packages (Linux, x86_64 and arm64), starts the
-  # frozen program, then installs, runs and removes the result.
+  # Builds the deb and rpm packages (Linux, x86_64 and arm64), starts the frozen program, then
+  # installs, runs and removes the result. The Windows setup holds the window too: see ci-ui.yml.
   cli-installer:
     name: cli installer (${{ matrix.os }})
     needs: [cli-build]
@@ -116,7 +116,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, ubuntu-24.04-arm]
+        os: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
@@ -130,12 +130,7 @@ jobs:
       - name: Install installer tools
         uses: ./.github/actions/install-installer-tools
       - name: Build the installer and smoke test the executable
-        run: uv run --no-sync python packages/cli/scripts/build_installer.py --smoke
-      - name: Test the Windows setup
-        if: runner.os == 'Windows'
-        uses: ./.github/actions/test-windows-installer
-        with:
-          product: cli
+        run: uv run --no-sync python installer/scripts/build.py --smoke
       - name: Test the Linux packages
         if: runner.os == 'Linux'
         uses: ./.github/actions/test-linux-packages
@@ -144,8 +139,6 @@ jobs:
         with:
           name: installers-cli-${{ matrix.os }}
           path: |
-            dist/installer/*.exe
-            dist/installer/*.zip
             dist/installer/*.deb
             dist/installer/*.rpm
           retention-days: 7

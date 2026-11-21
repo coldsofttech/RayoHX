@@ -1,8 +1,9 @@
-name: Release UI
+name: Release installer
 
-# Tag ui-vX.Y.Z: builds the Windows installer of the desktop window, which carries the UI, the API
-# and the core library. Nothing goes to PyPI. Attaching the installer to the GitHub release waits for
-# the approval of the `ui` environment. Called by release.yml.
+# Tag installer-vX.Y.Z: builds the full Windows setup (the command line and the desktop window, with the
+# API and the core library) and the command line's portable zip. Nothing goes to PyPI. Attaching
+# the files to the GitHub release waits for the approval of the `installer` environment. The tag must
+# match the version in installer/build.toml. Called by release.yml.
 on:
   workflow_call:
 
@@ -10,22 +11,24 @@ permissions:
   contents: read
 
 jobs:
-  ui-check:
-    name: ui check
+  installer-check:
+    name: installer check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
-      - name: Check the tag
-        uses: ./.github/actions/check-release-tag
-        with:
-          package: rayohx-ui
-          prefix: ui-v
+      - name: Check the tag matches the installer version
+        shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="$(python3 -c "import tomllib; print(tomllib.load(open('installer/build.toml','rb'))['version'])")"
+          [ "$TAG" = "installer-v${version}" ] || { echo "Tag $TAG does not match installer-v${version}"; exit 1; }
 
-  ui-installer-windows:
-    name: ui installer (windows)
-    needs: ui-check
+  installer-windows:
+    name: installer (windows)
+    needs: installer-check
     runs-on: windows-latest
     timeout-minutes: 30 # target: under 10 minutes
     steps:
@@ -37,7 +40,7 @@ jobs:
         uses: ./.github/actions/setup-uv
         with:
           python-version: "3.15"
-          sync-args: --locked --package rayohx-ui --group installer
+          sync-args: --locked --all-packages --group installer
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -49,19 +52,22 @@ jobs:
       - name: Build, sign (if SIGN_COMMAND is set) and smoke test the installer
         env:
           SIGN_COMMAND: ${{ vars.SIGN_COMMAND }}
-        run: uv run --no-sync python packages/ui/scripts/build_installer.py --build-frontend --smoke
+        run: uv run --no-sync python installer/scripts/build.py --build-frontend --smoke
       - name: Upload the Windows installer
         uses: actions/upload-artifact@v7
         with:
-          name: installers-ui-windows
-          path: dist/installer/*.exe
+          name: installers-windows
+          path: |
+            dist/installer/*.exe
+            dist/installer/*.json
+            dist/installer/*.zip
 
-  ui-publish:
-    name: ui publish (GitHub release)
-    needs: ui-installer-windows
+  installer-publish:
+    name: installer publish (GitHub release)
+    needs: installer-windows
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: ui
+    environment: installer
     permissions:
       contents: write # attach files to the release
     steps:

@@ -9,6 +9,7 @@ Technical documentation for this project lives in this folder. The top-level [RE
 - [API](../packages/api/docs/api.md): running the API on its own, settings, endpoints and the OpenAPI contract.
 - [UI](../packages/ui/docs/architecture.md): the Windows window, the React frontend and how it talks to Python.
 - [Security](security.md): overview of how each package is protected, with links to the package notes.
+- Installers: [installer packaging](../installer/docs/packaging.md), the one Windows setup and the Linux packages.
 - Packaging: see each package's `docs/packaging.md` ([CLI](../packages/cli/docs/packaging.md), [UI](../packages/ui/docs/packaging.md), [core](../packages/core/docs/packaging.md), [Docker](../packages/docker/docs/packaging.md)).
 - [Releasing](releasing.md): publishing, signing, and the Homebrew, Scoop and winget channels.
 - [Command line guide](guides/cli.md): using `rayohx` from the terminal: commands, options, settings and exit codes.

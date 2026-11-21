@@ -183,9 +183,10 @@ jobs:
           command: npm run build
           upload-dist: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '24' }}
 
-  # Builds the UI setup.exe from the frontend build above and starts the frozen programs.
+  # Builds the full setup.exe (command line and window) and the command line's zip from the frontend
+  # build above, starts the frozen programs, then installs, runs and removes the setup.
   ui-installer:
-    name: ui installer (windows)
+    name: full installer (windows)
     needs: [ui-build, ui-build-npm]
     runs-on: windows-latest
     timeout-minutes: 20
@@ -198,7 +199,7 @@ jobs:
         uses: ./.github/actions/setup-uv
         with:
           python-version: "3.15"
-          sync-args: --locked --package rayohx-ui --group installer
+          sync-args: --locked --all-packages --group installer
       - name: Download the UI build
         uses: actions/download-artifact@v8
         with:
@@ -207,15 +208,16 @@ jobs:
       - name: Install installer tools
         uses: ./.github/actions/install-installer-tools
       - name: Build the installer and smoke test the executables
-        run: uv run --no-sync python packages/ui/scripts/build_installer.py --smoke
+        run: uv run --no-sync python installer/scripts/build.py --smoke
       - name: Test the Windows setup
         uses: ./.github/actions/test-windows-installer
-        with:
-          product: ui
-      - name: Upload the installer
+      - name: Upload the installers
         uses: actions/upload-artifact@v7
         with:
-          name: installers-ui-windows
-          path: dist/installer/*.exe
+          name: installers-windows
+          path: |
+            dist/installer/*.exe
+            dist/installer/*.json
+            dist/installer/*.zip
           retention-days: 7
           if-no-files-found: error

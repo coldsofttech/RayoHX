@@ -10,7 +10,7 @@ Publishing a GitHub release runs `release.yml`, and the tag decides what is rele
 | --- | --- | --- |
 | `v<version>` | the core library, `rayohx`, on PyPI | `core` |
 | `cli-v<version>` | the command line, `rayohx-cli`, on PyPI, and its Windows and Linux installers | `cli` |
-| `ui-v<version>` | the Windows installer with the window, the API and the core | `ui` |
+| `installer-v<version>` | the full Windows setup (command line and window) and the portable zip; version in `installer/build.toml` | `installer` |
 | `docker-v<version>` | the Docker image on GHCR | `docker` |
 
 The tag must equal the version of the package it releases. Release the core before the command line, because `rayohx-cli` depends on the `rayohx` package on PyPI. Every release that attaches files also gets `SHA256SUMS.txt`.

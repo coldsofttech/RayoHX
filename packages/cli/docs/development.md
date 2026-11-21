@@ -40,7 +40,7 @@ packages/cli/tests/
 
 - **Unit tests** call the app with the `runner` fixture and check the exit code, stdout and stderr. Test the pure modules (`values`, `format`, `settings`) directly.
 - **Everything under `integration/`** is marked `integration` automatically, so the default run leaves it out.
-- **The frozen tests** need a PyInstaller build first (`uv run python packages/cli/scripts/build_installer.py`). Without one they are skipped. Set `RAYOHX_INSTALLER_DIR` to test a build somewhere other than `build/installer`.
+- **The frozen tests** need a PyInstaller build first (`uv run python installer/scripts/build.py`). Without one they are skipped. Set `RAYOHX_INSTALLER_DIR` to test a build somewhere other than `build/installer`.
 - **The conftest** removes `RAYOHX_*` variables and settings files from the machine, so a test never depends on the developer's own set-up.
 
 ## Adding an option
@@ -72,8 +72,8 @@ packages/cli/tests/
 
 ```bash
 uv sync --group installer
-uv run python packages/cli/scripts/build_installer.py --smoke                   # everything this OS can build
-uv run python packages/cli/scripts/build_installer.py --format deb,rpm --smoke  # on Linux
+uv run python installer/scripts/build.py --smoke                   # everything this OS can build
+uv run python installer/scripts/build.py --format deb,rpm --smoke  # on Linux
 ```
 
-The installer files are in `packages/cli/installer`; see [packaging](packaging.md) for the tools you need and what each file does.
+The installer files are in the root `installer/` folder; see [installer packaging](../../../installer/docs/packaging.md) and [packaging](packaging.md) for the tools you need and what each file does.

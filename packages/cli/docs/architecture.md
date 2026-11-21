@@ -71,5 +71,5 @@ The file is TOML whose keys are option names. It is `--config`, else `rayohx.tom
 ## Packaging
 
 - The console script is `rayohx = rayohx_cli.cli:run`.
-- The installers live in `packages/cli/installer`: a PyInstaller one-folder build (`pyinstaller/cli.spec`), a Windows setup (`windows/cli.nsi`) and Linux deb and rpm packages (`linux/nfpm.yaml`). Icons come from `brand/light` and the setup banners from `brand/dark`.
+- The installers live in the root `installer/` folder: a PyInstaller one-folder build (`pyinstaller/rayohx.spec`), one Windows setup for the command line and the window (`windows/setup.nsi`) and Linux deb and rpm packages (`linux/nfpm.yaml`). Icons come from `brand/light` and the setup banners from `brand/dark`.
 - The window installer carries its own copy of the command line, built the same way.

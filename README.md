@@ -54,7 +54,7 @@ subtitles you want, and puts everything together into a single file you can keep
 |---|---|---|
 | [rayohx](packages/core) | Python library | `pip install rayohx` |
 | [rayohx-cli](packages/cli) | The `rayohx` command | `uv tool install rayohx-cli` |
-| [rayohx-ui](packages/ui) | Desktop window (Windows) | Installer |
+| [rayohx-ui](packages/ui) | Desktop window (Windows) | `rayohx-<version>-full-setup.exe` |
 | [rayohx-docker](packages/docker) | The `rayohx` command as a container image | `docker pull ghcr.io/coldsofttech/rayohx` |
 
 - **Python package**: use RayoHX inside your own programs and scripts.
