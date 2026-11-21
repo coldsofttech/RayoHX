@@ -11,15 +11,22 @@ runs:
   steps:
     - name: Ruff check
       shell: bash
-      run: uv run ruff check ${{ inputs.path }}
+      env:
+        LINT_PATH: ${{ inputs.path }}
+      run: uv run ruff check "$LINT_PATH"
     - name: Ruff format
       shell: bash
-      run: uv run ruff format --check ${{ inputs.path }}
+      env:
+        LINT_PATH: ${{ inputs.path }}
+      run: uv run ruff format --check "$LINT_PATH"
     - name: Mypy
       shell: bash
-      run: uv run mypy ${{ inputs.path }}/src
+      env:
+        LINT_PATH: ${{ inputs.path }}
+      run: uv run mypy "$LINT_PATH/src"
     - name: Run pre-commit hooks
       shell: bash
       env:
         SKIP: pytest # covered by the test jobs across all Python versions
-      run: uvx pre-commit run --files $(git ls-files ${{ inputs.path }})
+        LINT_PATH: ${{ inputs.path }}
+      run: uvx pre-commit run --files $(git ls-files "$LINT_PATH")

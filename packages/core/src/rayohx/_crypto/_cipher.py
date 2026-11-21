@@ -37,7 +37,8 @@ def decrypt_aes128(data: bytes, key: bytes, iv: bytes) -> bytes:
             "The encrypted data is not a whole number of blocks.",
             hint="The segment may be cut short or not encrypted as the playlist says.",
         )
-    decryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+    # HLS defines AES-128 segments as plain CBC, so there is no tag to check: GCM is not an option.
+    decryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()  # nosemgrep
     padded = decryptor.update(data) + decryptor.finalize()
     unpadder = padding.PKCS7(128).unpadder()
     try:

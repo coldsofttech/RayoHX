@@ -23,8 +23,12 @@ runs:
     - name: Run unit tests
       if: inputs.integration != 'true'
       shell: bash
-      run: uv run --no-sync pytest packages/${{ inputs.package }}/tests --no-cov
+      env:
+        PACKAGE: ${{ inputs.package }}
+      run: uv run --no-sync pytest "packages/$PACKAGE/tests" --no-cov
     - name: Run integration tests
       if: inputs.integration == 'true'
       shell: bash
-      run: uv run --no-sync pytest -m integration packages/${{ inputs.package }}/tests --no-cov
+      env:
+        PACKAGE: ${{ inputs.package }}
+      run: uv run --no-sync pytest -m integration "packages/$PACKAGE/tests" --no-cov

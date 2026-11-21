@@ -18,7 +18,10 @@ runs:
         sync: "false"
     - name: Export locked dependencies
       shell: bash
-      run: uv export --locked ${{ inputs.package != '' && format('--package {0}', inputs.package) || '' }} ${{ inputs.extra-args }} --no-emit-workspace --no-hashes --format requirements-txt -o requirements-audit.txt
+      env:
+        PACKAGE_ARGS: ${{ inputs.package != '' && format('--package {0}', inputs.package) || '' }}
+        EXTRA_ARGS: ${{ inputs.extra-args }}
+      run: uv export --locked $PACKAGE_ARGS $EXTRA_ARGS --no-emit-workspace --no-hashes --format requirements-txt -o requirements-audit.txt
     - name: Audit
       shell: bash
       run: uvx pip-audit --requirement requirements-audit.txt --no-deps --disable-pip

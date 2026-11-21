@@ -29,7 +29,9 @@ runs:
       working-directory: ${{ env.UI_DIR }}
     - name: Run ${{ inputs.command }}
       shell: bash
-      run: ${{ inputs.command }}
+      env:
+        UI_COMMAND: ${{ inputs.command }}
+      run: eval "$UI_COMMAND"
       working-directory: ${{ env.UI_DIR }}
     - name: Upload the UI build
       if: inputs.upload-dist == 'true'

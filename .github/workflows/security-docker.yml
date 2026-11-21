@@ -40,7 +40,7 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v7
       - name: Scan the Dockerfile
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: config
           scan-ref: packages/docker
@@ -77,7 +77,7 @@ jobs:
           load: true
           tags: rayohx:scan
       - name: Scan the image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: rayohx:scan
           severity: HIGH,CRITICAL

@@ -22,4 +22,6 @@ runs:
     - name: Install dependencies
       if: inputs.sync == 'true'
       shell: bash
-      run: uv sync ${{ inputs.sync-args }}
+      env:
+        SYNC_ARGS: ${{ inputs.sync-args }}
+      run: uv sync $SYNC_ARGS
