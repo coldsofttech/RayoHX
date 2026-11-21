@@ -50,7 +50,8 @@ Proxy = Annotated[
     typer.Option(
         "--proxy",
         envvar="RAYOHX_PROXY",
-        help="An http:// or https:// proxy, for example http://user:pass@host:3128. "
+        help="An http://, https://, socks5:// or socks5h:// proxy, for example "
+        "http://user:pass@host:3128. "
         "Prefer the environment variable, since command lines can be seen by other users.",
         rich_help_panel=NETWORK,
     ),
@@ -125,6 +126,43 @@ CredentialHost = Annotated[
         "--credential-host",
         help="Also send headers like Authorization and your cookies to this host (repeatable). "
         "By default they go only to the host of the URL.",
+        rich_help_panel=NETWORK,
+    ),
+]
+EnvProxy = Annotated[
+    bool,
+    typer.Option(
+        "--env-proxy/--no-env-proxy",
+        envvar="RAYOHX_ENV_PROXY",
+        help="Use the HTTP_PROXY, HTTPS_PROXY, ALL_PROXY and NO_PROXY environment variables "
+        "when --proxy is not given. Off by default.",
+        rich_help_panel=NETWORK,
+    ),
+]
+ClientCert = Annotated[
+    Path | None,
+    typer.Option(
+        "--client-cert",
+        envvar="RAYOHX_CLIENT_CERT",
+        help="A client certificate (PEM) for servers that require mutual TLS.",
+        rich_help_panel=NETWORK,
+    ),
+]
+ClientKey = Annotated[
+    Path | None,
+    typer.Option(
+        "--client-key",
+        envvar="RAYOHX_CLIENT_KEY",
+        help="The private key (PEM) for --client-cert, if it is not in the same file.",
+        rich_help_panel=NETWORK,
+    ),
+]
+ClientKeyPassword = Annotated[
+    str | None,
+    typer.Option(
+        "--client-key-password",
+        envvar="RAYOHX_CLIENT_KEY_PASSWORD",
+        help="The password of an encrypted client key. Prefer the environment variable.",
         rich_help_panel=NETWORK,
     ),
 ]

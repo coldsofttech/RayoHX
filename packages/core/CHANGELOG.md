@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- SOCKS5 proxies (`socks5://`, `socks5h://`), proxies read from the environment with `NetworkConfig(proxy_from_env=True)`, and client certificates for mutual TLS (`client_cert`, `client_key`, `client_key_password`).
 - Choose a stream exactly with `variant` (its number in the listing, from 1), `resolution` (such as `1280x720`), `bandwidth` and `variant_name` in `SelectionConfig`. A choice that matches nothing lists the available streams.
 - `StorageConfig(check_space=False)` turns off the disk-space check, for drives that report free space wrongly.
 - A guide for moving from `pym3u8downloader`.

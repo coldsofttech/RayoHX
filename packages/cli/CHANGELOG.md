@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- SOCKS5 proxies, `--env-proxy` to use the proxy environment variables, and client certificates for mutual TLS (`--client-cert`, `--client-key`, `--client-key-password`).
 - The `rayohx` command: `rayohx info URL` shows a stream's qualities and tracks and what a download would pick, and `rayohx download URL` saves it as one file.
 - Choose what to download: a quality (`--quality`, `--max-resolution`, `--max-bitrate`), a stream exactly (`--variant N` from `rayohx info`, counting from 1, `--resolution 1280x720`, `--bandwidth`, `--variant-name`), and audio and subtitle tracks (`--audio`, `--subtitles`, `--video-only`).
 - Choose how to save: `--format` (`auto`, `ts`, `mp4` or one file per segment), `--overwrite` and `--validate`. FFmpeg is optional (`--ffmpeg`, `--remux-backend`).

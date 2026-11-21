@@ -127,8 +127,8 @@ Picture size is the shorter side, so a 720x1280 portrait stream counts as 720p. 
 | Validation | Media must not be a web page (checked by content type and by content), must not be empty, must match `Content-Length`, and a ranged request must get exactly the range it asked for. |
 | Speed limit | `rate_limit` is shared by all workers. |
 | Cancellation | A `CancellationToken` stops waiting, retrying and reading between chunks. |
-| TLS | Verified by default. `verify_tls` can be off or a CA file. |
-| Proxy | HTTP and HTTPS proxies, with credentials sent as proxy authentication. Environment variables such as `HTTPS_PROXY` are not read; settings come only from the configuration. |
+| TLS | Verified by default. `verify_tls` can be off or a CA file. A client certificate can be added for mutual TLS. |
+| Proxy | HTTP, HTTPS and SOCKS5 proxies, with credentials sent as proxy authentication. Environment variables such as `HTTPS_PROXY` are read only when `proxy_from_env` is on. |
 
 Credentials stay with their host and every address can be vetted by a `url_guard`; see [security](security.md).
 

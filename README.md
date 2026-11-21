@@ -7,12 +7,55 @@
 
 Download HLS streams from your terminal, your Python code or a desktop window.
 
+## What is RayoHX?
+
+RayoHX is a tool for saving HLS streams (`.m3u8` links) as ordinary video files. Many websites play
+video as a stream made of many small pieces, which is awkward to save by hand. Give RayoHX the
+stream's web address and it looks at what the stream offers, lets you choose the quality, audio and
+subtitles you want, and puts everything together into a single file you can keep and play anywhere.
+
+## How it helps
+
+- **See before you download**: check a stream's qualities, audio and subtitle tracks and encryption
+  without downloading any video
+- **Get exactly what you want**: pick a quality, resolution or size limit, and the audio and
+  subtitles you need, instead of taking whatever comes first
+- **Finish what you started**: interrupted downloads continue where they stopped
+- **Safe by default**: it never replaces an existing file unless you allow it, and refuses damaged
+  or unsafe streams with a clear explanation instead of failing in a confusing way
+- **Use it your way**: the same features are available from the terminal, from your own Python code,
+  from a container or from a desktop window
+
+## Features
+
+- Inspect a stream's qualities, audio and subtitle tracks and encryption
+- Choose a stream by quality, resolution, bitrate limit or exact number, and pick audio and
+  subtitles by language or name
+- Fast downloads with several pieces fetched at once, a progress display and an optional speed limit
+- Resume interrupted downloads
+- Save MPEG-TS and fragmented MP4 streams to a file, or keep the pieces as separate files in a
+  folder
+- Join a separate audio track into one MP4 and save subtitles as `.vtt` files, with nothing
+  re-encoded
+- Download encrypted (AES-128) streams
+- Clear explanation when a stream is protected (DRM) or live, as these are not supported
+- Proxies, TLS settings, custom headers and cookies, with automatic retries
+- Machine-readable output for scripts
+- Tokens, cookies and proxy passwords are kept out of logs and error messages
+
+## Ways to use RayoHX
+
 | Package | What it is | Install |
 |---|---|---|
 | [rayohx](packages/core) | Python library | `pip install rayohx` |
 | [rayohx-cli](packages/cli) | The `rayohx` command | `uv tool install rayohx-cli` |
 | [rayohx-ui](packages/ui) | Desktop window (Windows) | Installer |
 | [rayohx-docker](packages/docker) | The `rayohx` command as a container image | `docker pull ghcr.io/coldsofttech/rayohx` |
+
+- **Python package**: use RayoHX inside your own programs and scripts.
+- **Command line**: run `rayohx info` and `rayohx download` from a terminal or a script.
+- **Docker**: the same command line without installing Python, handy for servers and automation.
+- **Desktop window**: work with streams from a window on Windows, no terminal needed.
 
 ## Quick start
 

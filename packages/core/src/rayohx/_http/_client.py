@@ -16,7 +16,6 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from rayohx._http._common import DEFAULT_MAX_BYTES, DEFAULT_POOL_SIZE
 from rayohx._logs import get_logger
 
 if TYPE_CHECKING:
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
 
     import httpx
 
+    from rayohx._http._credentials import CredentialScope
     from rayohx._http._response import HttpResponse
     from rayohx._ratelimit import RateLimiter
     from rayohx.cancellation import CancellationToken
@@ -44,7 +44,7 @@ class HttpClient:
         origin_url: The address the download starts from. Its host may receive credentials. If
             omitted, the host of the first request is used.
         cancel: Stops waiting and reading as soon as it is cancelled.
-        pool_size: Most connections kept open to the servers.
+        pool_size: Most connections kept open to the servers. Defaults to 16.
         transport: A replacement ``httpx`` transport, for tests.
         url_guard: Called with every address before it is requested, including redirect
             targets. It can raise to refuse an address, which is where a server deployment
@@ -57,18 +57,17 @@ class HttpClient:
         *,
         origin_url: str | None = None,
         cancel: CancellationToken | None = None,
-        pool_size: int = DEFAULT_POOL_SIZE,
+        pool_size: int | None = None,
         transport: httpx.BaseTransport | None = None,
         url_guard: Callable[[str], None] | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         import random
-        import threading
 
-        import httpx
-
-        from rayohx._http._common import host_of, proxy_url, verify
+        from rayohx._http._common import DEFAULT_POOL_SIZE
+        from rayohx._http._credentials import CredentialScope
+        from rayohx._http._transport import build_client
 
         self._config = config
         self._cancel = cancel
@@ -82,28 +81,13 @@ class HttpClient:
 
             self._limiter = RateLimiter(config.rate_limit, clock=clock, sleep=sleep)
 
-        self._trust_lock = threading.Lock()
-        self._trusted = set(config.credential_hosts)
-        self._adopt_first_host = origin_url is None
-        if origin_url is not None:
-            self._trusted.add(host_of(origin_url))
-
+        self._credentials: CredentialScope = CredentialScope(config, origin_url)
         if config.verify_tls is False:
             logger.warning("TLS certificate verification is turned off.")
-        timeout = httpx.Timeout(
-            connect=config.connect_timeout,
-            read=config.read_timeout,
-            write=config.read_timeout,
-            pool=config.connect_timeout,
-        )
-        self._client = httpx.Client(
+        self._client = build_client(
+            config,
+            pool_size=DEFAULT_POOL_SIZE if pool_size is None else pool_size,
             transport=transport,
-            timeout=timeout,
-            limits=httpx.Limits(max_connections=pool_size, max_keepalive_connections=pool_size),
-            verify=verify(config.verify_tls),
-            proxy=proxy_url(config.proxy) if config.proxy else None,
-            follow_redirects=False,  # redirects are followed here, hop by hop
-            trust_env=False,  # settings come from the config, never from hidden variables
         )
 
     def __enter__(self) -> Self:
@@ -153,18 +137,20 @@ class HttpClient:
         url: str,
         *,
         byte_range: SegmentRange | None = None,
-        max_bytes: int = DEFAULT_MAX_BYTES,
+        max_bytes: int | None = None,
         on_bytes: Callable[[int], None] | None = None,
     ) -> HttpResponse:
         """Fetch a key, an initialization section or a segment, or part of one.
 
         ``on_bytes`` is told the size of each chunk as it arrives, including chunks of an
-        attempt that is later retried.
+        attempt that is later retried. ``max_bytes`` defaults to 512 MiB.
         """
+        from rayohx._http._common import DEFAULT_MAX_BYTES
+
         return self._get(
             url,
             accept_encoding="identity",
-            max_bytes=max_bytes,
+            max_bytes=DEFAULT_MAX_BYTES if max_bytes is None else max_bytes,
             expect_media=True,
             byte_range=byte_range,
             on_bytes=on_bytes,
@@ -258,6 +244,7 @@ class HttpClient:
 
         from rayohx._http._common import translate
         from rayohx._http._response import check_status, is_redirect, redirect_target
+        from rayohx._http._stream import read_body
         from rayohx._redaction import redact_url
         from rayohx.errors import NetworkError
 
@@ -265,14 +252,14 @@ class HttpClient:
         for _hop in range(self._config.max_redirects + 1):
             if self._guard is not None:
                 self._guard(current)
-            headers = self._headers_for(current, accept_encoding, byte_range)
+            headers = self._credentials.headers_for(current, accept_encoding, byte_range)
             try:
                 with self._client.stream("GET", current, headers=headers) as response:
                     if is_redirect(response):
                         current = redirect_target(response, current)
                         continue
                     check_status(response, current, byte_range)
-                    return self._read(
+                    return read_body(
                         response,
                         current,
                         max_bytes=max_bytes,
@@ -280,6 +267,9 @@ class HttpClient:
                         byte_range=byte_range,
                         on_bytes=on_bytes,
                         deadline=deadline,
+                        clock=self._clock,
+                        limiter=self._limiter,
+                        cancel=self._cancel,
                     )
             except (httpx.HTTPError, httpx.InvalidURL, httpx.StreamError) as exc:
                 raise translate(exc, current) from exc
@@ -287,121 +277,3 @@ class HttpClient:
             f"Too many redirects (more than {self._config.max_redirects}) for {redact_url(url)}.",
             hint="The address may redirect in a loop.",
         )
-
-    def _read(
-        self,
-        response: httpx.Response,
-        url: str,
-        *,
-        max_bytes: int,
-        expect_media: bool,
-        byte_range: SegmentRange | None,
-        on_bytes: Callable[[int], None] | None,
-        deadline: float | None,
-    ) -> HttpResponse:
-        from rayohx._http._common import CHUNK_SIZE
-        from rayohx._http._response import (
-            HttpResponse,
-            check_content_range,
-            declared_length,
-            is_web_page_type,
-            looks_like_web_page,
-        )
-        from rayohx._redaction import redact_url
-        from rayohx.errors import InvalidResponseError, NetworkTimeoutError
-
-        shown = redact_url(url)
-        content_type = response.headers.get("content-type", "")
-        if expect_media and is_web_page_type(content_type):
-            raise InvalidResponseError(
-                f"The server sent a web page instead of media: {shown}",
-                hint="The link may have expired or may need sign-in. Check headers and cookies.",
-                retryable=True,
-            )
-        declared = declared_length(response)
-        if declared is not None and declared > max_bytes:
-            raise InvalidResponseError(
-                f"The response is larger than the allowed {max_bytes} bytes."
-            )
-        if byte_range is not None:
-            check_content_range(response, byte_range, shown)
-
-        chunks: list[bytes] = []
-        received = 0
-        for chunk in response.iter_bytes(CHUNK_SIZE):
-            self._raise_if_cancelled()
-            if deadline is not None and self._clock() >= deadline:
-                raise NetworkTimeoutError(
-                    f"The overall time limit ran out while downloading {shown}", retryable=False
-                )
-            if self._limiter is not None:
-                self._limiter.acquire(len(chunk), self._cancel)
-            received += len(chunk)
-            if received > max_bytes:
-                raise InvalidResponseError(
-                    f"The response is larger than the allowed {max_bytes} bytes."
-                )
-            chunks.append(chunk)
-            if on_bytes is not None:
-                on_bytes(len(chunk))
-
-        # Compressed bodies are length-checked by the HTTP library itself; for plain bodies the
-        # bytes received are the bytes on the wire.
-        plain = response.headers.get("content-encoding", "identity").lower() in {"", "identity"}
-        if declared is not None and plain and received != declared:
-            raise InvalidResponseError(
-                f"The response was cut short ({received} of {declared} bytes): {shown}",
-                retryable=True,
-            )
-        if received == 0:
-            raise InvalidResponseError(
-                f"The server sent an empty response: {shown}", retryable=True
-            )
-        if byte_range is not None and received != byte_range.length:
-            raise InvalidResponseError(
-                f"Expected {byte_range.length} bytes but received {received}: {shown}",
-                retryable=True,
-            )
-        content = b"".join(chunks)
-        if expect_media and looks_like_web_page(content):
-            raise InvalidResponseError(
-                f"The server sent a web page instead of media: {shown}",
-                hint="The link may have expired or may need sign-in. Check headers and cookies.",
-                retryable=True,
-            )
-        return HttpResponse(
-            url=url,
-            status_code=response.status_code,
-            headers={name.lower(): value for name, value in response.headers.items()},
-            content=content,
-        )
-
-    # --- headers and credentials -----------------------------------------------------------
-
-    def _is_trusted(self, host: str) -> bool:
-        with self._trust_lock:
-            if self._adopt_first_host:
-                self._trusted.add(host)
-                self._adopt_first_host = False
-            return host in self._trusted
-
-    def _headers_for(
-        self, url: str, accept_encoding: str, byte_range: SegmentRange | None
-    ) -> dict[str, str]:
-        from rayohx._http._common import host_of
-        from rayohx._redaction import is_sensitive_name
-
-        trusted = self._is_trusted(host_of(url))
-        headers = {"Accept-Encoding": accept_encoding}
-        for name, value in self._config.request_headers().items():
-            if is_sensitive_name(name) and not trusted:
-                continue
-            for existing in [key for key in headers if key.lower() == name.lower()]:
-                del headers[existing]
-            headers[name] = value
-        has_cookie_header = any(name.lower() == "cookie" for name in headers)
-        if trusted and self._config.cookies and not has_cookie_header:
-            headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in self._config.cookies.items())
-        if byte_range is not None:
-            headers["Range"] = byte_range.http_header()
-        return headers

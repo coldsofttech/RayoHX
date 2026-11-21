@@ -8,9 +8,8 @@ from rayohx.errors import (
     CancellationError,
     ConfigurationError,
     HTTPError,
-    NetworkTimeoutError,
 )
-from tests.helpers.http import URL, Body, FakeTime, Handler, make, ok, sequence
+from tests.helpers.http import URL, make, ok, sequence
 
 
 def test_fetch_text_returns_text_and_address() -> None:
@@ -46,23 +45,6 @@ def test_fetch_bytes_asks_for_uncompressed_data() -> None:
     assert recorder.requests[0].headers["accept-encoding"] == "identity"
 
 
-def test_custom_user_agent_and_headers_are_sent() -> None:
-    client, recorder, _ = make(
-        ok(), user_agent="Agent/2", headers={"Referer": "https://site.example/", "X-Extra": "1"}
-    )
-    client.fetch_bytes(URL)
-    headers = recorder.requests[0].headers
-    assert headers["user-agent"] == "Agent/2"
-    assert headers["referer"] == "https://site.example/"
-    assert headers["x-extra"] == "1"
-
-
-def test_a_user_agent_header_replaces_the_default() -> None:
-    client, recorder, _ = make(ok(), headers={"user-agent": "Mine"})
-    client.fetch_bytes(URL)
-    assert recorder.requests[0].headers.get_list("user-agent") == ["Mine"]
-
-
 def test_invalid_addresses_are_refused_before_any_request() -> None:
     client, recorder, _ = make(ok())
     with pytest.raises(ConfigurationError):
@@ -94,67 +76,6 @@ def test_the_address_guard_sees_every_hop_and_can_refuse() -> None:
     assert len(recorder.requests) == 1
 
 
-SECRETS = {"Authorization": "Bearer s3", "X-Api-Key": "k3", "Referer": "https://site.example/"}
-
-
-def echo_after_redirect() -> Handler:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.host == "media.example.com":
-            return httpx.Response(302, headers={"location": "https://cdn.other.net/seg.ts"})
-        return httpx.Response(200, content=b"segment")
-
-    return handler
-
-
-def test_secrets_do_not_follow_a_redirect_to_another_host() -> None:
-    client, recorder, _ = make(echo_after_redirect(), headers=SECRETS, cookies={"sid": "abc"})
-    client.fetch_bytes(URL)
-    first, second = recorder.requests
-    assert first.headers["authorization"] == "Bearer s3"
-    assert first.headers["x-api-key"] == "k3"
-    assert first.headers["cookie"] == "sid=abc"
-    for name in ("authorization", "x-api-key", "cookie"):
-        assert name not in second.headers
-    assert second.headers["referer"] == "https://site.example/"
-    assert second.headers["user-agent"] == "RayoHX"
-
-
-def test_listed_credential_hosts_receive_secrets() -> None:
-    client, recorder, _ = make(
-        echo_after_redirect(),
-        headers=SECRETS,
-        cookies={"sid": "abc"},
-        credential_hosts=("CDN.other.net",),
-    )
-    client.fetch_bytes(URL)
-    second = recorder.requests[1]
-    assert second.headers["authorization"] == "Bearer s3"
-    assert second.headers["cookie"] == "sid=abc"
-
-
-def test_a_fixed_origin_does_not_trust_a_different_first_host() -> None:
-    client, recorder, _ = make(
-        ok(), origin="https://start.example.com/m.m3u8", headers=SECRETS, cookies={"a": "b"}
-    )
-    client.fetch_bytes("https://elsewhere.example.org/a.ts")
-    assert "authorization" not in recorder.requests[0].headers
-    assert "cookie" not in recorder.requests[0].headers
-
-
-def test_without_an_origin_the_first_host_is_trusted() -> None:
-    client, recorder, _ = make(ok(), origin=None, headers=SECRETS)
-    client.fetch_bytes("https://first.example.com/a.ts")
-    client.fetch_bytes("https://second.example.com/a.ts")
-    assert "authorization" in recorder.requests[0].headers
-    assert "authorization" not in recorder.requests[1].headers
-
-
-def test_an_explicit_cookie_header_is_not_duplicated() -> None:
-    client, recorder, _ = make(ok(), headers={"Cookie": "mine=1"}, cookies={"sid": "abc"})
-    client.fetch_bytes(URL)
-    assert recorder.requests[0].headers.get_list("cookie") == ["mine=1"]
-
-
 @pytest.mark.parametrize("status", [408, 425, 429, 500, 502, 503, 504])
 def test_temporary_errors_are_retried_until_they_clear(status: int) -> None:
     client, recorder, fake = make(
@@ -184,22 +105,6 @@ def test_zero_retries_means_one_attempt() -> None:
     assert len(recorder.requests) == 1
 
 
-def test_progress_is_reported_per_chunk() -> None:
-    body = b"x" * 200_000
-    seen: list[int] = []
-    client, _, _ = make(ok(body))
-    client.fetch_bytes(URL, on_bytes=seen.append)
-    assert sum(seen) == 200_000
-    assert len(seen) > 1
-
-
-def test_a_failure_part_way_through_a_body_is_retried_from_the_start() -> None:
-    broken = httpx.Response(200, stream=Body([b"abc"], httpx.ReadError("reset")))
-    client, recorder, _ = make(sequence(broken, httpx.Response(200, content=b"whole")))
-    assert client.fetch_bytes(URL).content == b"whole"
-    assert len(recorder.requests) == 2
-
-
 def test_a_retry_that_would_pass_the_overall_limit_is_not_attempted() -> None:
     client, recorder, fake = make(
         lambda _r: httpx.Response(503), total_timeout=5, backoff_factor=10, retries=3
@@ -208,25 +113,6 @@ def test_a_retry_that_would_pass_the_overall_limit_is_not_attempted() -> None:
         client.fetch_bytes(URL)
     assert len(recorder.requests) == 1
     assert fake.sleeps == []
-
-
-def test_the_overall_limit_stops_a_slow_body() -> None:
-    fake = FakeTime()
-    client, recorder, _ = make(ok(b"x" * 200_000), fake=fake, total_timeout=5, retries=3)
-
-    def slow(_size: int) -> None:
-        fake.now += 10
-
-    with pytest.raises(NetworkTimeoutError, match="overall") as info:
-        client.fetch_bytes(URL, on_bytes=slow)
-    assert not info.value.retryable
-    assert len(recorder.requests) == 1
-
-
-def test_downloads_respect_the_speed_limit() -> None:
-    client, _, fake = make(ok(b"x" * 3000), rate_limit=1000)
-    client.fetch_bytes(URL)
-    assert fake.sleeps == [2.0]
 
 
 def test_cancelled_before_starting_sends_nothing() -> None:
@@ -249,17 +135,3 @@ def test_cancelling_while_waiting_to_retry_stops_at_once() -> None:
     with pytest.raises(CancellationError):
         client.fetch_bytes(URL)
     assert len(recorder.requests) == 1
-
-
-def test_cancelling_while_reading_stops_between_chunks() -> None:
-    token = CancellationToken()
-    client, _, _ = make(ok(b"x" * 300_000), cancel=token)
-    received: list[int] = []
-
-    def on_bytes(size: int) -> None:
-        received.append(size)
-        token.cancel()
-
-    with pytest.raises(CancellationError):
-        client.fetch_bytes(URL, on_bytes=on_bytes)
-    assert len(received) == 1

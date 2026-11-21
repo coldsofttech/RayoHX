@@ -116,6 +116,10 @@ def build_config(
     proxy: str | None = None,
     insecure: bool = False,
     ca_bundle: Path | None = None,
+    env_proxy: bool = False,
+    client_cert: Path | None = None,
+    client_key: Path | None = None,
+    client_key_password: str | None = None,
     connect_timeout: float | None = None,
     read_timeout: float | None = None,
     timeout: float | None = None,
@@ -156,6 +160,10 @@ def build_config(
         "cookies": parse_cookies(cookie),
         "verify_tls": False if insecure else (ca_bundle if ca_bundle else True),
         "credential_hosts": tuple(credential_host),
+        "proxy_from_env": env_proxy,
+        "client_cert": client_cert,
+        "client_key": client_key,
+        "client_key_password": client_key_password,
     }
     optional: tuple[tuple[str, object], ...] = (
         ("user_agent", user_agent),

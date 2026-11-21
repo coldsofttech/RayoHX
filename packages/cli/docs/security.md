@@ -20,7 +20,8 @@ How the `rayohx` command protects secrets and the machine it runs on. To report 
 ## Connections
 
 - **Certificates are checked.** `--insecure` turns TLS verification off and the library logs a warning each time it does. Prefer `--ca-bundle` with the right certificate authority.
-- **Proxies are explicit.** A proxy is used only when you give `--proxy` (or `RAYOHX_PROXY`). `HTTPS_PROXY` and similar variables are not read implicitly.
+- **Proxies are explicit.** A proxy is used only when you give `--proxy` (or `RAYOHX_PROXY`). `HTTPS_PROXY` and similar variables are read only with `--env-proxy`.
+- **Client certificates.** `--client-cert` is for servers that require mutual TLS. Give the key password through `RAYOHX_CLIENT_KEY_PASSWORD` or a file, not on the command line.
 - **Existing files are safe.** An output file is replaced only with `--overwrite`, and a download is written to a `.part` file and renamed when it is complete.
 
 ## The installers

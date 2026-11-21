@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from rayohx.config import NetworkConfig
@@ -57,3 +59,20 @@ def test_credential_hosts_are_validated_and_lowercased() -> None:
     for bad in ("https://cdn.example.com", "cdn.example.com/path", "a b", "", "-bad.com"):
         with pytest.raises(ConfigurationError, match="host name"):
             NetworkConfig(credential_hosts=(bad,))
+
+
+def test_network_client_key_needs_a_certificate() -> None:
+    with pytest.raises(ConfigurationError):
+        NetworkConfig(client_key=Path("client.key"))
+    with pytest.raises(ConfigurationError):
+        NetworkConfig(client_key_password="secret")
+    NetworkConfig(client_cert=Path("client.pem"), client_key=Path("client.key"))
+
+
+def test_network_as_dict_hides_the_client_key_password() -> None:
+    network = NetworkConfig(client_cert=Path("client.pem"), client_key_password="secret")
+    data = network.as_dict()
+    assert "secret" not in str(data)
+    assert "secret" not in repr(network)
+    assert data["client_key_password"] != "secret"
+    assert data["proxy_from_env"] is False

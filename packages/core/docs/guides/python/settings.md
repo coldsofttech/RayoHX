@@ -10,7 +10,7 @@ early and a settings object that exists is always valid.
 |---|---|
 | [`DownloadConfig`](#downloadconfig) | The top-level object; groups the others |
 | [`NetworkConfig`](#networkconfig) | How requests are made |
-| [`ProxyConfig`](#proxyconfig) | An HTTP or HTTPS proxy |
+| [`ProxyConfig`](#proxyconfig) | An HTTP, HTTPS or SOCKS5 proxy |
 | [`SelectionConfig`](#selectionconfig) | Which tracks to take |
 | [`OutputConfig`](#outputconfig) | The finished file |
 | [`StorageConfig`](#storageconfig) | Where working data lives and how much may pile up |
@@ -103,6 +103,10 @@ How requests are made.
 | `max_redirects` | `int` | `10` | Redirects followed per request |
 | `verify_tls` | `bool \| Path` | `True` | `True` verifies with the default trust store, `False` turns verification off, a `Path` verifies against that CA bundle |
 | `proxy` | `ProxyConfig \| None` | `None` | Send requests through this proxy |
+| `proxy_from_env` | `bool` | `False` | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `proxy` is not set |
+| `client_cert` | `Path \| None` | `None` | A client certificate (PEM) for servers that require mutual TLS |
+| `client_key` | `Path \| None` | `None` | The private key for `client_cert`, if it is in a separate file |
+| `client_key_password` | `str \| None` | `None` | The password of an encrypted key. Left out of `repr`, hidden in `as_dict()` |
 | `rate_limit` | `int \| None` | `None` | Download speed cap in bytes per second, shared by all workers |
 | `credential_hosts` | `tuple[str, ...]` | `()` | Extra hosts, besides the one the download starts from, allowed to receive secret headers and cookies |
 
@@ -140,8 +144,9 @@ network = NetworkConfig(
 )
 ```
 
-Environment variables such as `HTTPS_PROXY` are not read. Settings come only from the
-configuration, so behavior never depends on hidden state.
+Environment variables such as `HTTPS_PROXY` are read only when `proxy_from_env=True`, and an explicit
+`proxy` always wins. Otherwise settings come only from the configuration, so behavior never depends
+on hidden state. A client key or password without `client_cert` is refused.
 
 ```python
 network = NetworkConfig(user_agent="Agent/1", headers={"user-agent": "Mine", "Origin": "o"})
@@ -150,11 +155,11 @@ print(network.request_headers())  # {'user-agent': 'Mine', 'Origin': 'o'}
 
 ## ProxyConfig
 
-An HTTP or HTTPS proxy. Credentials go in `username` and `password`, or in the URL.
+An HTTP, HTTPS or SOCKS5 proxy. Credentials go in `username` and `password`, or in the URL.
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `url` | `str` | required | The proxy address, `http://host:port` or `https://host:port` |
+| `url` | `str` | required | The proxy address, `http://`, `https://`, `socks5://` or `socks5h://` followed by `host:port`; `socks5h` also resolves host names at the proxy |
 | `username` | `str \| None` | `None` | Sent as proxy authentication |
 | `password` | `str \| None` | `None` | Sent as proxy authentication |
 
@@ -163,7 +168,7 @@ An HTTP or HTTPS proxy. Credentials go in `username` and `password`, or in the U
 | `redacted_url` (property) | The proxy address with any credentials hidden |
 | `as_dict()` | A serializable view; username and password are replaced with `***` |
 
-Set both `username` and `password`, or neither. SOCKS proxies are not supported yet. `repr` shows
+Set both `username` and `password`, or neither. `repr` shows
 only `redacted_url`.
 
 ```python

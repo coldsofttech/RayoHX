@@ -120,9 +120,13 @@ note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
 | `--user-agent` | | The `User-Agent` to send. |
 | `--referer` | | The `Referer` to send. |
 | `--origin` | | The `Origin` to send. |
-| `--proxy` | | An `http://` or `https://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable, since command lines can be seen by other users. |
+| `--proxy` | | An `http://`, `https://`, `socks5://` or `socks5h://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable, since command lines can be seen by other users. |
+| `--env-proxy` / `--no-env-proxy` | off | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. |
 | `--insecure` | | Do not check TLS certificates. Only for servers you trust. |
 | `--ca-bundle` | | A file of trusted certificate authorities (PEM), instead of the system's. |
+| `--client-cert` | | A client certificate (PEM) for servers that require mutual TLS. |
+| `--client-key` | | The private key (PEM) for `--client-cert`, if it is in a separate file. |
+| `--client-key-password` | | The password of an encrypted client key. Prefer the environment variable. |
 | `--connect-timeout` | | Seconds to wait to connect. |
 | `--read-timeout` | | Seconds to wait for data. |
 | `--timeout` | | Most seconds one request may take, retries included. |
