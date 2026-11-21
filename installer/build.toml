@@ -61,16 +61,15 @@ version = { file = "src/rayohx_cli/__init__.py", pattern = '^__version__\s*=\s*"
 core-package = "rayohx"                    # the library the command line is built on
 smoke = "tests/integration/test_frozen_cli.py"  # run from path by --smoke: starts the built program
 # The command line imports neither the API nor the window, nor the libraries they need. typer
-# imports pydantic only if it is installed, so it stays out of the command line too.
+# does need pydantic (and its own dependencies), so those are collected below.
 excludes = [
     "tkinter", "pytest", "rayohx_api", "rayohx_ui", "cornea", "webview", "fastapi", "uvicorn",
-    "pydantic", "pydantic_core",
 ]
 # rich lazily imports a Unicode-version-specific submodule that static analysis cannot see.
-collect = ["rich", "typer"]
+collect = ["rich", "typer", "pydantic", "pydantic_core", "typing_inspection", "annotated_types"]
 # Folders under lib/ whose .py files are shipped as compiled .pyc instead (smaller, and the
 # source is not shipped). Only for libraries that do not read their own source at run time.
-compile-pyc = ["rich", "typer"]
+compile-pyc = ["rich", "typer", "pydantic", "pydantic_core"]
 
 [[products]]
 name = "ui"
