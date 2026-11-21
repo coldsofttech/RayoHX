@@ -146,6 +146,7 @@ and a speed limit.
 |---|---|---|
 | `--concurrency` | `-j` | Segments to download at the same time, from 1 to 64 (default 4). |
 | `--resume` / `--no-resume` | | Continue an interrupted download where it stopped. On by default. |
+| `--allow-file-keys` / `--no-allow-file-keys` | | Let a playlist's `file:` key addresses read a key from this machine. Off by default; only for streams you trust. |
 | `--storage` | | Where finished segments wait: `auto` (default), `direct`, `streaming`, `buffered`, `temporary`, `hybrid`. |
 | `--workspace` | | A folder for working files (default: beside the output). |
 | `--buffer-size` | | Memory for the segment buffer, for example `64M`. |

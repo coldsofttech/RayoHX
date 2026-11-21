@@ -60,6 +60,7 @@ def download(
     buffer_size: params.BufferSize = None,
     max_temp_size: params.MaxTempSize = None,
     space_check: params.SpaceCheck = True,
+    allow_file_keys: params.AllowFileKeys = False,
     json_output: params.JsonOutput = False,
     progress: params.ProgressMode = "auto",
 ) -> None:
@@ -116,6 +117,7 @@ def download(
         buffer_size=buffer_size,
         max_temp_size=max_temp_size,
         space_check=space_check,
+        allow_file_keys=allow_file_keys,
     )
     try:
         downloader = Downloader(url, output=output_path, config=config)

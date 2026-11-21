@@ -9,6 +9,7 @@ from rayohx_cli.params.display import (
     ProgressMode,
 )
 from rayohx_cli.params.engine import (
+    AllowFileKeys,
     BufferSize,
     Concurrency,
     MaxTempSize,
@@ -65,6 +66,7 @@ from rayohx_cli.params.selection import (
 )
 
 __all__ = [
+    "AllowFileKeys",
     "Audio",
     "AudioName",
     "Bandwidth",

@@ -240,3 +240,8 @@ def test_preferences_reach_the_selection() -> None:
     assert config.selection.max_frame_rate == 30
     with pytest.raises(ConfigurationError):
         build_config(codec="mpeg2")
+
+
+def test_file_keys_are_off_unless_asked() -> None:
+    assert build_config().allow_file_keys is False
+    assert build_config(allow_file_keys=True).allow_file_keys is True

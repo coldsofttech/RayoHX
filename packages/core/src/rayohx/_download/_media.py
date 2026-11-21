@@ -221,7 +221,14 @@ class MediaDownload:
             checkpoint(start_index, have)
 
         fetcher = HlsSegmentFetcher(
-            self._client, segments, KeyProvider(self._client), container=self._container
+            self._client,
+            segments,
+            KeyProvider(
+                self._client,
+                fetcher=config.key_fetcher,
+                allow_file_keys=config.allow_file_keys,
+            ),
+            container=self._container,
         )
         pipeline = SegmentPipeline(
             segments=segments,

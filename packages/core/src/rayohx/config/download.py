@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Any
 
     from rayohx.config.network import NetworkConfig
@@ -52,6 +53,14 @@ class DownloadConfig:
     storage: StorageConfig = field(default_factory=_storage)
     output: OutputConfig = field(default_factory=_output)
     selection: SelectionConfig = field(default_factory=_selection)
+    #: Your own way to get an AES-128 key. Called with the key's address from the playlist
+    #: (any scheme) and returns the 16 key bytes. Use it when the key comes from somewhere the
+    #: HTTP layer cannot reach. It replaces every other way of fetching keys. It is a hook for
+    #: plain AES-128 only: protected (DRM) streams are still refused.
+    key_fetcher: Callable[[str], bytes] | None = field(default=None, repr=False)
+    #: Allow ``file:`` key addresses, which read a local file. Off by default, because a stream
+    #: from the internet could otherwise make RayoHX read files from this machine.
+    allow_file_keys: bool = False
 
     def __post_init__(self) -> None:
         if not 1 <= self.concurrency <= MAX_CONCURRENCY:
@@ -68,4 +77,6 @@ class DownloadConfig:
             "storage": self.storage.as_dict(),
             "output": self.output.as_dict(),
             "selection": self.selection.as_dict(),
+            "key_fetcher": self.key_fetcher is not None,
+            "allow_file_keys": self.allow_file_keys,
         }

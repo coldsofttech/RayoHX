@@ -6,6 +6,7 @@ How the `rayohx` library protects secrets, requests and the machine it runs on. 
 
 - **Settings hide them.** `repr` and `as_dict()` of the settings leave out header values, cookie values and proxy passwords. Resume state must be built from `as_dict()`, never from the raw objects.
 - **Credentials stay with their host.** Secret headers and configured cookies go only to the starting host and the hosts listed in `credential_hosts`, including across redirects.
+- **Local key files are off by default.** A `file:` key address in a playlist is refused unless `allow_file_keys` is set, so a stream from the internet cannot make the library read files from your machine. `data:` key addresses are always allowed, as they hold the key inside the playlist.
 - **Keys stay in memory.** Decryption keys are never written to disk, and never appear in resume state.
 
 ## What it shows and logs

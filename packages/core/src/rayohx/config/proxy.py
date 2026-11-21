@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any
 
-#: Proxy schemes accepted. ``socks5h`` makes the proxy look up host names; ``socks5`` does it here.
+#: Proxy schemes accepted. ``socks5h`` makes the proxy look up host names; ``socks5`` does not.
 SUPPORTED_PROXY_SCHEMES = frozenset({"http", "https", "socks5", "socks5h"})
 
 

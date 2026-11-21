@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Streams whose AES-128 key is given inside the playlist (`data:` addresses) now download. Local key files (`file:`) can be allowed with `allow_file_keys`, and `key_fetcher` lets you supply keys from anywhere.
 - Streams that use playlist variables (`EXT-X-DEFINE`) are now read and downloaded instead of refused.
 - Prefer a video codec (`codec`) or dynamic range (`video_range`), and cap the frame rate (`max_frame_rate`), in `SelectionConfig`.
 - SOCKS5 proxies (`socks5://`, `socks5h://`), proxies read from the environment with `NetworkConfig(proxy_from_env=True)`, and client certificates for mutual TLS (`client_cert`, `client_key`, `client_key_password`).

@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `--allow-file-keys` lets a stream's local key files be read; streams with keys inside the playlist now download.
 - Prefer a video codec (`--codec`) or dynamic range (`--video-range`), and cap the frame rate (`--max-frame-rate`), when choosing a stream.
 - SOCKS5 proxies, `--env-proxy` to use the proxy environment variables, and client certificates for mutual TLS (`--client-cert`, `--client-key`, `--client-key-password`).
 - The `rayohx` command: `rayohx info URL` shows a stream's qualities and tracks and what a download would pick, and `rayohx download URL` saves it as one file.

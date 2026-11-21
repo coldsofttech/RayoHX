@@ -75,3 +75,13 @@ SpaceCheck = Annotated[
         rich_help_panel=ENGINE,
     ),
 ]
+AllowFileKeys = Annotated[
+    bool,
+    typer.Option(
+        "--allow-file-keys/--no-allow-file-keys",
+        envvar="RAYOHX_ALLOW_FILE_KEYS",
+        help="Let a playlist's file: key addresses read a key from this machine. Off by default; "
+        "only for streams you trust.",
+        rich_help_panel=ENGINE,
+    ),
+]

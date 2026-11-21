@@ -68,6 +68,8 @@ Everything that shapes a download, grouped by area.
 | `storage` | `StorageConfig` | `StorageConfig()` | Where and how data is kept while downloading |
 | `output` | `OutputConfig` | `OutputConfig()` | The finished file |
 | `selection` | `SelectionConfig` | `SelectionConfig()` | Which tracks to take |
+| `key_fetcher` | `Callable[[str], bytes] \| None` | `None` | Your own way to get an AES-128 key: called with the key's address from the playlist, returns the 16 key bytes. Replaces every other way of fetching keys; protected (DRM) streams are still refused |
+| `allow_file_keys` | `bool` | `False` | Allow `file:` key addresses, which read a local file |
 
 Method: `as_dict() -> dict[str, Any]`, a serializable view without secrets, safe for logs and resume
 state.
