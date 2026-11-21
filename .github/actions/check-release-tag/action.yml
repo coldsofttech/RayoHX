@@ -23,5 +23,7 @@ runs:
         PACKAGE: ${{ inputs.package }}
         PREFIX: ${{ inputs.prefix }}
       run: |
-        version="$(uv version --package "$PACKAGE" --short)"
+        # uv cannot read a dynamic version, so fall back to the installed package's metadata
+        version="$(uv version --package "$PACKAGE" --short 2>/dev/null)" || \
+          version="$(uv run --package "$PACKAGE" --no-dev python -c 'import importlib.metadata as m, sys; print(m.version(sys.argv[1]))' "$PACKAGE")"
         [ "$TAG" = "${PREFIX}${version}" ] || { echo "Tag $TAG does not match $PACKAGE ${PREFIX}${version}"; exit 1; }
