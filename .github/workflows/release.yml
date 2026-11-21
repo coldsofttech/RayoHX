@@ -4,10 +4,10 @@ name: Release
 # the approval of its own environment (Settings > Environments) before it publishes anything:
 #
 #   vX.Y.Z          core    the rayohx package to PyPI                       environment: core
-#   cli-vX.Y.Z      cli     the rayohx-cli package to PyPI, and the deb and rpm
-#                           packages on the GitHub release                  environment: cli
-#   installer-vX.Y.Z installer the full Windows setup (command line and window) and
-#                           the portable zip on the GitHub release           environment: installer
+#   cli-vX.Y.Z      cli     the rayohx-cli package to PyPI                   environment: cli
+#   installer-vX.Y.Z installer the full Windows setup (command line and window), the
+#                           portable zip, and the deb and rpm packages on
+#                           the GitHub release                               environment: installer
 #   docker-vX.Y.Z   docker  the image to GHCR                                environment: docker
 #
 # The tag must match the version in the package's pyproject.toml (installer/build.toml for the installer). Release core before cli, because
@@ -30,15 +30,59 @@ jobs:
     if: startsWith(github.event.release.tag_name, 'v')
     uses: ./.github/workflows/release-core.yml
     permissions:
-      contents: write
-      id-token: write
+      contents: read
+
+  # Publishing is a job of this workflow, not of the called one: PyPI trusted publishing does not
+  # support reusable workflows (the token names the called workflow, not release.yml).
+  core-publish:
+    name: core publish (PyPI)
+    needs: core
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: core
+    permissions:
+      contents: write # attach files to the release
+      id-token: write # PyPI trusted publishing
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Download the distribution files
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Attach the files to the release
+        uses: ./.github/actions/attach-release-files
 
   cli:
     if: startsWith(github.event.release.tag_name, 'cli-v')
     uses: ./.github/workflows/release-cli.yml
     permissions:
-      contents: write
-      id-token: write
+      contents: read
+
+  cli-publish:
+    name: cli publish (PyPI, GitHub release)
+    needs: cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: cli
+    permissions:
+      contents: write # attach files to the release
+      id-token: write # PyPI trusted publishing
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Download the distribution files
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Attach the files to the release
+        uses: ./.github/actions/attach-release-files
 
   installer:
     if: startsWith(github.event.release.tag_name, 'installer-v')

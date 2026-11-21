@@ -21,7 +21,7 @@ classifiers = [
 ]
 dependencies = [
   "cryptography>=44",
-  "httpx[socks]>=0.28",
+  "httpx[socks]>=0.28.1",
 ]
 
 [project.urls]

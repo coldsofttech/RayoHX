@@ -1,8 +1,9 @@
 name: Release core
 
-# Tag vX.Y.Z: builds the core library (rayohx), publishes it to PyPI (trusted publishing, no stored
-# tokens) and attaches the files to the GitHub release. Publishing waits for the approval of the
-# `core` environment. Called by release.yml.
+# Tag vX.Y.Z: builds the core library (rayohx) and uploads the distribution files. Publishing to PyPI
+# (trusted publishing, no stored tokens) and attaching the files to the GitHub release happen in
+# release.yml, because PyPI does not support trusted publishing from a reusable workflow. Called by
+# release.yml.
 on:
   workflow_call:
 
@@ -31,25 +32,3 @@ jobs:
         with:
           name: dist
           path: dist/
-
-  core-publish:
-    name: core publish (PyPI)
-    needs: core-build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: core
-    permissions:
-      contents: write # attach files to the release
-      id-token: write # PyPI trusted publishing
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Download the distribution files
-        uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-      - name: Attach the files to the release
-        uses: ./.github/actions/attach-release-files

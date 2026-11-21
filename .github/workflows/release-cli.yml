@@ -1,9 +1,10 @@
-﻿name: Release CLI
+name: Release CLI
 
-# Tag cli-vX.Y.Z: builds the command line (rayohx-cli) and its Linux installers (deb
-# and rpm, optionally signed; the Windows setup is built by release-installer.yml). Publishing the package to PyPI and attaching the installers to
-# the GitHub release waits for the approval of the `cli` environment. Release core first: rayohx-cli
-# depends on the rayohx package on PyPI. Called by release.yml.
+# Tag cli-vX.Y.Z: builds the command line (rayohx-cli); the installers are built by
+# release-installer.yml. Publishing the package to PyPI and attaching the files to the GitHub
+# release happen in release.yml, because PyPI does not support trusted publishing from a reusable
+# workflow. Release core first: rayohx-cli depends on the rayohx package on PyPI. Called by
+# release.yml.
 on:
   workflow_call:
 
@@ -32,56 +33,3 @@ jobs:
         with:
           name: dist
           path: dist/
-
-  cli-installer-linux:
-    name: cli installer (linux ${{ matrix.arch }})
-    needs: cli-build
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 15 # target: under 5 minutes
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { arch: x86_64, runner: ubuntu-latest }
-          - { arch: arm64, runner: ubuntu-24.04-arm }
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Set up uv
-        uses: ./.github/actions/setup-uv
-        with:
-          python-version: "3.15"
-          sync-args: --locked --package rayohx-cli --group installer
-      - name: Install installer tools
-        uses: ./.github/actions/install-installer-tools
-      - name: Build the packages and smoke test the executable
-        run: uv run --no-sync python installer/scripts/build.py --smoke
-      - name: Upload the Linux packages
-        uses: actions/upload-artifact@v7
-        with:
-          name: installers-cli-linux-${{ matrix.arch }}
-          path: |
-            dist/installer/*.deb
-            dist/installer/*.rpm
-
-  cli-publish:
-    name: cli publish (PyPI, GitHub release)
-    needs: [cli-build, cli-installer-linux]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: cli
-    permissions:
-      contents: write # attach files to the release
-      id-token: write # PyPI trusted publishing
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Download the distribution files
-        uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-      - name: Attach the files to the release
-        uses: ./.github/actions/attach-release-files
