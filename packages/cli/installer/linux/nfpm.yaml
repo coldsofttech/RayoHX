@@ -13,7 +13,7 @@
 #   PKG_DESCRIPTION   [project] description
 #   PKG_MAINTAINER    "Name <email>", from [project] authors
 #   PKG_HOMEPAGE      [project.urls] Homepage
-#   PKG_LICENSE       [project] license (an SPDX id, MIT)
+#   PKG_LICENSE       [project] license (an SPDX id, Apache-2.0)
 #   PKG_SOURCE_DIR    the PyInstaller output folder (build/installer/rayohx)
 #   PKG_LICENSE_FILE  the LICENSE file
 #   PKG_ICON_DIR      the folder with the package icons (brand/light/png: app-16.png ... app-256.png)

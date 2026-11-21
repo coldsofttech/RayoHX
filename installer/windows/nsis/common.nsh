@@ -3,12 +3,12 @@
 ; A product file defines what is specific to it, then includes this file:
 ;
 ;   GUID          stable id of the product (upgrades replace an earlier install), "{...}"
-;   MAIN_EXE      the program the Start Menu shortcut starts, e.g. "rayohx-ui.exe"
+;   MAIN_EXE      the program the Start Menu shortcut starts, e.g. "rayohxu.exe"
 ;   EXTRA_EXE     optional second program shipped in the same folder, e.g. "rayohx.exe"
 ;   HAS_PATH      optional: offer to add the install folder to PATH (command line product)
 ;   HAS_DESKTOP   optional: offer a desktop shortcut and "run now" (window product)
 ;
-; scripts/build_installer.py passes the rest, from pyproject.toml and the code, with /D:
+; the product's build_installer.py passes the rest, from pyproject.toml and the code, with /D:
 ;
 ;   APP_NAME      product name; also the Start Menu folder and the default install folder
 ;   APP_VERSION   e.g. 0.1.0 (APP_VERSION_NUMERIC "0.1.0.0" is derived if not given)
@@ -33,7 +33,7 @@
   !error "Define MAIN_EXE in the product file."
 !endif
 !ifndef APP_NAME
-  !error "Pass /DAPP_NAME=... (scripts/build_installer.py does)."
+  !error "Pass /DAPP_NAME=... (the product's build_installer.py does)."
 !endif
 !ifndef APP_VERSION
   !error "Pass /DAPP_VERSION=..."

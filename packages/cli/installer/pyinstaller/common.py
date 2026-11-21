@@ -103,7 +103,7 @@ def _version_info() -> Any:
         "FileVersion": INFO.version,
         "ProductName": INFO.title,
         "ProductVersion": INFO.version,
-        "LegalCopyright": f"MIT License. {author}".strip(),
+        "LegalCopyright": f"Apache License 2.0. {author}".strip(),
     }
     return VSVersionInfo(
         ffi=FixedFileInfo(

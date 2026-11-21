@@ -32,7 +32,7 @@ ARG VERSION=0.0.0
 LABEL org.opencontainers.image.title="RayoHX" \
       org.opencontainers.image.description="HLS download engine and command line" \
       org.opencontainers.image.source="https://github.com/coldsofttech/RayoHX" \
-      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.version="${VERSION}"
 
 # A fixed, unprivileged user, so files written to a mounted folder have a predictable owner.

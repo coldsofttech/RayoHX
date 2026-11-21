@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "RayoHX command line (the rayohx command)."
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
+license = "Apache-2.0"
 authors = [{ name = "coldsofttech" }]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -54,6 +54,10 @@ dev = [
   "pytest-cov>=6.0",
   "pytest-xdist>=3.6",
   "ruff>=0.8",
+]
+installer = [
+  "hatchling>=1.33.0",
+  "pyinstaller>=6.22.3",
 ]
 
 [tool.ruff]

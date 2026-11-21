@@ -2,11 +2,10 @@ version = 1
 revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
-    "python_full_version >= '3.15' and sys_platform == 'win32'",
-    "python_full_version >= '3.15' and sys_platform != 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.15' and sys_platform != 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'emscripten'",
-    "python_full_version < '3.15' and sys_platform == 'win32'",
-    "(python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32')",
+    "python_full_version < '3.12' or (python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform != 'emscripten')",
 ]
 
 [manifest]
@@ -14,7 +13,7 @@ members = [
     "rayohx",
     "rayohx-api",
     "rayohx-cli",
-    "rayohxu",
+    "rayohx-ui",
 ]
 
 [manifest.dependency-groups]
@@ -30,7 +29,7 @@ dev = [
     { name = "rayohx", editable = "packages/core" },
     { name = "rayohx-api", editable = "packages/api" },
     { name = "rayohx-cli", editable = "packages/cli" },
-    { name = "rayohxu", editable = "packages/ui" },
+    { name = "rayohx-ui", editable = "packages/ui" },
     { name = "ruff", specifier = ">=0.8" },
     { name = "schemathesis", specifier = ">=4.32.7" },
 ]
@@ -1879,11 +1878,13 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx2" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
     { name = "ruff" },
+    { name = "schemathesis" },
 ]
 
 [package.metadata]
@@ -1896,11 +1897,13 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx2", specifier = ">=2.16.2" },
     { name = "mypy", specifier = ">=1.13" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-cov", specifier = ">=6.0" },
     { name = "pytest-xdist", specifier = ">=3.6" },
     { name = "ruff", specifier = ">=0.8" },
+    { name = "schemathesis", specifier = ">=4.32.7" },
 ]
 
 [[package]]
@@ -1921,6 +1924,10 @@ dev = [
     { name = "pytest-xdist" },
     { name = "ruff" },
 ]
+installer = [
+    { name = "hatchling" },
+    { name = "pyinstaller" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1938,9 +1945,13 @@ dev = [
     { name = "pytest-xdist", specifier = ">=3.6" },
     { name = "ruff", specifier = ">=0.8" },
 ]
+installer = [
+    { name = "hatchling", specifier = ">=1.33.0" },
+    { name = "pyinstaller", specifier = ">=6.22.3" },
+]
 
 [[package]]
-name = "rayohxu"
+name = "rayohx-ui"
 version = "0.1.0"
 source = { editable = "packages/ui" }
 dependencies = [
@@ -1951,11 +1962,16 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx2" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
     { name = "ruff" },
+]
+installer = [
+    { name = "hatchling" },
+    { name = "pyinstaller" },
 ]
 
 [package.metadata]
@@ -1967,11 +1983,16 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx2", specifier = ">=2.16.2" },
     { name = "mypy", specifier = ">=1.13" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-cov", specifier = ">=6.0" },
     { name = "pytest-xdist", specifier = ">=3.6" },
     { name = "ruff", specifier = ">=0.8" },
+]
+installer = [
+    { name = "hatchling", specifier = ">=1.33.0" },
+    { name = "pyinstaller", specifier = ">=6.22.3" },
 ]
 
 [[package]]

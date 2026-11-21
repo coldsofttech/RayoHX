@@ -1,5 +1,5 @@
 # Workspace root: not published itself. The distributions live in packages/ (core -> rayohx,
-# cli -> rayohx-cli, api -> rayohx-api, ui -> rayohxu).
+# cli -> rayohx-cli, api -> rayohx-api, ui -> rayohx-ui).
 [tool.uv.workspace]
 members = ["packages/core", "packages/cli", "packages/api", "packages/ui"]
 
@@ -7,14 +7,14 @@ members = ["packages/core", "packages/cli", "packages/api", "packages/ui"]
 rayohx = { workspace = true }
 rayohx-cli = { workspace = true }
 rayohx-api = { workspace = true }
-rayohxu = { workspace = true }
+rayohx-ui = { workspace = true }
 
 [dependency-groups]
 dev = [
   "rayohx",
   "rayohx-cli",
   "rayohx-api",
-  "rayohxu",
+  "rayohx-ui",
   "cornea-shell[proxy]>=0.1.1",
   "httpx2>=2.16.2",
   "mypy>=1.13",
@@ -30,16 +30,6 @@ installer = [
     "hatchling>=1.33.0",
     "pyinstaller>=6.22.3",
 ]
-
-# Read by installer/projectinfo.py, so the installer scripts and the workflows need no names of
-# their own. cli is the [project.scripts] key of the command line. The window is not published, so
-# it has no script: ui is its executable name and ui-target the function it runs. api is the API
-# package.
-[tool.installer]
-cli = "rayohx"
-ui = "rayohx-ui"
-ui-target = "rayohx_ui.__main__:main"
-api = "rayohx_api"
 
 [tool.ruff]
 line-length = 100
@@ -65,7 +55,7 @@ select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 [tool.mypy]
 strict = true
 explicit_package_bases = true
-mypy_path = "packages/core/src:packages/cli/src:packages/api/src:packages/ui/src"
+mypy_path = "packages/core/src:packages/cli/src:packages/api/src:packages/ui/src:scripts"
 files = ["packages"]
 
 [tool.pytest.ini_options]

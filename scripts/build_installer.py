@@ -1,30 +1,29 @@
 #!/usr/bin/env python3
-"""Build the installers: PyInstaller folders, then NSIS setups (Windows) or deb and rpm (Linux).
+"""What the installer build scripts share: PyInstaller, NSIS, signing, branding and the driver.
 
-Everything comes from the products' own metadata, so renaming a product needs no edit here: the
-command line's from packages/cli/installer/projectinfo.py (its pyproject.toml and ``__version__``),
-the window's from installer/projectinfo.py (read only when the window is built). Icon and setup art
-come from brand/. Tool versions
-are pinned in installer/tools.toml.
+Do not run this file. Each product has a script of its own that describes the product and hands it
+to ``main`` here, so nothing is written twice:
+
+    packages/cli/scripts/build_installer.py   the command line (Windows setup, Linux deb and rpm)
+    packages/ui/scripts/build_installer.py    the window with the command line (Windows setup)
+
+    uv sync --group installer
+    uv run python packages/cli/scripts/build_installer.py [--sync] [--format exe,deb,rpm] [--smoke]
+    uv run python packages/ui/scripts/build_installer.py [--sync] [--build-frontend] [--smoke]
+
+Everything comes from the products' own metadata, so renaming a product needs no edit here. Icon
+and setup art come from brand/. Tool versions are pinned in installer/tools.toml. The installers
+are written to dist/installer/. See packages/cli/docs/packaging.md and packages/ui/docs/packaging.md for the details.
 
 Signing is off by default. Set SIGN_COMMAND to a command that signs one file, with {file} where
 its path goes (for example a signtool or SignPath call); the executables and then each setup.exe
 are signed. Nothing in this script is tied to one provider.
-
-Products:  cli  the command line (Windows setup, Linux deb and rpm)
-           ui   the window together with the command line (Windows setup only)
-
-Usage:  uv sync --group installer
-        uv run python scripts/build_installer.py [cli] [ui] [--sync] [--format exe,deb,rpm]
-                                                      [--build-frontend] [--smoke]
-The installers are written to dist/installer/. See docs/packaging.md for the details.
 """
 
 import argparse
 import functools
 import importlib.util
 import os
-import platform
 import re
 import shlex
 import shutil
@@ -36,42 +35,27 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import Any, TypeVar
+from typing import TypeVar
 
 ROOT = Path(__file__).resolve().parent.parent
-CLI_INSTALLER = ROOT / "packages" / "cli" / "installer"
 BUILD = ROOT / "build" / "installer"
 WORK = ROOT / "build" / "installer-work"
 OUT = ROOT / "dist" / "installer"
-SPECS = ROOT / "installer" / "pyinstaller"
-CLI_SPECS = CLI_INSTALLER / "pyinstaller"
 NSIS_DIR = ROOT / "installer" / "windows" / "nsis"
-CLI_NSIS_DIR = CLI_INSTALLER / "windows"
-NFPM_CONFIG = CLI_INSTALLER / "linux" / "nfpm.yaml"
 WINDOWS = sys.platform == "win32"
 LINUX = sys.platform.startswith("linux")
+FORMATS = ("exe", "deb", "rpm")
 T = TypeVar("T")
 
 
 def load_module(name: str, path: Path) -> ModuleType:
-    """Import a projectinfo.py by path; the command line's and the window's share a file name."""
+    """Import a projectinfo.py by path; the products' share a file name."""
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         raise SystemExit(f"Cannot load {path}.")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
-
-
-@functools.cache
-def cli_info() -> Any:
-    return load_module("cli_projectinfo", CLI_INSTALLER / "projectinfo.py").load()
-
-
-@functools.cache
-def ui_info() -> Any:
-    """The window's metadata, read only when the window is built (the command line builds alone)."""
-    return load_module("ui_projectinfo", ROOT / "installer" / "projectinfo.py").load()
 
 
 @dataclass(frozen=True)
@@ -86,15 +70,23 @@ class Meta:
     install_dir: str = ""  # folder under Program Files, "/" between parts; the title when empty
 
 
-@functools.cache
-def meta(product: str) -> Meta:
-    if product == "cli":
-        info = cli_info()
-        return Meta(
-            info.project, info.script, info.version, info.title, info.publisher, info.install_dir
-        )
-    info = ui_info()
-    return Meta(info.project, info.ui_script, info.version, info.title)
+@dataclass(frozen=True)
+class Product:
+    """One product's installer: what is specific to it. ``main`` does the rest."""
+
+    key: str  # short id, names the work folder
+    meta: Meta
+    spec: Path  # the PyInstaller spec
+    nsi: Path  # the NSIS script
+    licence: Path
+    smoke: tuple[tuple[Path, str], ...] = ()  # (folder to run pytest in, test file) pairs
+    linux_formats: tuple[str, ...] = ()  # none: the product is built on Windows only
+    #: Builds the Linux packages: (product, PyInstaller folder, formats, jobs) -> files written.
+    package_linux: Callable[["Product", Path, list[str], int], list[Path]] | None = None
+    #: More files to make on Windows beside the setup, each from (product, PyInstaller folder).
+    windows_extras: tuple[Callable[["Product", Path], Path], ...] = ()
+    add_arguments: Callable[[argparse.ArgumentParser], None] | None = None  # extra options
+    prepare: Callable[[argparse.Namespace], None] | None = None  # runs before PyInstaller
 
 
 def run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path = ROOT) -> None:
@@ -115,36 +107,29 @@ def run_parallel(tasks: list[Callable[[], T]], jobs: int) -> list[T]:
 
 def author(meta: Meta) -> dict[str, str]:
     authors = meta.project.get("authors") or [{}]
-    return dict(authors[0])  # type: ignore[index, call-overload]
+    return dict(authors[0])  # type: ignore[index]
 
 
 # ---- PyInstaller -------------------------------------------------------------------------------
-def build_frontend() -> None:
-    npm = "npm.cmd" if WINDOWS else "npm"
-    run([npm, "ci"], cwd=ui_info().ui_dir)
-    run([npm, "run", "build"], cwd=ui_info().ui_dir)
-
-
-def freeze(product: str) -> Path:
+def freeze(product: Product) -> Path:
     """Run PyInstaller for one product and return its output folder."""
-    spec = "cli.spec" if product == "cli" else "ui.spec"
     run(
         [
             sys.executable,
             "-m",
             "PyInstaller",
-            str((CLI_SPECS if product == "cli" else SPECS) / spec),
+            str(product.spec),
             "--noconfirm",
             "--distpath",
             str(BUILD),
             "--workpath",
-            str(WORK / product),
+            str(WORK / product.key),
         ]
     )
-    return BUILD / meta(product).name
+    return BUILD / product.meta.name
 
 
-# ---- Windows: NSIS -----------------------------------------------------------------------------
+# ---- branding ----------------------------------------------------------------------------------
 @functools.cache
 def brand_icon() -> Path:
     """The installer icon: the .ico in brand/light (the same one the executables carry)."""
@@ -161,6 +146,15 @@ def brand_art() -> dict[str, str]:
     return {key: str(art / name) for key, name in names.items() if (art / name).is_file()}
 
 
+def brand_png_dir() -> Path:
+    """The folder with the package icons (app-16.png ... app-256.png): brand/light/png."""
+    folder = ROOT / "brand" / "light" / "png"
+    if not sorted(folder.glob("app-*.png")):
+        raise SystemExit("No app-*.png found in brand/light/png.")
+    return folder
+
+
+# ---- Windows: NSIS -----------------------------------------------------------------------------
 def sign(files: list[Path]) -> None:
     """Sign ``files`` with SIGN_COMMAND, if it is set; otherwise do nothing."""
     template = os.environ.get("SIGN_COMMAND", "").strip()
@@ -187,23 +181,17 @@ def find_makensis() -> str:
     raise SystemExit("makensis not found. Install NSIS (version in installer/tools.toml).")
 
 
-def licence_file(product: str) -> Path:
-    """The command line ships its own LICENSE; the window uses the repository's."""
-    return CLI_INSTALLER.parent / "LICENSE" if product == "cli" else ROOT / "LICENSE"
-
-
 def numeric_version(version: str) -> str:
     numbers = re.findall(r"\d+", version)[:4]
     return ".".join(numbers + ["0"] * (4 - len(numbers)))
 
 
-def package_exe(product: str, folder: Path) -> Path:
+def package_exe(product: Product, folder: Path) -> Path:
     """Build the NSIS setup for one product."""
     OUT.mkdir(parents=True, exist_ok=True)
-    m = meta(product)
-    name = m.name
+    m = product.meta
     sign(sorted(folder.glob("*.exe")))
-    setup = OUT / f"{name}-{m.version}-setup.exe"
+    setup = OUT / f"{m.name}-{m.version}-setup.exe"
     urls = m.project.get("urls") or {}
     flags = {
         "APP_NAME": m.title,
@@ -213,7 +201,7 @@ def package_exe(product: str, folder: Path) -> Path:
         "OUT_FILE": str(setup),
         "ICON_FILE": str(brand_icon()),
         **brand_art(),
-        "LICENSE_FILE": str(licence_file(product)),
+        "LICENSE_FILE": str(product.licence),
         "PUBLISHER": m.publisher or author(m).get("name", ""),
         "INSTALL_DIR": m.install_dir.replace("/", "\\"),
         "INSTALL_DIR_DEPTH": len(m.install_dir.split("/")) if m.install_dir else "",
@@ -223,20 +211,12 @@ def package_exe(product: str, folder: Path) -> Path:
     }
     command = [find_makensis(), "/V2"]
     command += [f"/D{key}={value}" for key, value in flags.items() if value]
-    run([*command, str((CLI_NSIS_DIR if product == "cli" else NSIS_DIR) / f"{product}.nsi")])
+    run([*command, str(product.nsi)])
     sign([setup])
     return setup
 
 
-def package_zip(folder: Path) -> Path:
-    """The command line as a portable zip (what the Scoop manifest installs)."""
-    OUT.mkdir(parents=True, exist_ok=True)
-    m = meta("cli")
-    target = OUT / f"{m.name}-{m.version}-windows-x64"
-    return Path(shutil.make_archive(str(target), "zip", root_dir=folder))
-
-
-# ---- Linux: nfpm -------------------------------------------------------------------------------
+# ---- Linux -------------------------------------------------------------------------------------
 def normalise_modes(folder: Path) -> None:
     """Folders 755, files 644, and 755 for anything executable, whatever the build umask was."""
     for path in [folder, *folder.rglob("*")]:
@@ -248,128 +228,78 @@ def normalise_modes(folder: Path) -> None:
             path.chmod(0o644)
 
 
-def package_linux(folder: Path, formats: list[str], jobs: int = 1) -> list[Path]:
-    """Build the deb and rpm packages of the command line."""
-    normalise_modes(folder)
-    OUT.mkdir(parents=True, exist_ok=True)
-    machine = platform.machine().lower()
-    m = meta("cli")
-    who = author(m)
-    maintainer = who.get("name", "")
-    if who.get("email"):
-        maintainer = f"{maintainer} <{who['email']}>"
-    urls = m.project.get("urls") or {}
-    env = {
-        **os.environ,
-        "PKG_NAME": m.name,
-        "PKG_VERSION": m.version,
-        "PKG_ARCH": {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64"}.get(machine, machine),
-        "PKG_DESCRIPTION": str(m.project.get("description", m.name)),
-        "PKG_MAINTAINER": maintainer,
-        "PKG_HOMEPAGE": str(urls.get("Homepage", "")),  # type: ignore[attr-defined]
-        "PKG_LICENSE": str(m.project.get("license", "")),
-        "PKG_SOURCE_DIR": str(folder),
-        "PKG_LICENSE_FILE": str(licence_file("cli")),
-    }
-    nfpm = shlex.split(os.environ.get("NFPM", "nfpm"))
-    if shutil.which(nfpm[0]) is None:
-        raise SystemExit(
-            "nfpm not found. Install it (version in installer/tools.toml) or set NFPM."
-        )
-    before = set(OUT.iterdir())
-
-    def package(packager: str) -> None:
-        run(
-            [*nfpm, "package", "--config", str(NFPM_CONFIG), "--packager", packager,
-             "--target", str(OUT)],
-            env=env,
-        )  # fmt: skip
-
-    run_parallel([functools.partial(package, packager) for packager in formats], jobs)
-    return sorted(set(OUT.iterdir()) - before)
-
-
-def sync() -> None:
-    """Install the installer dependency group (``uv sync --group installer``)."""
+# ---- driver ------------------------------------------------------------------------------------
+def sync(product: Product) -> None:
+    """Install the product and the installer dependency group, and nothing else."""
     uv = shutil.which("uv")
     if uv is None:
         raise SystemExit("--sync needs uv on PATH.")
-    run([uv, "sync", "--group", "installer"])
+    dist = str(product.meta.project["name"])
+    run([uv, "sync", "--package", dist, "--group", "installer", "--no-dev"])
 
 
-# ---- smoke test --------------------------------------------------------------------------------
-def smoke(products: list[str]) -> None:
+def smoke(product: Product) -> None:
     """Start each built executable and check it answers (the test_frozen_*.py integration tests)."""
-    tests = ["tests/cli/integration/test_frozen_cli.py"]
-    if "ui" in products:
-        tests.append("tests/ui/integration/test_frozen_ui.py")
-    run([sys.executable, "-m", "pytest", "-m", "integration", "--no-cov", "-p", "no:cacheprovider",
-         *tests])  # fmt: skip
+    for folder, test in product.smoke:
+        run(
+            [sys.executable, "-m", "pytest", "-m", "integration", "--no-cov",
+             "-p", "no:cacheprovider", test],
+            cwd=folder,
+        )  # fmt: skip
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    # No choices= here: argparse rejects the empty list that nargs="*" yields when none is given.
-    parser.add_argument("products", nargs="*", metavar="{cli,ui}", help="default: all for this OS")
-    parser.add_argument("--sync", action="store_true",
-                        help="uv sync the groups the products need first")  # fmt: skip
-    parser.add_argument("--build-frontend", action="store_true", help="run npm ci && npm run build")
-    parser.add_argument("--smoke", action="store_true", help="run the smoke tests on the builds")
-    parser.add_argument("--format", metavar="exe,deb,rpm",
-                        help="comma-separated formats: exe on Windows, deb and rpm on Linux "
-                             "(default: all for this OS)")  # fmt: skip
+def main(product: Product) -> None:
+    """Build one product's installers from the command line: the options every product has."""
+    parser = argparse.ArgumentParser(description=f"Build the {product.meta.title} installers.")
+    parser.add_argument("--sync", action="store_true", help="uv sync the installer group first")
+    parser.add_argument("--smoke", action="store_true", help="run the smoke tests on the build")
+    allowed = ["exe"] if WINDOWS else list(product.linux_formats)
+    parser.add_argument(
+        "--format",
+        metavar="exe,deb,rpm",
+        help=f"comma-separated formats, here: {', '.join(allowed) or 'none'} (default: all)",
+    )
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1,
                         help="builds to run at once (1 = one after the other)")  # fmt: skip
+    if product.add_arguments:
+        product.add_arguments(parser)
     args = parser.parse_args()
 
     if not (WINDOWS or LINUX):
         raise SystemExit("Installers are built on Windows (setup.exe) and Linux (deb, rpm) only.")
-    unknown = sorted(set(args.products) - {"cli", "ui"})
-    if unknown:
-        parser.error(f"unknown product: {', '.join(unknown)} (choose from 'cli', 'ui')")
+    if not allowed:
+        raise SystemExit(f"The {product.meta.title} installer is built on Windows only.")
     formats = [f.strip() for f in args.format.split(",") if f.strip()] if args.format else []
-    unknown_formats = sorted(set(formats) - {"exe", "deb", "rpm"})
-    if unknown_formats:
-        parser.error(f"unknown format: {', '.join(unknown_formats)} (choose from exe, deb, rpm)")
-    allowed = ["exe"] if WINDOWS else ["deb", "rpm"]
+    unknown = sorted(set(formats) - set(FORMATS))
+    if unknown:
+        parser.error(f"unknown format: {', '.join(unknown)} (choose from {', '.join(FORMATS)})")
     wrong = [f for f in formats if f not in allowed]
     if wrong:
         raise SystemExit(
             f"--format {','.join(wrong)} cannot be built on this OS (here: {', '.join(allowed)})."
         )
     formats = formats or allowed
-    products = args.products or (["cli", "ui"] if WINDOWS else ["cli"])
-    if "ui" in products and not WINDOWS:
-        raise SystemExit("The UI is Windows only.")
 
     if args.sync:
-        sync()
-    built: list[Path] = []
-    if "ui" in products and args.build_frontend:
-        build_frontend()
-    folders = dict(
-        zip(
-            products,
-            run_parallel([functools.partial(freeze, p) for p in products], args.jobs),
-            strict=True,
-        )
-    )
+        sync(product)
+    if product.prepare:
+        product.prepare(args)
+    folder = freeze(product)
     if WINDOWS:
-        brand_icon()  # fail early, before the setups are built side by side
-        tasks: list[Callable[[], Path]] = [
-            functools.partial(package_exe, p, folders[p]) for p in products
-        ]
-        if "cli" in products:
-            tasks.append(functools.partial(package_zip, folders["cli"]))
-        built.extend(run_parallel(tasks, args.jobs))
+        brand_icon()  # fail early, before the setup and its extras are built side by side
+        tasks: list[Callable[[], Path]] = [functools.partial(package_exe, product, folder)]
+        tasks += [functools.partial(extra, product, folder) for extra in product.windows_extras]
+        built = run_parallel(tasks, args.jobs)
     else:
-        built.extend(package_linux(folders["cli"], formats, args.jobs))
+        if product.package_linux is None:
+            raise SystemExit(f"{product.meta.title} has no Linux package.")
+        built = product.package_linux(product, folder, formats, args.jobs)
     if args.smoke:
-        smoke(products)
+        smoke(product)
     print("\nBuilt:")
     for path in built:
         print(f"  {path.relative_to(ROOT)}  ({path.stat().st_size / 1_048_576:.1f} MB)")
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(__doc__)
