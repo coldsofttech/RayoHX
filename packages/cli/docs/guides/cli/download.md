@@ -127,11 +127,16 @@ Options are grouped the same way in `rayohx download --help`.
 | `--resolution` | | Only streams with exactly this size, such as `1280x720`. |
 | `--bandwidth` | | Only streams with exactly this bit rate, in bits per second (for example `2800000`). |
 | `--variant-name` | | Only streams with exactly this name (ignoring case). |
+| `--codec` | | Prefer this video codec: `h264`, `hevc`, `vp9` or `av1`. Others are used if it is missing. |
+| `--video-range` | | Prefer this dynamic range: `sdr`, `pq`, `hlg` or `hdr` (`pq` or `hlg`). |
+| `--max-frame-rate` | | Never pick a stream above this many frames per second, for example `30`. |
 | `--audio` | `-a` | Audio language to download (repeat for several), for example `en`. |
 | `--audio-name` | | Download the audio track with this exact name (repeatable). |
 | `--subtitles` | `-s` | Subtitle language to save beside the video (repeat for several). |
 | `--subtitle-name` | | Save the subtitle track with this exact name (repeatable). |
 | `--video-only` | | Download only the video, leaving out separate audio and subtitle tracks. |
+| `--input-file` | `-i` | Also download the addresses listed in this file (see [Several streams](#several-streams)). |
+| `--stop-on-error` | | With several addresses, stop at the first failure. |
 
 If a wish cannot be met (no audio in the language you asked for), the closest track is used and a
 note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
@@ -148,6 +153,10 @@ note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
 | `--proxy` | | An `http://`, `https://`, `socks5://` or `socks5h://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable, since command lines can be seen by other users. |
 | `--env-proxy` / `--no-env-proxy` | off | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. |
 | `--insecure` | | Do not check TLS certificates. Only for servers you trust. |
+| `--env-proxy` / `--no-env-proxy` | | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. Off by default. |
+| `--client-cert` | | A client certificate (PEM) for servers that require mutual TLS. |
+| `--client-key` | | The private key for `--client-cert`, if it is a separate file. |
+| `--client-key-password` | | The password of an encrypted client key. Prefer the environment variable `RAYOHX_CLIENT_KEY_PASSWORD`. |
 | `--ca-bundle` | | A file of trusted certificate authorities (PEM), instead of the system's. |
 | `--client-cert` | | A client certificate (PEM) for servers that require mutual TLS. |
 | `--client-key` | | The private key (PEM) for `--client-cert`, if it is in a separate file. |
@@ -173,6 +182,7 @@ and a speed limit.
 | `--workspace` | | A folder for working files (default: beside the output). |
 | `--buffer-size` | | Memory for the segment buffer, for example `64M`. |
 | `--max-temp-size` | | Most working disk space to use, for example `2G`. |
+| `--allow-file-keys` / `--no-allow-file-keys` | | Let a playlist's `file:` key addresses read a key from this machine. Off by default; only for streams you trust. |
 | `--space-check` / `--no-space-check` | | Check that the disk has room (on by default). Turn it off if the free space is reported wrongly, for example on some network drives. |
 
 ### Display

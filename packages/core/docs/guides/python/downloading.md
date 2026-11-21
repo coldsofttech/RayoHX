@@ -39,8 +39,9 @@ video, not twice that.
 
 - **MPEG-TS** streams are saved as `.ts` and **fragmented MP4** streams as `.mp4`. An MPEG-TS stream
   can also be saved as `.mp4`: it is re-wrapped without re-encoding.
-- **Encrypted streams** (plain AES-128) work. Protected (DRM) streams, SAMPLE-AES and live streams
-  are refused with an explanation.
+- **Encrypted streams** (plain AES-128) work, with keys from `http(s):` or `data:` addresses, a
+  `file:` address if you allow it, or your own `key_fetcher`. Protected (DRM) streams, SAMPLE-AES
+  and live streams are refused with an explanation.
 - **A name that does not match what is inside** (for example `.mp4` for an MPEG-TS stream) is
   refused, never quietly mislabeled.
 - **Streams with a separate audio track** are joined into one `.mp4`, using the audio you chose
@@ -184,6 +185,12 @@ rayohx.Downloader(
 
 Downloads one stream. Create it, optionally subscribe to `events`, then call `run`. A `Downloader`
 runs once.
+
+`pause()` stops new segments from starting (those already running finish), `resume()` lets the
+download go on, and `is_paused` tells which. The state moves `DOWNLOADING` → `PAUSED` →
+`DOWNLOADING` with `DOWNLOAD_PAUSED` and `DOWNLOAD_RESUMED` events. Pausing before `run()` starts
+the download paused. Cancelling a paused download stops it at once. The same controls are on
+`CancellationToken` (`pause`, `resume`, `is_paused`).
 
 | Parameter | Meaning |
 |---|---|
