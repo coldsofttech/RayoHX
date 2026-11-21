@@ -38,10 +38,6 @@ jobs:
             python-version: "3.11"
           - os: macos-latest # Apple silicon
             python-version: "3.11"
-          - os: macos-15-intel
-            python-version: "3.11"
-          - os: ubuntu-24.04-arm
-            python-version: "3.11"
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
@@ -64,10 +60,6 @@ jobs:
           - os: windows-latest
             python-version: "3.11"
           - os: macos-latest # Apple silicon
-            python-version: "3.11"
-          - os: macos-15-intel
-            python-version: "3.11"
-          - os: ubuntu-24.04-arm
             python-version: "3.11"
     steps:
       - name: Check out the repository

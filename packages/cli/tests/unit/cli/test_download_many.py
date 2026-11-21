@@ -103,7 +103,7 @@ def test_no_address_is_a_usage_error(runner: CliRunner) -> None:
 def test_an_unreadable_list_is_a_usage_error(runner: CliRunner, tmp_path: Path) -> None:
     result = runner.invoke(app, ["download", "-i", str(tmp_path / "missing.txt")])
     assert result.exit_code == 2
-    assert "cannot be read" in result.stderr
+    assert "cannot be read" in " ".join(result.stderr.split())  # the long path wraps the line
 
 
 def test_directory_sets_where_a_single_download_goes(

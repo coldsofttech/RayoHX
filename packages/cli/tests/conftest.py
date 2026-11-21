@@ -32,6 +32,8 @@ def _clean_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
             monkeypatch.delenv(name)
     monkeypatch.setenv("COLUMNS", "110")
     monkeypatch.setenv("NO_COLOR", "1")
+    # Typer decides at import time to force colors on GitHub Actions; the tests read plain text
+    monkeypatch.setattr("typer.rich_utils.FORCE_TERMINAL", False)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
     work = tmp_path / "_cwd"
