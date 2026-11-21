@@ -47,6 +47,7 @@ jobs:
           # Trivy reads Dockerfile.dockerignore as a Dockerfile and fails on it
           skip-files: packages/docker/Dockerfile.dockerignore
           severity: HIGH,CRITICAL
+          limit-severities-for-sarif: true # the SARIF report otherwise lists, and fails on, every severity
           format: sarif
           output: trivy-config.sarif
           exit-code: "1"
@@ -83,6 +84,7 @@ jobs:
         with:
           image-ref: rayohx:scan
           severity: HIGH,CRITICAL
+          limit-severities-for-sarif: true # the SARIF report otherwise lists, and fails on, every severity
           ignore-unfixed: true
           format: sarif
           output: trivy-image.sarif

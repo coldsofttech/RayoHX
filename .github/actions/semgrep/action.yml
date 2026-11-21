@@ -44,6 +44,14 @@ runs:
           --error \
           --sarif --output semgrep.sarif \
           "$SEMGREP_PATH"
+    # Findings silenced in the source with `nosemgrep` are still written to the report, marked as
+    # suppressed, and code scanning would show them as open alerts. Leave them out.
+    - name: Drop the findings suppressed in the source
+      if: always() && hashFiles('semgrep.sarif') != ''
+      shell: bash
+      run: |
+        jq '.runs[].results |= map(select((.suppressions // []) | length == 0))' semgrep.sarif > semgrep.filtered.sarif
+        mv semgrep.filtered.sarif semgrep.sarif
     - name: Upload results
       if: always() && hashFiles('semgrep.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
       uses: github/codeql-action/upload-sarif@v4

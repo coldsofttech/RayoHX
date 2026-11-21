@@ -42,6 +42,7 @@ def shell_on_windows(monkeypatch: pytest.MonkeyPatch) -> type[FakeShell]:
     FakeShell.instances = []
     monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setattr(cornea, "Shell", FakeShell, raising=False)  # may not import off Windows
+    monkeypatch.setattr(cornea, "ready_line", lambda ready: str(ready), raising=False)
     return FakeShell
 
 
