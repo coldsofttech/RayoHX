@@ -4,17 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rayohx.errors import ConfigurationError
-from rayohx.stream._ranking import (
-    best_key,
-    closest_to,
-    describe,
-    describe_full,
-    is_audio_only,
-    worst_key,
-)
-from rayohx.stream.quality import quality_height
-
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -33,6 +22,9 @@ def select_variant(
     Raises:
         PlaylistError: If there are no variants.
     """
+    from rayohx.stream._ranking import best_key, closest_to, describe, is_audio_only, worst_key
+    from rayohx.stream.quality import quality_height
+
     notes = notes if notes is not None else []
     if not variants:
         from rayohx.errors import PlaylistError
@@ -42,6 +34,8 @@ def select_variant(
     entries = list(enumerate(variants))
     if config.variant is not None:
         if config.variant > len(entries):
+            from rayohx.errors import ConfigurationError
+
             raise ConfigurationError(
                 f"There is no stream number {config.variant}.",
                 hint=f"The playlist lists {len(entries)} stream(s), numbered from 1.",
@@ -98,6 +92,9 @@ def _exact_matches(
     if not wanted:
         return entries
     if not found:
+        from rayohx.errors import ConfigurationError
+        from rayohx.stream._ranking import describe_full
+
         listing = "; ".join(f"{index + 1}: {describe_full(v)}" for index, v in entries)
         raise ConfigurationError(
             f"No stream has {' and '.join(wanted)}.", hint=f"The streams are {listing}."

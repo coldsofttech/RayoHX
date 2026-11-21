@@ -1,11 +1,14 @@
+import struct
+
 import pytest
 
-import rayohx._mux.muxer as muxer_module
-from rayohx._mux.fmp4 import RawTrack, build_fragment
-from rayohx._mux.model import Sample
-from rayohx._mux.muxer import Mp4Muxer
+import rayohx._mux._muxer as muxer_module
+from rayohx._mux._fmp4 import RawTrack, build_fragment
+from rayohx._mux._model import Sample
+from rayohx._mux._mp4read import find_box
+from rayohx._mux._muxer import Mp4Muxer, patch_fragment
 from rayohx.errors import FinalizationError
-from tests.unit._mux.helpers import config, read_fragments, top_level
+from tests.helpers.mux import config, read_fragments, samples, top_level
 
 
 def fragment(track: int, start: int, *, count: int = 2, size: int = 20) -> bytes:
@@ -177,3 +180,38 @@ def test_bytes_written_counts_everything() -> None:
     muxer.add_fragment(video, fragment(video, 0), 0)
     muxer.close()
     assert muxer.bytes_written == len(out)
+
+
+# --- patching a fragment for the output file ---------------------------------------------------
+
+
+def test_the_sequence_track_and_decode_time_are_rewritten() -> None:
+    patched = patch_fragment(build_fragment(7, samples(), 123456), 42, 3, 1000)
+    (fragment,) = read_fragments(patched)
+    assert (fragment["sequence"], fragment["track"], fragment["start"]) == (42, 3, 122456)
+    assert fragment["count"] == 3
+
+
+def test_a_decode_time_never_goes_below_zero() -> None:
+    patched = patch_fragment(build_fragment(1, samples(), 500), 1, 1, 9000)
+    assert read_fragments(patched)[0]["start"] == 0
+
+
+def test_version_zero_decode_times_are_handled() -> None:
+    data = bytearray(build_fragment(1, samples(), 5000))
+    tfdt = find_box(data, (b"moof", b"traf", b"tfdt"), 0)
+    assert tfdt is not None
+    # Rewrite as a version-0 box: same size, 32-bit time, the other four bytes unused.
+    data[tfdt[0] + 8] = 0
+    struct.pack_into(">I", data, tfdt[0] + 12, 5000)
+    patched = patch_fragment(bytes(data), 1, 1, 1000)
+    assert struct.unpack_from(">I", patched, tfdt[0] + 12)[0] == 4000
+
+
+def test_fragments_with_absolute_data_offsets_are_refused() -> None:
+    data = bytearray(build_fragment(1, samples(), 0))
+    tfhd = find_box(data, (b"moof", b"traf", b"tfhd"), 0)
+    assert tfhd is not None
+    data[tfhd[0] + 11] |= 0x01  # base-data-offset-present
+    with pytest.raises(FinalizationError, match="absolute data offsets"):
+        patch_fragment(bytes(data), 1, 1, 0)

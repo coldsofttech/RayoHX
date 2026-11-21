@@ -5,9 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from rayohx.config._common import check_positive
 from rayohx.enums import StorageStrategy
-from rayohx.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,9 +34,13 @@ class StorageConfig:
     check_space: bool = True
 
     def __post_init__(self) -> None:
+        from rayohx.config._common import check_positive
+
         check_positive("buffer_bytes", self.buffer_bytes)
         check_positive("max_temp_bytes", self.max_temp_bytes, allow_none=True)
         if self.reserve_bytes < 0:
+            from rayohx.errors import ConfigurationError
+
             raise ConfigurationError("reserve_bytes must not be negative.")
 
     def as_dict(self) -> dict[str, Any]:

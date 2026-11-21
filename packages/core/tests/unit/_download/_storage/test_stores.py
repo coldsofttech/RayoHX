@@ -86,7 +86,7 @@ def test_a_failed_write_leaves_no_partial_file(
     def full(_source: object, _target: object) -> None:
         raise OSError(errno.ENOSPC, "No space left on device")
 
-    monkeypatch.setattr("rayohx._download._storage._stores.os.replace", full)
+    monkeypatch.setattr("os.replace", full)
     with pytest.raises(InsufficientStorageError):
         store.put(seg(1))
     assert list((tmp_path / "segments").iterdir()) == []

@@ -10,31 +10,27 @@
 Subtitles are written next to the output as ``.vtt`` files.
 """
 
-import dataclasses
-import logging
-import os
-from collections.abc import Callable
-from dataclasses import dataclass
-from pathlib import Path
+from __future__ import annotations
 
-from rayohx._download._containers import validate_fmp4_file
-from rayohx._download._media import DownloadSummary, MediaDownload
-from rayohx._download._output import OutputPlan, sanitize_filename
-from rayohx._download._sinks import DirectorySink, FileSink, OutputSink, StreamSink
-from rayohx._http import HttpClient
-from rayohx._mux import ffmpeg
-from rayohx._mux.sink import MuxSink, TrackFile
-from rayohx._mux.webvtt import merge_segments
-from rayohx.cancellation import CancellationToken
-from rayohx.config import DownloadConfig
-from rayohx.enums import ContainerFormat
-from rayohx.errors import OutputExistsError, OutputFormatError
-from rayohx.events import EventBus
-from rayohx.models import AudioTrack, MediaPlaylist, SubtitleTrack, Variant
+import logging
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from rayohx._download._media import DownloadSummary, MediaDownload
+    from rayohx._download._output import OutputPlan
+    from rayohx._download._sinks import OutputSink
+    from rayohx._http import HttpClient
+    from rayohx.cancellation import CancellationToken
+    from rayohx.config import DownloadConfig
+    from rayohx.enums import ContainerFormat
+    from rayohx.events import EventBus
+    from rayohx.models import AudioTrack, MediaPlaylist, SubtitleTrack, Variant
 
 logger = logging.getLogger(__name__)
-
-_EXTENSION = {ContainerFormat.MPEG_TS: ".ts", ContainerFormat.FMP4: ".mp4"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +66,8 @@ class Delivery:
         on_finalizing: Callable[[], None] | None = None,
         config: DownloadConfig | None = None,
     ) -> MediaDownload:
+        from rayohx._download._media import MediaDownload
+
         return MediaDownload(
             media,
             client=self.client,
@@ -94,6 +92,8 @@ class Delivery:
         variant: Variant | None,
     ) -> DownloadSummary:
         """Join the segments as they are, or save them as separate files."""
+        from rayohx._download._sinks import DirectorySink, FileSink
+
         overwrite = self.config.output.overwrite
         sink = (
             DirectorySink(plan.path, container, overwrite=overwrite)
@@ -122,6 +122,9 @@ class Delivery:
 
         Returns the summary and the seconds taken off the timeline (for subtitles).
         """
+        from rayohx._mux._sink import MuxSink, TrackFile
+        from rayohx.enums import ContainerFormat
+
         saved: list[Path] = []
         try:
             extras = []
@@ -160,6 +163,12 @@ class Delivery:
         video_audio: tuple[str, ...] = (),
     ) -> DownloadSummary:
         """Download the pieces to files, then have FFmpeg copy them into one MP4."""
+        import dataclasses
+
+        from rayohx._download._containers import validate_fmp4_file
+        from rayohx._download._sinks import FileSink
+        from rayohx._mux import _ffmpeg as ffmpeg
+
         saved: list[Path] = []
         part = plan.path.with_name(plan.path.name + ".part")
         try:
@@ -192,10 +201,14 @@ class Delivery:
             _remove(saved)
 
     def _check_free(self, target: Path) -> None:
+        from rayohx.errors import OutputExistsError
+
         if target.exists() and not self.config.output.overwrite:
             raise OutputExistsError(f"The output file already exists: {target}")
 
     def _place(self, part: Path, target: Path) -> None:
+        import os
+
         self._check_free(target)
         os.replace(part, target)
 
@@ -203,6 +216,10 @@ class Delivery:
 
     def _save(self, audio: Rendition, path: Path) -> None:
         """Download a separate track into a file, in full, with nothing kept for resuming."""
+        import dataclasses
+
+        from rayohx._download._sinks import FileSink
+
         self._media_download(
             audio.media,
             sink=FileSink(path, overwrite=True),
@@ -212,7 +229,10 @@ class Delivery:
 
     @staticmethod
     def _temporary(output: Path, label: str, container: ContainerFormat) -> Path:
-        suffix = _EXTENSION.get(container, ".bin")
+        from rayohx.enums import ContainerFormat
+
+        extensions = {ContainerFormat.MPEG_TS: ".ts", ContainerFormat.FMP4: ".mp4"}
+        suffix = extensions.get(container, ".bin")
         return output.with_name(f".{output.name}.{label}{suffix}")
 
     # --- subtitles -------------------------------------------------------------------------
@@ -223,6 +243,12 @@ class Delivery:
         shift: float,
     ) -> list[Path]:
         """Download each subtitle track and write it as a ``.vtt`` file."""
+        import dataclasses
+
+        from rayohx._download._sinks import StreamSink
+        from rayohx._mux._webvtt import merge_segments
+        from rayohx.errors import OutputFormatError
+
         written = []
         for track, media, path in tracks:
             texts: list[bytes] = []
@@ -249,6 +275,8 @@ class Delivery:
 
 def subtitle_path(output: Path, track: SubtitleTrack, used: set[Path]) -> Path:
     """Where a subtitle track is saved: ``<output name>.<language>.vtt``, made unique."""
+    from rayohx._download._output import sanitize_filename
+
     label = sanitize_filename(track.language or track.name, "subtitles")
     path = output.with_suffix(f".{label}.vtt")
     count = 2
@@ -261,6 +289,8 @@ def subtitle_path(output: Path, track: SubtitleTrack, used: set[Path]) -> Path:
 
 def check_free(paths: list[Path], overwrite: bool) -> None:
     """Fail early if a file we are about to write already exists."""
+    from rayohx.errors import OutputExistsError
+
     if overwrite:
         return
     for path in paths:

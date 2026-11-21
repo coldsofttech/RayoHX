@@ -1,21 +1,15 @@
 """Limits and helpers shared by the HTTP client and the response checks."""
 
-import ssl
-from pathlib import Path
-from urllib.parse import quote, urlsplit
+from __future__ import annotations
 
-import httpx
+from typing import TYPE_CHECKING
 
-from rayohx._redaction import redact_url
-from rayohx.config import ProxyConfig
-from rayohx.errors import (
-    ConfigurationError,
-    InvalidResponseError,
-    NetworkConnectionError,
-    NetworkError,
-    NetworkTimeoutError,
-    TLSError,
-)
+if TYPE_CHECKING:
+    import ssl
+    from pathlib import Path
+
+    from rayohx.config import ProxyConfig
+    from rayohx.errors import NetworkError
 
 CHUNK_SIZE = 64 * 1024
 MAX_PLAYLIST_BYTES = 32 * 1024 * 1024
@@ -26,11 +20,18 @@ DEFAULT_POOL_SIZE = 16
 
 def host_of(url: str) -> str:
     """The lower-cased host name of ``url``, or an empty string."""
+    from urllib.parse import urlsplit
+
     return (urlsplit(url).hostname or "").lower()
 
 
 def verify(value: bool | Path) -> bool | ssl.SSLContext:
     """The ``httpx`` TLS setting for a ``verify_tls`` value: a flag or a CA bundle path."""
+    import ssl
+    from pathlib import Path
+
+    from rayohx.errors import ConfigurationError
+
     if isinstance(value, Path):
         try:
             return ssl.create_default_context(cafile=str(value))
@@ -44,6 +45,8 @@ def verify(value: bool | Path) -> bool | ssl.SSLContext:
 
 def proxy_url(proxy: ProxyConfig) -> str:
     """The proxy address with its credentials, if any, percent-encoded into it."""
+    from urllib.parse import quote, urlsplit
+
     if proxy.username is None:
         return proxy.url
     parts = urlsplit(proxy.url)
@@ -55,6 +58,19 @@ def proxy_url(proxy: ProxyConfig) -> str:
 
 def translate(exc: Exception, url: str) -> NetworkError:
     """Turn an ``httpx`` failure into the matching RayoHX error."""
+    import ssl
+
+    import httpx
+
+    from rayohx._redaction import redact_url
+    from rayohx.errors import (
+        InvalidResponseError,
+        NetworkConnectionError,
+        NetworkError,
+        NetworkTimeoutError,
+        TLSError,
+    )
+
     shown = redact_url(url)
     cause: BaseException | None = exc
     while cause is not None:

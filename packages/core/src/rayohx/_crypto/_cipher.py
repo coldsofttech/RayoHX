@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rayohx.errors import DecryptionError
-
 if TYPE_CHECKING:
     from rayohx.models import Segment
 
@@ -29,6 +27,8 @@ def decrypt_aes128(data: bytes, key: bytes, iv: bytes) -> bytes:
     """
     from cryptography.hazmat.primitives import padding
     from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+    from rayohx.errors import DecryptionError
 
     if len(key) != KEY_SIZE or len(iv) != BLOCK_SIZE:
         raise DecryptionError("The key and the initialization vector must be 16 bytes each.")

@@ -1,8 +1,12 @@
 """Removal of secrets from URLs, headers and free text before they are logged or shown."""
 
+from __future__ import annotations
+
 import re
-from collections.abc import Mapping
-from urllib.parse import urlsplit
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 REDACTED = "***"
 
@@ -41,6 +45,8 @@ def is_sensitive_name(name: str) -> bool:
 
 def redact_url(url: str) -> str:
     """Return ``url`` without credentials in its user info or sensitive query values."""
+    from urllib.parse import urlsplit
+
     try:
         parts = urlsplit(url)
     except ValueError:

@@ -1,10 +1,20 @@
 """Attribute lists such as ``KEY=value,KEY="quoted, value"``."""
 
-import re
+from __future__ import annotations
 
-from rayohx.errors import InvalidPlaylistError
+import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rayohx.errors import InvalidPlaylistError
 
 _ATTRIBUTE_NAME = re.compile(r"^[A-Z0-9-]+$")
+
+
+def _invalid(message: str, line: int | None) -> InvalidPlaylistError:
+    from rayohx.errors import InvalidPlaylistError
+
+    return InvalidPlaylistError(message, line=line)
 
 
 def parse_attribute_list(text: str, *, line: int | None = None) -> dict[str, str]:
@@ -25,17 +35,15 @@ def parse_attribute_list(text: str, *, line: int | None = None) -> dict[str, str
             break
         equals = text.find("=", position)
         if equals == -1:
-            raise InvalidPlaylistError(
-                f"Attribute without a value: {text[position:]!r}.", line=line
-            )
+            raise _invalid(f"Attribute without a value: {text[position:]!r}.", line)
         name = text[position:equals].strip()
         if not _ATTRIBUTE_NAME.match(name):
-            raise InvalidPlaylistError(f"Invalid attribute name {name!r}.", line=line)
+            raise _invalid(f"Invalid attribute name {name!r}.", line)
         position = equals + 1
         if position < length and text[position] == '"':
             end = text.find('"', position + 1)
             if end == -1:
-                raise InvalidPlaylistError(f"Unterminated quoted value for {name}.", line=line)
+                raise _invalid(f"Unterminated quoted value for {name}.", line)
             value = text[position + 1 : end]
             position = end + 1
         else:
@@ -48,6 +56,6 @@ def parse_attribute_list(text: str, *, line: int | None = None) -> dict[str, str
             position += 1
         if position < length:
             if text[position] != ",":
-                raise InvalidPlaylistError(f"Expected a comma after {name}.", line=line)
+                raise _invalid(f"Expected a comma after {name}.", line)
             position += 1
     return attributes

@@ -5,25 +5,31 @@ Doing it here keeps them identical. Every address is passed through the redactor
 link's token never ends up in a log or a pipe.
 """
 
-from typing import Any
+from __future__ import annotations
 
-from rayohx._redaction import redact_url
-from rayohx.models import (
-    AudioTrack,
-    DownloadProgress,
-    DownloadResult,
-    MasterPlaylist,
-    MediaPlaylist,
-    Playlist,
-    SubtitleTrack,
-    Variant,
-    VideoTrack,
-)
-from rayohx.stream import StreamSelection
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
+
+    from rayohx.models import (
+        AudioTrack,
+        DownloadProgress,
+        DownloadResult,
+        MasterPlaylist,
+        MediaPlaylist,
+        Playlist,
+        SubtitleTrack,
+        Variant,
+        VideoTrack,
+    )
+    from rayohx.stream import StreamSelection
 
 
 def variant_to_dict(index: int, variant: Variant) -> dict[str, Any]:
     """A variant, with its position in the playlist."""
+    from rayohx._redaction import redact_url
+
     return {
         "index": index + 1,
         "name": variant.name,
@@ -41,6 +47,9 @@ def variant_to_dict(index: int, variant: Variant) -> dict[str, Any]:
 
 def track_to_dict(track: AudioTrack | SubtitleTrack | VideoTrack) -> dict[str, Any]:
     """An audio, subtitle or video track."""
+    from rayohx._redaction import redact_url
+    from rayohx.models import AudioTrack, VideoTrack
+
     data: dict[str, Any] = {
         "group": track.group_id,
         "name": track.name,
@@ -73,6 +82,9 @@ def playlist_to_dict(
     playlist: Playlist, selection: StreamSelection | None = None
 ) -> dict[str, Any]:
     """Describe a master or media playlist."""
+    from rayohx._redaction import redact_url
+    from rayohx.models import MasterPlaylist
+
     if isinstance(playlist, MasterPlaylist):
         data: dict[str, Any] = {
             "type": "master",
@@ -89,6 +101,8 @@ def playlist_to_dict(
 
 
 def _media_to_dict(playlist: MediaPlaylist) -> dict[str, Any]:
+    from rayohx._redaction import redact_url
+
     methods = sorted(
         {s.encryption.method.value for s in playlist.segments if s.encryption is not None}
     )

@@ -32,3 +32,6 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Login credentials go only to the starting host and to hosts you list; redirects never carry them elsewhere.
 - Secrets such as tokens, cookies and proxy passwords are hidden from logs and error messages.
+- Segment names from a stream cannot write outside the download folder, and an existing file is never replaced unless you allow it.
+- Unsupported web address schemes and endless redirect loops are refused.
+- Damaged or hostile streams are refused with a clear error instead of crashing.

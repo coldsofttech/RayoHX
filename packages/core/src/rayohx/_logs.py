@@ -10,8 +10,6 @@ import logging
 from contextvars import ContextVar
 from typing import TYPE_CHECKING
 
-from rayohx._redaction import redact_text
-
 if TYPE_CHECKING:
     from typing import Any
 
@@ -37,6 +35,8 @@ def get_logger(name: str | None = None) -> logging.Logger:
 
 
 def _redact_arg(value: Any) -> Any:
+    from rayohx._redaction import redact_text
+
     return redact_text(value) if isinstance(value, str) else value
 
 
@@ -44,6 +44,8 @@ class RedactionFilter(logging.Filter):
     """Adds the download id and strips secrets from the message and its arguments."""
 
     def filter(self, record: logging.LogRecord) -> bool:
+        from rayohx._redaction import redact_text
+
         record.download_id = _download_id.get()
         if isinstance(record.msg, str):
             record.msg = redact_text(record.msg)

@@ -1,12 +1,13 @@
 """Safe file names, from text, from web addresses, and for separate segment files."""
 
+from __future__ import annotations
+
 import re
-from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from typing import TYPE_CHECKING
 
-from rayohx.enums import ContainerFormat
+if TYPE_CHECKING:
+    from rayohx.enums import ContainerFormat
 
-_SEGMENT_SUFFIX = {ContainerFormat.MPEG_TS: ".ts", ContainerFormat.FMP4: ".m4s"}
 _UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
 _RESERVED = frozenset(
     {
@@ -38,6 +39,9 @@ def sanitize_filename(text: str, default: str = "video") -> str:
 
 def name_from_url(url: str) -> str:
     """A file name stem taken from the last part of a web address."""
+    from pathlib import Path
+    from urllib.parse import unquote, urlsplit
+
     generic = {"index", "master", "playlist", "main", "manifest"}
     for part in reversed([p for p in unquote(urlsplit(url).path).split("/") if p]):
         stem = Path(part).stem
@@ -48,6 +52,9 @@ def name_from_url(url: str) -> str:
 
 def segment_file_name(index: int, container: ContainerFormat, *, init: bool = False) -> str:
     """The name of a separate segment file, for example ``segment-00001.ts``."""
+    from rayohx.enums import ContainerFormat
+
     if init:
         return f"init-{index:05d}.mp4"
-    return f"segment-{index + 1:05d}{_SEGMENT_SUFFIX.get(container, '.bin')}"
+    suffixes = {ContainerFormat.MPEG_TS: ".ts", ContainerFormat.FMP4: ".m4s"}
+    return f"segment-{index + 1:05d}{suffixes.get(container, '.bin')}"

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rayohx.errors import UnsupportedPlaylistError
-
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -21,6 +19,8 @@ def require_supported_encryption(segments: Iterable[Segment]) -> None:
     Raises:
         UnsupportedPlaylistError: For SAMPLE-AES or any non-standard key format.
     """
+    from rayohx.errors import UnsupportedPlaylistError
+
     for segment in segments:
         encryption = segment.encryption
         if encryption is not None and not encryption.is_supported:

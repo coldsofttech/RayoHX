@@ -5,28 +5,28 @@ in playlist order and hands them to the sink, so sinks need no locking. New work
 while the storage strategy allows it, which is what keeps memory and disk use bounded.
 """
 
-import contextvars
-import threading
-import time
-from collections.abc import Callable, Sequence
-from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from __future__ import annotations
 
-from rayohx._download._fetcher import HlsSegmentFetcher
-from rayohx._download._progress import ProgressTracker
-from rayohx._download._sinks import OutputSink
-from rayohx._download._storage import (
-    DEFAULT_SPILL_BYTES,
-    WINDOW_FACTOR,
-    SegmentStore,
-    SizeEstimator,
-    StorageTracker,
-)
-from rayohx.cancellation import CancellationToken
-from rayohx.config import StorageConfig
-from rayohx.enums import DownloadState, EventType, StorageStrategy
-from rayohx.errors import CancellationError, DownloadError, SegmentDownloadError
-from rayohx.events import DownloadEvent, EventBus
-from rayohx.models import Segment
+import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+    from concurrent.futures import Future, ThreadPoolExecutor
+
+    from rayohx._download._fetcher import HlsSegmentFetcher
+    from rayohx._download._progress import ProgressTracker
+    from rayohx._download._sinks import OutputSink
+    from rayohx._download._storage import (
+        SegmentStore,
+        SizeEstimator,
+        StorageTracker,
+    )
+    from rayohx.cancellation import CancellationToken
+    from rayohx.config import StorageConfig
+    from rayohx.enums import EventType, StorageStrategy
+    from rayohx.events import EventBus
+    from rayohx.models import Segment
 
 POLL_SECONDS = 0.2
 CHECKPOINT_SEGMENTS = 16
@@ -60,6 +60,8 @@ class SegmentPipeline:
         recheck_space: Callable[[], None] | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
+        import threading
+
         self._segments = segments
         self._fetcher = fetcher
         self._store = store
@@ -90,6 +92,10 @@ class SegmentPipeline:
 
     def run(self) -> None:
         """Download everything. Raises on the first failure, after stopping the workers."""
+        from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+
+        from rayohx.errors import DownloadError
+
         total = len(self._segments)
         present = self._store.existing()
         cursor = self.head
@@ -121,6 +127,8 @@ class SegmentPipeline:
         pool.shutdown(wait=True)
 
     def _raise_if_cancelled(self) -> None:
+        from rayohx.errors import CancellationError
+
         if self._cancel is not None and self._cancel.is_cancelled:
             raise CancellationError("The download was cancelled.")
 
@@ -134,6 +142,10 @@ class SegmentPipeline:
         total: int,
         present: set[int],
     ) -> int:
+        import contextvars
+
+        from rayohx.enums import EventType
+
         while len(pending) < self._concurrency and cursor < total:
             if cursor in present and self._store.has(cursor):
                 self._progress.segments_completed()
@@ -152,6 +164,9 @@ class SegmentPipeline:
     def _admit(self, index: int, in_flight: int) -> bool:
         """Whether the strategy lets work on ``index`` start now. The next segment to write
         is always admitted, which rules out a deadlock."""
+        from rayohx._download._storage import DEFAULT_SPILL_BYTES, WINDOW_FACTOR
+        from rayohx.enums import StorageStrategy
+
         if index == self.head:
             return True
         strategy = self._strategy
@@ -167,6 +182,8 @@ class SegmentPipeline:
         return self._tracker.disk_bytes + expected < limit
 
     def _work(self, index: int) -> int:
+        from rayohx.enums import EventType
+
         with self._active_lock:
             self._active += 1
         try:
@@ -180,6 +197,9 @@ class SegmentPipeline:
                 self._active -= 1
 
     def _finish(self, future: Future[int], index: int) -> None:
+        from rayohx.enums import EventType
+        from rayohx.errors import CancellationError, SegmentDownloadError
+
         try:
             size = future.result()
         except CancellationError:
@@ -238,6 +258,9 @@ class SegmentPipeline:
     ) -> None:
         if self._bus is None:
             return
+        from rayohx.enums import DownloadState
+        from rayohx.events import DownloadEvent
+
         self._bus.emit(
             DownloadEvent(
                 type=kind,
@@ -252,6 +275,9 @@ class SegmentPipeline:
     def _emit_progress(self, *, force: bool = False) -> None:
         if self._bus is None:
             return
+        from rayohx.enums import DownloadState, EventType
+        from rayohx.events import DownloadEvent
+
         now = self._clock()
         if not force and now - self._last_progress < PROGRESS_SECONDS:
             return

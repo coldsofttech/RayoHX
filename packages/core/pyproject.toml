@@ -55,6 +55,7 @@ select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "S603"]  # assert, subprocess and fake passwords are fine in tests
 "tests/integration/**" = ["SIM117"]  # the client is built from the running server's address
+"scripts/**" = ["T201"]  # scripts print their results
 
 [tool.mypy]
 strict = true

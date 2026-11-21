@@ -11,13 +11,15 @@ from pathlib import Path
 
 import pytest
 
-from rayohx import ContainerFormat, OutputFormat, RayoHXError, parse_playlist, plan_output
-from rayohx.mux import webvtt
-from rayohx.mux.fmp4_source import Fmp4Source
-from rayohx.mux.muxer import Mp4Muxer
-from rayohx.mux.source import probe_streams
-from rayohx.output import name_from_url, sanitize_filename
-from tests.core.mux.helpers import media, mux_ts
+from rayohx import ContainerFormat, OutputFormat, parse_playlist
+from rayohx._download._output._names import name_from_url, sanitize_filename
+from rayohx._download._output._plan import plan_output
+from rayohx._mux import _webvtt as webvtt
+from rayohx._mux._fmp4_source import Fmp4Source
+from rayohx._mux._muxer import Mp4Muxer
+from rayohx._mux._source import probe_streams
+from rayohx.errors import RayoHXError
+from tests.helpers.mux import media, mux_ts
 
 SEEDS = range(int(os.environ.get("RAYOHX_FUZZ_SEEDS", "12")))
 

@@ -6,9 +6,6 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from rayohx.config._common import check_positive
-from rayohx.errors import ConfigurationError
-
 if TYPE_CHECKING:
     from typing import Any
 
@@ -48,6 +45,9 @@ class SelectionConfig:
     variant_name: str | None = None
 
     def __post_init__(self) -> None:
+        from rayohx.config._common import check_positive
+        from rayohx.errors import ConfigurationError
+
         check_positive("variant", self.variant, allow_none=True)
         check_positive("bandwidth", self.bandwidth, allow_none=True)
         if self.resolution is not None:

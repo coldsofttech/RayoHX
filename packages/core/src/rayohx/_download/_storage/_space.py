@@ -1,16 +1,17 @@
 """How much space a download needs, and whether the disk has it."""
 
-import shutil
-import threading
-from collections.abc import Callable
-from dataclasses import dataclass
-from pathlib import Path
+from __future__ import annotations
 
-from rayohx._download._storage._common import DEFAULT_SPILL_BYTES
-from rayohx.config import StorageConfig
-from rayohx.enums import StorageStrategy
-from rayohx.errors import InsufficientStorageError
-from rayohx.models import MediaPlaylist, Variant
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from rayohx.config import StorageConfig
+    from rayohx.enums import StorageStrategy
+    from rayohx.models import MediaPlaylist, Variant
 
 #: Allowance for container overhead on top of the stream's own bitrate.
 ESTIMATE_MARGIN = 1.05
@@ -24,6 +25,8 @@ class SizeEstimator:
     """
 
     def __init__(self, durations: list[float], bits_per_second: int | None) -> None:
+        import threading
+
         self._total_duration = sum(durations)
         self._count = len(durations)
         self._initial_rate = bits_per_second / 8 if bits_per_second else None
@@ -33,7 +36,7 @@ class SizeEstimator:
         self._lock = threading.Lock()
 
     @classmethod
-    def for_playlist(cls, playlist: MediaPlaylist, variant: Variant | None) -> "SizeEstimator":
+    def for_playlist(cls, playlist: MediaPlaylist, variant: Variant | None) -> SizeEstimator:
         """Build an estimator from a playlist and, when known, the variant it belongs to."""
         rate = None
         if variant is not None:
@@ -91,6 +94,9 @@ def space_needed(
     The old rule of "twice the output" is wrong for most strategies: a direct or streaming
     download needs the output only, and a hybrid one needs a bounded amount of working space.
     """
+    from rayohx._download._storage._common import DEFAULT_SPILL_BYTES
+    from rayohx.enums import StorageStrategy
+
     estimate = int(estimate * ESTIMATE_MARGIN)
     output = estimate if writes_file else 0
     limit = config.max_temp_bytes
@@ -105,6 +111,8 @@ def space_needed(
 
 def nearest_existing(path: Path) -> Path:
     """The closest parent of ``path`` that exists, so free space can be read before creating it."""
+    from pathlib import Path
+
     current = Path(path).absolute()
     while not current.exists() and current != current.parent:
         current = current.parent
@@ -113,6 +121,8 @@ def nearest_existing(path: Path) -> Path:
 
 def free_bytes(path: Path) -> int:
     """Free space on the disk holding ``path``."""
+    import shutil
+
     return shutil.disk_usage(nearest_existing(path)).free
 
 
@@ -154,6 +164,8 @@ def check_disk_space(
 
 
 def _require(required: int, location: Path, free: Callable[[Path], int]) -> None:
+    from rayohx.errors import InsufficientStorageError
+
     available = free(location)
     if required > available:
         raise InsufficientStorageError(required, available, location=str(location))

@@ -5,10 +5,10 @@ import pytest
 
 from rayohx import CancellationToken
 from rayohx._download._containers import validate_fmp4_file
-from rayohx._mux import ffmpeg
-from rayohx._mux.ffmpeg import FfmpegInput, build_command, find_ffmpeg, remux
+from rayohx._mux import _ffmpeg as ffmpeg
+from rayohx._mux._ffmpeg import FfmpegInput, build_command, find_ffmpeg, remux
 from rayohx.errors import CancellationError, FinalizationError
-from tests.unit._mux.helpers import MEDIA, decodes_cleanly, needs_ffmpeg, probe
+from tests.helpers.mux import MEDIA, decodes_cleanly, needs_ffmpeg, probe
 
 EXE = Path("/usr/bin/ffmpeg")
 
@@ -72,9 +72,9 @@ def test_the_configured_program_is_used_if_it_exists(tmp_path: Path) -> None:
 
 
 def test_the_path_is_searched_otherwise(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("rayohx._mux.ffmpeg.shutil.which", lambda _name: "/opt/ff/ffmpeg")
+    monkeypatch.setattr("shutil.which", lambda _name: "/opt/ff/ffmpeg")
     assert find_ffmpeg() == Path("/opt/ff/ffmpeg")
-    monkeypatch.setattr("rayohx._mux.ffmpeg.shutil.which", lambda _name: None)
+    monkeypatch.setattr("shutil.which", lambda _name: None)
     assert find_ffmpeg() is None
 
 
@@ -106,7 +106,7 @@ def fake(monkeypatch: pytest.MonkeyPatch, process: FakeProcess) -> list[list[str
         commands.append(command)
         return process
 
-    monkeypatch.setattr("rayohx._mux.ffmpeg.subprocess.Popen", popen)
+    monkeypatch.setattr("subprocess.Popen", popen)
     return commands
 
 
@@ -135,7 +135,7 @@ def test_a_program_that_cannot_start(monkeypatch: pytest.MonkeyPatch) -> None:
     def refuse(*_args: object, **_kwargs: object) -> FakeProcess:
         raise OSError(2, "No such file or directory")
 
-    monkeypatch.setattr("rayohx._mux.ffmpeg.subprocess.Popen", refuse)
+    monkeypatch.setattr("subprocess.Popen", refuse)
     with pytest.raises(FinalizationError, match="could not be started") as info:
         remux(EXE, [FfmpegInput(Path("v.ts"))], Path("o.part"))
     assert info.value.hint

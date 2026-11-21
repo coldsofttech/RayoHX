@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-import dataclasses
-from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
-
-from rayohx.config import DownloadConfig
-from rayohx.downloader.controller import Downloader
-from rayohx.enums import DownloadState, OutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
+    from pathlib import Path
 
     from rayohx.cancellation import CancellationToken
+    from rayohx.config import DownloadConfig
+    from rayohx.enums import OutputFormat
     from rayohx.events import DownloadEvent
     from rayohx.models import DownloadResult
 
@@ -50,6 +47,10 @@ def download(
     Raises:
         RayoHXError: If the download fails; the message says what went wrong and what to try.
     """
+    from rayohx.config import DownloadConfig
+    from rayohx.downloader.controller import Downloader
+    from rayohx.enums import DownloadState, OutputFormat
+
     base = config or DownloadConfig()
     selection = replace(
         base.selection,
@@ -89,5 +90,7 @@ def languages(value: str | Sequence[str] | None) -> tuple[str, ...] | None:
 
 def replace(instance: T, **changes: object) -> T:
     """``dataclasses.replace`` that skips options that were not given."""
+    import dataclasses
+
     given = {name: value for name, value in changes.items() if value is not None}
     return dataclasses.replace(instance, **given) if given else instance  # type: ignore[type-var]

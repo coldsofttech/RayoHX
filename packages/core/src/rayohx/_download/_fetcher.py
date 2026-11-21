@@ -4,17 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rayohx._crypto import KeyProvider, decrypt_segment, require_supported_encryption
-from rayohx._download._containers import check_segment
-from rayohx.errors import CancellationError, DownloadError, NetworkError, SegmentDownloadError
-from rayohx.models import SegmentData
-
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
+    from rayohx._crypto import KeyProvider
     from rayohx._http import HttpClient
     from rayohx.enums import ContainerFormat
-    from rayohx.models import InitMap, Segment
+    from rayohx.models import InitMap, Segment, SegmentData
 
 
 class HlsSegmentFetcher:
@@ -28,6 +24,8 @@ class HlsSegmentFetcher:
         container: ContainerFormat | None = None,
     ) -> None:
         import threading
+
+        from rayohx._crypto import KeyProvider
 
         self._container = container
         self._client = client
@@ -50,6 +48,16 @@ class HlsSegmentFetcher:
             SegmentDownloadError: If it cannot be downloaded or decrypted.
             CancellationError: If the download was cancelled.
         """
+        from rayohx._crypto import decrypt_segment, require_supported_encryption
+        from rayohx._download._containers import check_segment
+        from rayohx.errors import (
+            CancellationError,
+            DownloadError,
+            NetworkError,
+            SegmentDownloadError,
+        )
+        from rayohx.models import SegmentData
+
         segment = self._segments[index]
         if segment.encryption is not None:
             require_supported_encryption([segment])

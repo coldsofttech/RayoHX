@@ -1,17 +1,17 @@
 """What comes back: the response type and the checks that catch bad responses."""
 
+from __future__ import annotations
+
 import re
-from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from email.utils import parsedate_to_datetime
-from urllib.parse import urljoin, urlsplit
+from typing import TYPE_CHECKING
 
-import httpx
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
-from rayohx._redaction import redact_url
-from rayohx.errors import AuthenticationError, HTTPError, InvalidResponseError
-from rayohx.models import SegmentRange
+    import httpx
+
+    from rayohx.models import SegmentRange
 
 _REDIRECTS = frozenset({301, 302, 303, 307, 308})
 _CONTENT_RANGE = re.compile(r"^bytes (\d+)-(\d+)/(\d+|\*)$")
@@ -35,6 +35,11 @@ def is_redirect(response: httpx.Response) -> bool:
 
 def redirect_target(response: httpx.Response, current: str) -> str:
     """The absolute address a redirect points to."""
+    from urllib.parse import urljoin, urlsplit
+
+    from rayohx._redaction import redact_url
+    from rayohx.errors import InvalidResponseError
+
     location = response.headers.get("location")
     if not location:
         raise InvalidResponseError(f"A redirect from {redact_url(current)} has no destination.")
@@ -48,6 +53,9 @@ def redirect_target(response: httpx.Response, current: str) -> str:
 
 def retry_after(response: httpx.Response) -> float | None:
     """Seconds the server asked to wait (``Retry-After``), or ``None``."""
+    from datetime import UTC, datetime
+    from email.utils import parsedate_to_datetime
+
     value = response.headers.get("retry-after")
     if not value:
         return None
@@ -65,6 +73,9 @@ def retry_after(response: httpx.Response) -> float | None:
 
 def check_status(response: httpx.Response, url: str, byte_range: SegmentRange | None) -> None:
     """Raise the matching error unless the status is a success (206 when a range was asked)."""
+    from rayohx._redaction import redact_url
+    from rayohx.errors import AuthenticationError, HTTPError, InvalidResponseError
+
     status = response.status_code
     if status in {401, 403}:
         raise AuthenticationError(
@@ -90,6 +101,8 @@ def declared_length(response: httpx.Response) -> int | None:
 
 def check_content_range(response: httpx.Response, requested: SegmentRange, shown: str) -> None:
     """Raise unless the server returned exactly the byte range that was requested."""
+    from rayohx.errors import InvalidResponseError
+
     match = _CONTENT_RANGE.match(response.headers.get("content-range", "").strip())
     start = requested.offset
     if start is None:

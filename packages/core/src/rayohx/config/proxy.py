@@ -4,10 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-from urllib.parse import urlsplit
-
-from rayohx._redaction import REDACTED, redact_url
-from rayohx.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from typing import Any
@@ -25,6 +21,10 @@ class ProxyConfig:
     password: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
+        from urllib.parse import urlsplit
+
+        from rayohx.errors import ConfigurationError
+
         cleaned = self.url.strip()
         try:
             parts = urlsplit(cleaned)
@@ -46,10 +46,14 @@ class ProxyConfig:
     @property
     def redacted_url(self) -> str:
         """The proxy address with any credentials hidden."""
+        from rayohx._redaction import redact_url
+
         return redact_url(self.url)
 
     def as_dict(self) -> dict[str, Any]:
         """A serializable view without secrets."""
+        from rayohx._redaction import REDACTED
+
         return {
             "url": self.redacted_url,
             "username": REDACTED if self.username else None,

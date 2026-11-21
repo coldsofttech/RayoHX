@@ -3,12 +3,19 @@ from pathlib import Path
 
 import pytest
 
-from rayohx._mux.fmp4 import build_init_ordered
-from rayohx._mux.fmp4_source import Fmp4Source
-from rayohx._mux.mp4read import find_box, iter_boxes
-from rayohx._mux.muxer import Mp4Muxer
+from rayohx._mux._boxes import box
+from rayohx._mux._fmp4 import build_init_ordered
+from rayohx._mux._fmp4_source import (
+    Fmp4Source,
+    _fragment_times,
+    _rescale_edit_list,
+    _set_tfdt,
+    _trex_defaults,
+)
+from rayohx._mux._mp4read import find_box, iter_boxes
+from rayohx._mux._muxer import Mp4Muxer
 from rayohx.errors import FinalizationError, UnsupportedCodecError
-from tests.unit._mux.helpers import MEDIA, config, read_fragments, top_level
+from tests.helpers.mux import MEDIA, config, read_fragments, top_level
 
 HLS = MEDIA / "hls_fmp4"
 
@@ -193,3 +200,98 @@ def test_boxes_that_are_not_media_are_skipped() -> None:
 def test_files_can_be_used_without_a_directory_listing(tmp_path: Path) -> None:
     (tmp_path / "x.mp4").write_bytes(VIDEO[0])
     assert (tmp_path / "x.mp4").stat().st_size == len(VIDEO[0])
+
+
+# --- fragments from other packagers -----------------------------------------------------------
+
+
+def trun(count: int, *, flags: int, per_sample: bytes = b"", extra: bytes = b"") -> bytes:
+    body = struct.pack(">I", (0 << 24) | flags) + struct.pack(">I", count) + extra + per_sample
+    return box(b"trun", body)
+
+
+def fragment_with(*traf_children: bytes) -> bytes:
+    return box(b"moof", box(b"mfhd", bytes(8)), box(b"traf", *traf_children)) + box(
+        b"mdat", b"data"
+    )
+
+
+def test_sample_durations_come_from_the_trun_when_it_lists_them() -> None:
+    entries = b"".join(struct.pack(">II", duration, 10) for duration in (40, 40, 50))
+    tfdt = box(b"tfdt", struct.pack(">II", 0, 1234))
+    fragment = fragment_with(tfdt, trun(3, flags=0x300, per_sample=entries))
+    assert _fragment_times(fragment, 99) == (1234, 130)
+
+
+def test_sample_durations_fall_back_to_the_track_defaults() -> None:
+    tfdt = box(b"tfdt", struct.pack(">II", 0, 0))
+    plain = fragment_with(tfdt, trun(4, flags=0x200, per_sample=b"\x00" * 16))
+    assert _fragment_times(plain, 25) == (0, 100)
+    # tfhd with its own default duration (flag 0x8) wins over the track default.
+    tfhd = box(b"tfhd", struct.pack(">II", 0x8, 1) + struct.pack(">I", 40))
+    own = fragment_with(tfhd, tfdt, trun(2, flags=0x200, per_sample=bytes(8)))
+    assert _fragment_times(own, 25) == (0, 80)
+    # tfhd flags that insert other fields before the duration are skipped over correctly.
+    skewed = box(
+        b"tfhd",
+        struct.pack(">II", 0x1 | 0x2 | 0x8, 1) + struct.pack(">QII", 0, 1, 60),
+    )
+    other = fragment_with(skewed, tfdt, trun(2, flags=0x200, per_sample=bytes(8)))
+    assert _fragment_times(other, 25) == (0, 120)
+
+
+def test_a_data_offset_and_first_sample_flags_do_not_confuse_the_duration() -> None:
+    extra = struct.pack(">iI", 100, 0)
+    entries = struct.pack(">II", 33, 10) + struct.pack(">II", 34, 10)
+    fragment = fragment_with(trun(2, flags=0x305, per_sample=entries, extra=extra))
+    assert _fragment_times(fragment, 0) == (None, 67)
+
+
+def test_a_fragment_without_a_decode_time_or_traf_is_tolerated() -> None:
+    assert _fragment_times(box(b"moof", box(b"mfhd", bytes(8))) + box(b"mdat", b""), 0) == (None, 0)
+    assert _fragment_times(b"not a fragment", 0) == (None, 0)
+    assert _set_tfdt(b"not a fragment", 5) == b"not a fragment"
+    no_tfdt = fragment_with(trun(1, flags=0x200, per_sample=bytes(4)))
+    assert _set_tfdt(no_tfdt, 5) == no_tfdt
+
+
+def test_a_version_zero_decode_time_is_rewritten() -> None:
+    fragment = fragment_with(box(b"tfdt", struct.pack(">II", 0, 1000)))
+    patched = _set_tfdt(fragment, 70)
+    tfdt = find_box(patched, (b"moof", b"traf", b"tfdt"))
+    assert tfdt is not None
+    assert struct.unpack_from(">I", patched, tfdt[0] + 12)[0] == 70
+
+
+def test_track_defaults_are_read_from_the_trex_box() -> None:
+    trex = box(b"trex", struct.pack(">IIIIII", 0, 7, 1, 1024, 0, 0x10000))
+    moov = box(b"moov", box(b"mvex", trex))
+    assert _trex_defaults(moov, 7) == (1, 1024, 0, 0x10000)
+    assert _trex_defaults(moov, 8) == (1, 0, 0, 0)
+    assert _trex_defaults(box(b"moov"), 1) == (1, 0, 0, 0)
+
+
+@pytest.mark.parametrize("version", [0, 1])
+def test_edit_lists_are_rescaled_to_the_output_movie_clock(version: int) -> None:
+    if version == 1:
+        entry = struct.pack(">QqHH", 90000, 0, 1, 0)
+    else:
+        entry = struct.pack(">IiHH", 90000, 0, 1, 0)
+    elst = box(b"elst", struct.pack(">I", version << 24) + struct.pack(">I", 1) + entry)
+    trak = bytearray(box(b"trak", box(b"edts", elst)))
+    _rescale_edit_list(trak, 90000)
+    found = find_box(trak, (b"edts", b"elst"), 8)
+    assert found is not None
+    fmt = ">Q" if version else ">I"
+    assert struct.unpack_from(fmt, trak, found[0] + 16)[0] == 1000
+    unchanged = bytearray(box(b"trak", box(b"edts", elst)))
+    _rescale_edit_list(unchanged, 1000)
+    assert unchanged == bytearray(box(b"trak", box(b"edts", elst)))
+    _rescale_edit_list(bytearray(box(b"trak")), 90000)  # no edit list: nothing happens
+
+
+def test_a_stream_without_track_data_cannot_be_copied() -> None:
+    with pytest.raises(FinalizationError, match="incomplete"):
+        Fmp4Source(Mp4Muxer(lambda data: None)).feed(
+            box(b"moov", box(b"mvhd", bytes(100)), box(b"trak", box(b"free")))
+        )

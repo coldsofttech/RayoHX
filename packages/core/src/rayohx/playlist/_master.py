@@ -1,20 +1,21 @@
 """Reading master playlists."""
 
-from rayohx.errors import InvalidPlaylistError
-from rayohx.models import AudioTrack, MasterPlaylist, SubtitleTrack, Variant, VideoTrack
-from rayohx.playlist._lines import Line, is_comment, tag_name, tag_value
-from rayohx.playlist._values import (
-    decimal,
-    integer,
-    resolution,
-    resolve,
-    split_list,
-    whole_tag_number,
-)
-from rayohx.playlist.attributes import parse_attribute_list
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rayohx.models import AudioTrack, MasterPlaylist, SubtitleTrack, Variant, VideoTrack
+    from rayohx.playlist._lines import Line
 
 
 def parse_master(lines: list[Line], base: str) -> MasterPlaylist:
+    from rayohx.errors import InvalidPlaylistError
+    from rayohx.models import MasterPlaylist
+    from rayohx.playlist._lines import is_comment, tag_name, tag_value
+    from rayohx.playlist._values import resolve, whole_tag_number
+    from rayohx.playlist.attributes import parse_attribute_list
+
     variants: list[Variant] = []
     video: list[VideoTrack] = []
     audio: list[AudioTrack] = []
@@ -53,6 +54,9 @@ def parse_master(lines: list[Line], base: str) -> MasterPlaylist:
 
 
 def variant(attributes: dict[str, str], uri: str, line: int) -> Variant:
+    from rayohx.models import Variant
+    from rayohx.playlist._values import decimal, integer, resolution, split_list
+
     bandwidth = integer(attributes, "BANDWIDTH", line, required=True)
     assert bandwidth is not None  # noqa: S101 - required=True guarantees a value
     return Variant(
@@ -78,6 +82,12 @@ def read_media_tag(
     audio: list[AudioTrack],
     subtitles: list[SubtitleTrack],
 ) -> None:
+    from rayohx.errors import InvalidPlaylistError
+    from rayohx.models import AudioTrack, SubtitleTrack, VideoTrack
+    from rayohx.playlist._lines import tag_value
+    from rayohx.playlist._values import resolve, split_list
+    from rayohx.playlist.attributes import parse_attribute_list
+
     attributes = parse_attribute_list(tag_value(content), line=line)
     kind = attributes.get("TYPE")
     if kind is None:

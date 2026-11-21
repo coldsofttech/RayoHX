@@ -6,17 +6,16 @@ half-finished download is never mistaken for a finished one. ``StreamSink`` hand
 function, for pipes and tests. ``DirectorySink`` saves every segment as its own file in a folder.
 """
 
-import os
-import shutil
-from collections.abc import Callable
-from pathlib import Path
-from typing import IO, Protocol
+from __future__ import annotations
 
-from rayohx._download._output import segment_file_name
-from rayohx._download._storage import translate_os_error
-from rayohx.enums import ContainerFormat
-from rayohx.errors import OutputError, OutputExistsError
-from rayohx.models import SegmentData
+from typing import IO, TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from rayohx.enums import ContainerFormat
+    from rayohx.models import SegmentData
 
 PART_SUFFIX = ".part"
 
@@ -67,6 +66,8 @@ class FileSink:
     writes_file = True
 
     def __init__(self, path: Path | str, *, overwrite: bool = False) -> None:
+        from pathlib import Path
+
         self.target: Path | None = Path(path).absolute()
         self._overwrite = overwrite
         self._handle: IO[bytes] | None = None
@@ -79,6 +80,8 @@ class FileSink:
         return self.target.with_name(self.target.name + PART_SUFFIX)
 
     def preflight(self) -> None:
+        from rayohx.errors import OutputError, OutputExistsError
+
         target = self._target()
         if target.is_dir():
             raise OutputError(f"The output path {target} is a folder.", hint="Give a file name.")
@@ -89,6 +92,8 @@ class FileSink:
             )
 
     def open(self, *, resume_offset: int | None = None) -> int:
+        from rayohx._download._storage import translate_os_error
+
         target = self._target()
         self.preflight()
         try:
@@ -107,6 +112,8 @@ class FileSink:
         return self._length
 
     def write(self, data: SegmentData) -> int:
+        from rayohx._download._storage import translate_os_error
+
         handle = self._open_handle()
         try:
             if data.init:
@@ -118,6 +125,10 @@ class FileSink:
         return data.size
 
     def checkpoint(self) -> int:
+        import os
+
+        from rayohx._download._storage import translate_os_error
+
         handle = self._open_handle()
         try:
             handle.flush()
@@ -127,6 +138,11 @@ class FileSink:
         return self._length
 
     def commit(self, validate: Callable[[Path], None] | None = None) -> Path:
+        import os
+
+        from rayohx._download._storage import translate_os_error
+        from rayohx.errors import OutputExistsError
+
         self.checkpoint()
         self._close()
         if validate is not None:
@@ -150,6 +166,8 @@ class FileSink:
         return self.target
 
     def _open_handle(self) -> IO[bytes]:
+        from rayohx.errors import OutputError
+
         if self._handle is None:
             raise OutputError("The output is not open.")
         return self._handle
@@ -208,6 +226,8 @@ class DirectorySink:
     def __init__(
         self, folder: Path | str, container: ContainerFormat, *, overwrite: bool = False
     ) -> None:
+        from pathlib import Path
+
         self.target: Path | None = Path(folder).absolute()
         self._container = container
         self._overwrite = overwrite
@@ -220,6 +240,8 @@ class DirectorySink:
         return self.target.with_name(self.target.name + PART_SUFFIX)
 
     def preflight(self) -> None:
+        from rayohx.errors import OutputError, OutputExistsError
+
         target = self._target()
         if target.is_file():
             raise OutputError(f"The output path {target} is a file.", hint="Give a folder name.")
@@ -230,6 +252,10 @@ class DirectorySink:
             )
 
     def open(self, *, resume_offset: int | None = None) -> int:
+        import shutil
+
+        from rayohx._download._storage import translate_os_error
+
         self.preflight()
         try:
             shutil.rmtree(self.part_path, ignore_errors=True)
@@ -240,6 +266,9 @@ class DirectorySink:
         return 0
 
     def write(self, data: SegmentData) -> int:
+        from rayohx._download._output import segment_file_name
+        from rayohx._download._storage import translate_os_error
+
         try:
             if data.init:
                 (
@@ -257,6 +286,12 @@ class DirectorySink:
         return self._written
 
     def commit(self, validate: Callable[[Path], None] | None = None) -> Path:
+        import os
+        import shutil
+
+        from rayohx._download._storage import translate_os_error
+        from rayohx.errors import OutputExistsError
+
         # Each segment was checked as it arrived, so there is no single file to validate.
         target = self._target()
         try:
@@ -272,6 +307,8 @@ class DirectorySink:
         return target
 
     def abort(self, *, keep_partial: bool) -> None:
+        import shutil
+
         shutil.rmtree(self.part_path, ignore_errors=True)
 
     def _target(self) -> Path:

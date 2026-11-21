@@ -5,8 +5,6 @@ reaches a log line or a traceback. Each exception can carry a ``hint`` that tell
 try next.
 """
 
-from rayohx._redaction import redact_text, redact_url
-
 
 def format_bytes(size: int) -> str:
     """Return ``size`` in a short human-readable form such as ``1.5 GiB``."""
@@ -22,6 +20,8 @@ class RayoHXError(Exception):
     """Base class of every error the engine raises on purpose."""
 
     def __init__(self, message: str, *, hint: str | None = None) -> None:
+        from rayohx._redaction import redact_text
+
         self.message = redact_text(message)
         self.hint = redact_text(hint) if hint else None
         super().__init__(self.message)
@@ -103,6 +103,8 @@ class HTTPError(NetworkError):
         hint: str | None = None,
         retry_after: float | None = None,
     ) -> None:
+        from rayohx._redaction import redact_url
+
         self.url = redact_url(url)
         self.status_code = status_code
         #: Seconds the server asked us to wait before trying again, when it said so.
@@ -127,6 +129,8 @@ class SegmentDownloadError(DownloadError):
     """A single segment could not be downloaded."""
 
     def __init__(self, index: int, url: str, reason: str, *, hint: str | None = None) -> None:
+        from rayohx._redaction import redact_url
+
         self.index = index
         self.url = redact_url(url)
         super().__init__(f"Segment {index} failed ({reason}): {self.url}", hint=hint)

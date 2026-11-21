@@ -6,42 +6,36 @@ what a later resume needs: nothing after a success, and the state plus the data 
 recreated after a failure or a cancellation.
 """
 
+from __future__ import annotations
+
 import logging
 import time
-import uuid
-from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from rayohx._crypto import KeyProvider, require_supported_encryption
-from rayohx._download._containers import validate_output
-from rayohx._download._fetcher import HlsSegmentFetcher
-from rayohx._download._pipeline import SegmentPipeline
-from rayohx._download._progress import ProgressTracker
-from rayohx._download._sinks import OutputSink
-from rayohx._download._state import ResumeState, StateFile, playlist_signature
-from rayohx._download._storage import (
-    SizeEstimator,
-    StorageTracker,
-    check_disk_space,
-    choose_strategy,
-    make_store,
-    space_needed,
-    validate_strategy,
-)
-from rayohx._download._workspace import Workspace, resolve_workspace_root, workspace_key
-from rayohx._http import HttpClient
-from rayohx._redaction import redact_url
-from rayohx.cancellation import CancellationToken
-from rayohx.config import DownloadConfig
-from rayohx.enums import ContainerFormat, DownloadState, StorageStrategy
-from rayohx.errors import DownloadError, FinalizationError, UnsupportedPlaylistError
-from rayohx.events import EventBus
-from rayohx.models import DownloadProgress, MediaPlaylist, StorageMetrics, Variant
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from rayohx._download._sinks import OutputSink
+    from rayohx._download._state import ResumeState
+    from rayohx._download._storage import SizeEstimator
+    from rayohx._download._workspace import Workspace
+    from rayohx._http import HttpClient
+    from rayohx.cancellation import CancellationToken
+    from rayohx.config import DownloadConfig
+    from rayohx.enums import ContainerFormat, StorageStrategy
+    from rayohx.events import EventBus
+    from rayohx.models import DownloadProgress, MediaPlaylist, StorageMetrics, Variant
 
 logger = logging.getLogger(__name__)
 
-_DISK_STRATEGIES = frozenset({StorageStrategy.TEMPORARY, StorageStrategy.HYBRID})
+
+def _uses_disk(strategy: StorageStrategy) -> bool:
+    """Whether ``strategy`` keeps segments in files on disk."""
+    from rayohx.enums import StorageStrategy
+
+    return strategy in {StorageStrategy.TEMPORARY, StorageStrategy.HYBRID}
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -87,6 +81,8 @@ class MediaDownload:
         on_finalizing: Callable[[], None] | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
+        import uuid
+
         self._container = container
         self._output_container = output_container or container
         self._on_finalizing = on_finalizing
@@ -116,6 +112,16 @@ class MediaDownload:
             SegmentDownloadError: If a segment cannot be downloaded.
             CancellationError: If the download was cancelled.
         """
+        from rayohx._crypto import require_supported_encryption
+        from rayohx._download._state import playlist_signature
+        from rayohx._download._storage import (
+            SizeEstimator,
+            choose_strategy,
+            validate_strategy,
+        )
+        from rayohx._download._workspace import Workspace, resolve_workspace_root, workspace_key
+        from rayohx.errors import DownloadError, UnsupportedPlaylistError
+
         started = self._clock()
         playlist = self._playlist
         segments = playlist.segments
@@ -139,7 +145,7 @@ class MediaDownload:
         estimator = SizeEstimator.for_playlist(playlist, self._variant)
         signature = playlist_signature(segments)
         wants_state = config.resume and sink.supports_resume
-        needs_workspace = wants_state or strategy in _DISK_STRATEGIES
+        needs_workspace = wants_state or _uses_disk(strategy)
         # The folder is named by address and output only. A changed stream finds old state there
         # whose fingerprint no longer matches, and discards it instead of leaving it behind.
         root = resolve_workspace_root(
@@ -168,6 +174,16 @@ class MediaDownload:
         workspace: Workspace | None,
         started: float,
     ) -> DownloadSummary:
+        from pathlib import Path
+
+        from rayohx._crypto import KeyProvider
+        from rayohx._download._fetcher import HlsSegmentFetcher
+        from rayohx._download._pipeline import SegmentPipeline
+        from rayohx._download._progress import ProgressTracker
+        from rayohx._download._state import StateFile
+        from rayohx._download._storage import StorageTracker, make_store
+        from rayohx.enums import DownloadState
+
         config = self._config
         sink = self._sink
         segments = self._playlist.segments
@@ -254,6 +270,8 @@ class MediaDownload:
         container = self._output_container
         if container is None or not self._config.output.validate:
             return None
+        from rayohx._download._containers import validate_output
+
         return lambda path: validate_output(container, path)
 
     def _abandon(
@@ -263,6 +281,8 @@ class MediaDownload:
 
         A finished download that failed its final check has nothing to resume, so it keeps nothing.
         """
+        from rayohx.errors import FinalizationError
+
         keep = (
             self._config.resume
             and self._config.storage.keep_state_on_failure
@@ -272,12 +292,15 @@ class MediaDownload:
         self._sink.abort(keep_partial=resumable)
         if workspace is None:
             return
-        keep_segments = keep and strategy in _DISK_STRATEGIES
+        keep_segments = keep and _uses_disk(strategy)
         workspace.clean(keep_state=resumable or keep_segments, keep_segments=keep_segments)
 
     def _state(
         self, signature: str, strategy: StorageStrategy, next_index: int, written: int
     ) -> ResumeState:
+        from rayohx._download._state import ResumeState
+        from rayohx._redaction import redact_url
+
         return ResumeState(
             signature=signature,
             total_segments=len(self._playlist.segments),
@@ -294,6 +317,8 @@ class MediaDownload:
         output_dir: Path,
         workspace_dir: Path,
     ) -> None:
+        from rayohx._download._storage import check_disk_space, space_needed
+
         if not self._config.storage.check_space:
             if not self._space_warned:
                 logger.warning("The disk space check is turned off.")

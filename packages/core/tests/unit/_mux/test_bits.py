@@ -1,8 +1,8 @@
 import pytest
 
-from rayohx._mux.bits import BitReader, unescape_nal
+from rayohx._mux._bits import BitReader, unescape_nal
 from rayohx.errors import OutputFormatError
-from tests.unit._mux.helpers import BitWriter, escape_nal
+from tests.helpers.mux import BitWriter, escape_nal
 
 
 def test_reading_bits_across_byte_boundaries() -> None:

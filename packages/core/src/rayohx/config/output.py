@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from rayohx.enums import OutputFormat, RemuxBackend
-from rayohx.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,8 +29,12 @@ class OutputConfig:
         if self.path is not None:
             text = str(self.path)
             if not text.strip() or text == ".":
+                from rayohx.errors import ConfigurationError
+
                 raise ConfigurationError("The output path must not be empty.")
             if "\0" in text:
+                from rayohx.errors import ConfigurationError
+
                 raise ConfigurationError("The output path contains a null character.")
 
     def as_dict(self) -> dict[str, Any]:

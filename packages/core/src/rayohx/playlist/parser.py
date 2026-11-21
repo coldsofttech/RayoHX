@@ -11,10 +11,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rayohx.errors import InvalidPlaylistError, UnsupportedPlaylistError
-from rayohx.playlist._lines import numbered_lines, tag_name
-from rayohx.playlist.detect import HEADER
-
 if TYPE_CHECKING:
     from rayohx.models import Playlist
 
@@ -35,6 +31,10 @@ def parse_playlist(text: str, uri: str) -> Playlist:
         InvalidPlaylistError: If the text is not a valid playlist.
         UnsupportedPlaylistError: If it is valid but uses something the engine cannot handle.
     """
+    from rayohx.errors import InvalidPlaylistError, UnsupportedPlaylistError
+    from rayohx.playlist._lines import numbered_lines, tag_name
+    from rayohx.playlist.detect import HEADER
+
     lines = numbered_lines(text)
     if not lines or lines[0][1] != HEADER:
         raise InvalidPlaylistError(

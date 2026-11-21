@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from rayohx.enums import DownloadState
-from rayohx.models.download.storage import StorageMetrics
+
+if TYPE_CHECKING:
+    from rayohx.models.download.storage import StorageMetrics
+
+
+def _storage() -> StorageMetrics:
+    from rayohx.models.download.storage import StorageMetrics
+
+    return StorageMetrics()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -22,7 +31,7 @@ class DownloadProgress:
     average_speed: float = 0.0
     eta_seconds: float | None = None
     active_workers: int = 0
-    storage: StorageMetrics = field(default_factory=StorageMetrics)
+    storage: StorageMetrics = field(default_factory=_storage)
 
     @property
     def fraction(self) -> float | None:

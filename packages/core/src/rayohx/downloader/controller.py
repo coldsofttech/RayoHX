@@ -7,56 +7,30 @@ each step as an event, and returns a structured result. A cancelled download end
 
 from __future__ import annotations
 
-import dataclasses
 import logging
 import time
-import uuid
-from pathlib import Path
 from typing import TYPE_CHECKING
-
-from rayohx._download._output import plan_output
-from rayohx._http import HttpClient
-from rayohx._logs import set_download_id
-from rayohx._mux.ffmpeg import find_ffmpeg
-from rayohx._mux.source import probe_codecs
-from rayohx._redaction import redact_text, redact_url
-from rayohx.cancellation import CancellationToken
-from rayohx.config import DownloadConfig, validate_url
-from rayohx.downloader._delivery import Delivery, Rendition, check_free, subtitle_path
-from rayohx.downloader._result import join_message, output_info
-from rayohx.downloader._stream import (
-    audio_codecs,
-    describe,
-    first_segment,
-    kind,
-    load_media,
-    probe_container,
-)
-from rayohx.enums import ContainerFormat, DownloadState, EventType, OutputFormat, RemuxBackend
-from rayohx.errors import (
-    CancellationError,
-    DownloadError,
-    OutputFormatError,
-    RayoHXError,
-    UnsupportedCodecError,
-)
-from rayohx.events import DownloadEvent, DownloadStateMachine, EventBus
-from rayohx.models import (
-    DownloadProgress,
-    DownloadResult,
-    MasterPlaylist,
-    OutputInfo,
-)
-from rayohx.playlist import inspect_playlist
-from rayohx.stream import select_stream
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
     import httpx
 
     from rayohx._download._output import OutputPlan
-    from rayohx.models import MediaPlaylist, SubtitleTrack
+    from rayohx._http import HttpClient
+    from rayohx.cancellation import CancellationToken
+    from rayohx.config import DownloadConfig
+    from rayohx.downloader._delivery import Rendition
+    from rayohx.enums import ContainerFormat, DownloadState, EventType
+    from rayohx.events import DownloadEvent, EventBus
+    from rayohx.models import (
+        DownloadProgress,
+        DownloadResult,
+        MediaPlaylist,
+        OutputInfo,
+        SubtitleTrack,
+    )
     from rayohx.stream import StreamSelection
 
 logger = logging.getLogger(__name__)
@@ -81,6 +55,14 @@ class Downloader:
         transport: httpx.BaseTransport | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
+        import uuid
+        from pathlib import Path
+
+        from rayohx.cancellation import CancellationToken
+        from rayohx.config import DownloadConfig, validate_url
+        from rayohx.events import DownloadStateMachine, EventBus
+        from rayohx.models import DownloadProgress
+
         self._url = validate_url(url)
         self._config = config or DownloadConfig()
         self._output = Path(output) if output is not None else self._config.output.path
@@ -123,6 +105,14 @@ class Downloader:
         Completed and cancelled downloads return a result. A failure returns a result in the
         ``FAILED`` state with the message; the original exception is in ``exception``.
         """
+        import dataclasses
+
+        from rayohx._logs import set_download_id
+        from rayohx._redaction import redact_text
+        from rayohx.enums import DownloadState, EventType
+        from rayohx.errors import CancellationError, DownloadError, RayoHXError
+        from rayohx.models import DownloadResult
+
         if self._ran:
             raise DownloadError("This download has already run; create a new Downloader.")
         self._ran = True
@@ -155,6 +145,26 @@ class Downloader:
         )
 
     def _execute(self) -> tuple[OutputInfo, DownloadProgress]:
+        import dataclasses
+
+        from rayohx._download._output import plan_output
+        from rayohx._http import HttpClient
+        from rayohx._redaction import redact_url
+        from rayohx.downloader._delivery import Delivery, check_free
+        from rayohx.downloader._result import output_info
+        from rayohx.downloader._stream import (
+            audio_codecs,
+            describe,
+            kind,
+            load_media,
+            probe_container,
+        )
+        from rayohx.enums import ContainerFormat, DownloadState, EventType, OutputFormat
+        from rayohx.errors import OutputFormatError
+        from rayohx.models import MasterPlaylist
+        from rayohx.playlist import inspect_playlist
+        from rayohx.stream import select_stream
+
         config = self._config
         self._emit(EventType.DOWNLOAD_STARTED, message=redact_url(self._url))
         self._move(DownloadState.INSPECTING)
@@ -231,6 +241,11 @@ class Downloader:
 
     def _renditions(self, client: HttpClient, stream: StreamSelection | None) -> list[Rendition]:
         """Load the playlists of the separate audio tracks that have to be joined in."""
+        from rayohx.downloader._delivery import Rendition
+        from rayohx.downloader._stream import load_media, probe_container
+        from rayohx.enums import ContainerFormat, EventType
+        from rayohx.errors import OutputFormatError
+
         renditions = []
         for track in stream.audio_tracks if stream else ():
             assert track.uri is not None  # noqa: S101 - selection keeps only tracks with an address
@@ -251,6 +266,11 @@ class Downloader:
         self, client: HttpClient, stream: StreamSelection | None, plan: OutputPlan
     ) -> list[tuple[SubtitleTrack, MediaPlaylist, Path]]:
         """Load the playlists of the subtitle tracks and decide where each is saved."""
+        from rayohx.downloader._delivery import subtitle_path
+        from rayohx.downloader._stream import load_media
+        from rayohx.enums import ContainerFormat, EventType
+        from rayohx.errors import OutputFormatError
+
         jobs = []
         used: set[Path] = set()
         for track in stream.subtitle_tracks if stream else ():
@@ -275,6 +295,12 @@ class Downloader:
         plan: OutputPlan,
     ) -> Path | None:
         """Pick what re-wraps the stream: ``None`` for the built-in remuxer, else an FFmpeg."""
+        from rayohx._mux._ffmpeg import find_ffmpeg
+        from rayohx._mux._source import probe_codecs
+        from rayohx.downloader._stream import first_segment
+        from rayohx.enums import ContainerFormat, RemuxBackend
+        from rayohx.errors import OutputFormatError, UnsupportedCodecError
+
         if not plan.mux:
             return None
         wanted = self._config.output.remux_backend
@@ -306,6 +332,8 @@ class Downloader:
         return None
 
     def _finalizing(self) -> None:
+        from rayohx.enums import DownloadState, EventType
+
         self._move(DownloadState.FINALIZING)
         self._emit(EventType.FINALIZATION_STARTED, progress=self._progress)
 
@@ -322,6 +350,12 @@ class Downloader:
         message: str,
         hint: str | None = None,
     ) -> DownloadResult:
+        import dataclasses
+
+        from rayohx.downloader._result import join_message
+        from rayohx.enums import DownloadState, EventType
+        from rayohx.models import DownloadResult
+
         self._machine.move_to(state)
         self._progress = dataclasses.replace(self._progress, state=state)
         kind = (
@@ -351,6 +385,8 @@ class Downloader:
         progress: DownloadProgress | None = None,
         data: dict[str, object] | None = None,
     ) -> None:
+        from rayohx.events import DownloadEvent
+
         self._bus.emit(
             DownloadEvent(
                 type=kind,

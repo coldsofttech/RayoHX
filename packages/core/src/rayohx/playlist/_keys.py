@@ -4,19 +4,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rayohx.errors import InvalidPlaylistError
-from rayohx.playlist._lines import tag_value
-from rayohx.playlist._values import resolve
-from rayohx.playlist.attributes import parse_attribute_list
-
 if TYPE_CHECKING:
     from rayohx.models import EncryptionInfo, InitMap
 
 
 def read_key(content: str, line: int, base: str) -> EncryptionInfo | None:
     from rayohx.enums import EncryptionMethod
-    from rayohx.errors import UnsupportedPlaylistError
+    from rayohx.errors import InvalidPlaylistError, UnsupportedPlaylistError
     from rayohx.models import EncryptionInfo
+    from rayohx.playlist._lines import tag_value
+    from rayohx.playlist._values import resolve
+    from rayohx.playlist.attributes import parse_attribute_list
 
     attributes = parse_attribute_list(tag_value(content), line=line)
     method_text = attributes.get("METHOD")
@@ -49,7 +47,11 @@ def read_key(content: str, line: int, base: str) -> EncryptionInfo | None:
 
 
 def read_map(content: str, line: int, base: str) -> InitMap:
+    from rayohx.errors import InvalidPlaylistError
     from rayohx.models import InitMap
+    from rayohx.playlist._lines import tag_value
+    from rayohx.playlist._values import resolve
+    from rayohx.playlist.attributes import parse_attribute_list
 
     attributes = parse_attribute_list(tag_value(content), line=line)
     raw_uri = attributes.get("URI")

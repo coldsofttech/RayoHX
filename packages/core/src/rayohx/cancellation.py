@@ -1,7 +1,5 @@
 """Cooperative cancellation: ask work to stop, and let it stop cleanly."""
 
-from rayohx.errors import CancellationError
-
 
 class CancellationToken:
     """A flag that one thread sets and many workers check. Safe to share across threads."""
@@ -23,6 +21,8 @@ class CancellationToken:
     def raise_if_cancelled(self) -> None:
         """Raise ``CancellationError`` if cancellation has been requested."""
         if self._event.is_set():
+            from rayohx.errors import CancellationError
+
             raise CancellationError("The download was cancelled.")
 
     def wait(self, timeout: float) -> bool:

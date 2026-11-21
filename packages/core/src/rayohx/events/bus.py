@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import threading
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -19,6 +18,8 @@ class EventBus:
     """Delivers events to listeners. A listener that raises never stops the download."""
 
     def __init__(self) -> None:
+        import threading
+
         self._listeners: list[EventListener] = []
         self._lock = threading.Lock()
 

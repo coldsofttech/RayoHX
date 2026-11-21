@@ -1,14 +1,19 @@
 """Counting what a download holds in memory and on disk."""
 
-import threading
+from __future__ import annotations
 
-from rayohx.models import StorageMetrics
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rayohx.models import StorageMetrics
 
 
 class StorageTracker:
     """Counts bytes moved and kept. Safe to update from many threads."""
 
     def __init__(self) -> None:
+        import threading
+
         self._lock = threading.Lock()
         self._memory = 0
         self._disk = 0
@@ -51,6 +56,8 @@ class StorageTracker:
 
     def snapshot(self) -> StorageMetrics:
         """The current figures."""
+        from rayohx.models import StorageMetrics
+
         with self._lock:
             return StorageMetrics(
                 output_bytes=self._written,

@@ -6,8 +6,6 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from rayohx.errors import InvalidPlaylistError
-
 if TYPE_CHECKING:
     from typing import Self
 
@@ -36,6 +34,8 @@ class SegmentRange:
         """
         match = _BYTE_RANGE.match(text.strip())
         if not match or int(match.group(1)) == 0:
+            from rayohx.errors import InvalidPlaylistError
+
             raise InvalidPlaylistError(f"{text!r} is not a valid byte range.")
         offset = int(match.group(2)) if match.group(2) is not None else None
         return cls(int(match.group(1)), offset)

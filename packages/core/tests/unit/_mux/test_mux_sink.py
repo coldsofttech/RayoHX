@@ -4,15 +4,15 @@ import pytest
 
 from rayohx import ContainerFormat, SegmentData
 from rayohx._download._containers import validate_fmp4_file
-from rayohx._mux.mp4read import find_box
-from rayohx._mux.sink import MuxSink, TrackFile
+from rayohx._mux._mp4read import find_box
+from rayohx._mux._sink import MuxSink, TrackFile
 from rayohx.errors import (
     FinalizationError,
     OutputError,
     OutputExistsError,
     UnsupportedCodecError,
 )
-from tests.unit._mux.helpers import MEDIA, media, read_fragments
+from tests.helpers.mux import MEDIA, media, read_fragments
 
 TS = ContainerFormat.MPEG_TS
 MP4 = ContainerFormat.FMP4
@@ -174,7 +174,7 @@ def test_committing_without_any_media_is_an_error(tmp_path: Path) -> None:
 
 
 def test_an_unsupported_codec_stops_the_download(tmp_path: Path) -> None:
-    from tests.unit._mux.helpers import pat, pmt
+    from tests.helpers.mux import pat, pmt
 
     sink = MuxSink(tmp_path / "out.mp4", TS)
     sink.open()

@@ -18,7 +18,7 @@ from rayohx.errors import (
     UnsupportedCodecError,
 )
 from rayohx.events import DownloadEvent
-from tests.unit._mux.helpers import (
+from tests.helpers.mux import (
     MEDIA,
     Site,
     decoded,
@@ -385,7 +385,7 @@ def mpeg2_site() -> Site:
 def test_an_unsupported_codec_without_ffmpeg_is_explained(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("rayohx.downloader.controller.find_ffmpeg", lambda _path=None: None)
+    monkeypatch.setattr("rayohx._mux._ffmpeg.find_ffmpeg", lambda _path=None: None)
     downloader, _ = run(mpeg2_site(), "show/index.m3u8", tmp_path / "old.mp4")
     result = downloader.run()
     assert result.state is DownloadState.FAILED
@@ -399,7 +399,7 @@ def test_the_native_only_setting_never_uses_ffmpeg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        "rayohx.downloader.controller.find_ffmpeg", lambda _path=None: Path("/usr/bin/ffmpeg")
+        "rayohx._mux._ffmpeg.find_ffmpeg", lambda _path=None: Path("/usr/bin/ffmpeg")
     )
     downloader, _ = run(
         mpeg2_site(), "show/index.m3u8", tmp_path / "old.mp4", backend=RemuxBackend.NATIVE
@@ -412,9 +412,7 @@ def test_the_native_only_setting_never_uses_ffmpeg(
 def test_ffmpeg_is_used_for_a_codec_the_built_in_remuxer_cannot_copy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(
-        "rayohx.downloader.controller.find_ffmpeg", lambda _path=None: Path("/fake/ffmpeg")
-    )
+    monkeypatch.setattr("rayohx._mux._ffmpeg.find_ffmpeg", lambda _path=None: Path("/fake/ffmpeg"))
     calls: list[tuple[Path, list[Path], Path]] = []
 
     def fake_remux(
@@ -425,7 +423,7 @@ def test_ffmpeg_is_used_for_a_codec_the_built_in_remuxer_cannot_copy(
         assert all(path.exists() for path in paths)
         output.write_bytes((MEDIA / "h264_only_frag.mp4").read_bytes())
 
-    monkeypatch.setattr("rayohx.downloader._delivery.ffmpeg.remux", fake_remux)
+    monkeypatch.setattr("rayohx._mux._ffmpeg.remux", fake_remux)
     downloader, events = run(mpeg2_site(), "show/index.m3u8", tmp_path / "old.mp4")
     result = downloader.run()
     assert result.success, result.error
@@ -441,7 +439,7 @@ def test_ffmpeg_is_used_for_a_codec_the_built_in_remuxer_cannot_copy(
 def test_asking_for_ffmpeg_when_it_is_missing_is_explained(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("rayohx.downloader.controller.find_ffmpeg", lambda _path=None: None)
+    monkeypatch.setattr("rayohx._mux._ffmpeg.find_ffmpeg", lambda _path=None: None)
     downloader, _ = run(
         single_file_site("h264_aac.ts"),
         "show/index.m3u8",
@@ -459,15 +457,13 @@ def test_a_failure_inside_ffmpeg_removes_everything(
 ) -> None:
     from rayohx.errors import FinalizationError
 
-    monkeypatch.setattr(
-        "rayohx.downloader.controller.find_ffmpeg", lambda _path=None: Path("/fake/ffmpeg")
-    )
+    monkeypatch.setattr("rayohx._mux._ffmpeg.find_ffmpeg", lambda _path=None: Path("/fake/ffmpeg"))
 
     def broken(executable: Path, inputs: list[object], output: Path, **_options: object) -> None:
         output.write_bytes(b"half a file")
         raise FinalizationError("FFmpeg could not join the stream: boom")
 
-    monkeypatch.setattr("rayohx.downloader._delivery.ffmpeg.remux", broken)
+    monkeypatch.setattr("rayohx._mux._ffmpeg.remux", broken)
     downloader, _ = run(
         single_file_site("h264_aac.ts"),
         "show/index.m3u8",

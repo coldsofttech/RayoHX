@@ -1,12 +1,15 @@
 """Checking a finished output file."""
 
+from __future__ import annotations
+
 import logging
 import struct
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from rayohx._download._containers._formats import FMP4_INIT_START, TS_PACKET, TS_SYNC
-from rayohx.enums import ContainerFormat
-from rayohx.errors import FinalizationError
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from rayohx.enums import ContainerFormat
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,8 @@ def validate_output(container: ContainerFormat, path: Path) -> None:
     Raises:
         FinalizationError: If the file is not a valid file of its format.
     """
+    from rayohx.enums import ContainerFormat
+
     if container is ContainerFormat.MPEG_TS:
         validate_ts_file(path)
     elif container is ContainerFormat.FMP4:
@@ -36,6 +41,9 @@ def validate_ts_file(path: Path) -> None:
     Raises:
         FinalizationError: If the file is empty or its packets do not line up.
     """
+    from rayohx._download._containers._formats import TS_PACKET, TS_SYNC
+    from rayohx.errors import FinalizationError
+
     size = path.stat().st_size
     if size < TS_PACKET:
         raise FinalizationError(
@@ -70,6 +78,9 @@ def validate_fmp4_file(path: Path) -> None:
         FinalizationError: If a box runs past the end of the file, or the file lacks the
             initialization (``moov``) or any fragment (``moof`` and ``mdat``).
     """
+    from rayohx._download._containers._formats import FMP4_INIT_START
+    from rayohx.errors import FinalizationError
+
     size = path.stat().st_size
     seen: dict[bytes, int] = {}
     first: bytes | None = None

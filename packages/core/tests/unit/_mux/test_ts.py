@@ -2,11 +2,9 @@ import itertools
 
 import pytest
 
-from rayohx._mux import ts
-from rayohx._mux.source import classify, probe_codecs
-from rayohx._mux.ts import PesPacket, TsDemuxer, TsStream
-from rayohx.errors import UnsupportedCodecError
-from tests.unit._mux.helpers import HAS_FFPROBE, media, needs_ffmpeg, pat, pes, pmt, ts_packets
+from rayohx._mux import _ts as ts
+from rayohx._mux._ts import PesPacket, TsDemuxer, TsStream
+from tests.helpers.mux import HAS_FFPROBE, media, needs_ffmpeg, pat, pes, pmt, stream, ts_packets
 
 
 def demux(data: bytes, chunk: int = 7777) -> tuple[list[TsStream], list[tuple[int, PesPacket]]]:
@@ -72,7 +70,7 @@ def test_video_timestamps_match_ffprobe(name: str) -> None:
     import json
     import subprocess
 
-    from tests.unit._mux.helpers import MEDIA
+    from tests.helpers.mux import MEDIA
 
     output = subprocess.run(
         ["ffprobe", "-v", "error", "-show_packets", "-select_streams", "v",  # noqa: S607
@@ -87,10 +85,6 @@ def test_video_timestamps_match_ffprobe(name: str) -> None:
 
 
 # --- built by hand -----------------------------------------------------------------------------
-
-
-def stream(kind: int, pid: int, descriptors: bytes = b"") -> tuple[int, int, bytes]:
-    return (kind, pid, descriptors)
 
 
 def build(pid: int, payloads: list[tuple[int | None, int | None, bytes]]) -> bytes:
@@ -151,39 +145,3 @@ def test_scrambled_packets_are_counted_and_skipped() -> None:
     demuxer = TsDemuxer(lambda p, s: None)
     demuxer.feed(pat() + pmt([stream(ts.STREAM_H264, 0x101)]) + bytes(scrambled))
     assert demuxer.scrambled_packets == 1
-
-
-def test_private_streams_carrying_dolby_audio_are_recognised() -> None:
-    streams, _ = demux(
-        pat()
-        + pmt(
-            [
-                stream(ts.STREAM_PRIVATE, 0x101, bytes([ts.DESCRIPTOR_AC3, 1, 0])),
-                stream(ts.STREAM_PRIVATE, 0x102, bytes([ts.DESCRIPTOR_EAC3, 1, 0])),
-                stream(ts.STREAM_PRIVATE, 0x103, bytes([0x59, 0])),
-                stream(0x15, 0x104),
-            ]
-        )
-    )
-    assert [classify(s) for s in streams] == ["ac3", "eac3", "ignore", "ignore"]
-    assert streams[0].has_descriptor(ts.DESCRIPTOR_AC3)
-    assert not streams[0].has_descriptor(ts.DESCRIPTOR_EAC3)
-
-
-@pytest.mark.parametrize(
-    ("kind", "name"),
-    [(0x02, "MPEG-2 video"), (0x82, "DTS audio"), (0xEA, "VC-1 video"), (0x99, "stream type 0x99")],
-)
-def test_codecs_that_cannot_be_copied_are_named(kind: int, name: str) -> None:
-    data = pat() + pmt([stream(kind, 0x101)])
-    with pytest.raises(UnsupportedCodecError, match=name) as info:
-        probe_codecs(data)
-    assert info.value.codec == name
-    assert info.value.hint
-
-
-def test_probing_lists_the_codecs() -> None:
-    assert probe_codecs(media("h264_aac.ts")) == ["h264", "aac"]
-    assert probe_codecs(media("hevc_aac.ts")) == ["hevc", "aac"]
-    assert probe_codecs(media("h264_eac3.ts")) == ["h264", "eac3"]
-    assert probe_codecs(media("aac_only.ts")) == ["aac"]

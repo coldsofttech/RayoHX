@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rayohx._crypto._cipher import KEY_SIZE
-from rayohx.errors import AuthenticationError, DecryptionError, InvalidResponseError
-
 if TYPE_CHECKING:
     from rayohx._http import HttpClient
     from rayohx.models import EncryptionInfo
@@ -27,6 +24,9 @@ class KeyProvider:
 
     def key_for(self, encryption: EncryptionInfo) -> bytes:
         """Return the 16-byte key for ``encryption``, fetching it on first use."""
+        from rayohx._crypto._cipher import KEY_SIZE
+        from rayohx.errors import AuthenticationError, DecryptionError, InvalidResponseError
+
         uri = encryption.uri
         if not uri:
             raise DecryptionError("The playlist gives no address for the key.")

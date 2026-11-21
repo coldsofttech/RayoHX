@@ -1,8 +1,8 @@
 """Rayo's output checked against FFmpeg, which did not write it and decodes it independently.
 
 These tests need ``ffmpeg`` and ``ffprobe``; without them they are skipped. The source files
-come from FFmpeg too (see ``scripts/make_media_fixtures.py``), so a match means the remuxed file
-holds exactly the same compressed pictures and sound.
+come from FFmpeg too (see ``scripts/make_media_fixtures.py`` in packages/core), so a match means
+the remuxed file holds exactly the same compressed pictures and sound.
 """
 
 from pathlib import Path
@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from rayohx._download._containers import validate_fmp4_file
-from tests.unit._mux.helpers import (
+from tests.helpers.mux import (
     MEDIA,
     decoded,
     decodes_cleanly,

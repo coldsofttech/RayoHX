@@ -5,17 +5,17 @@ It is written atomically (a temporary file renamed over the old one), so a crash
 half-written state behind.
 """
 
-import hashlib
-import json
-import logging
-import os
-from collections.abc import Sequence
-from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
-from pathlib import Path
-from urllib.parse import urlsplit
+from __future__ import annotations
 
-from rayohx.models import Segment
+import logging
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from rayohx.models import Segment
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,9 @@ def playlist_signature(segments: Sequence[Segment]) -> str:
     segments, order, byte ranges or key addresses differ gets a different fingerprint, so state
     from another stream is never reused.
     """
+    import hashlib
+    from urllib.parse import urlsplit
+
     digest = hashlib.sha256()
     for segment in segments:
         parts = [
@@ -65,6 +68,8 @@ class StateFile:
     """Reads and writes a ``ResumeState`` at a fixed path."""
 
     def __init__(self, path: Path) -> None:
+        from pathlib import Path
+
         self.path = Path(path)
 
     def load(self, *, signature: str, total_segments: int, strategy: str) -> ResumeState | None:
@@ -72,6 +77,8 @@ class StateFile:
 
         Unreadable, outdated or foreign state is ignored (and logged), never trusted.
         """
+        import json
+
         try:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
         except FileNotFoundError:
@@ -99,6 +106,11 @@ class StateFile:
 
     def save(self, state: ResumeState) -> None:
         """Write ``state`` atomically."""
+        import json
+        import os
+        from dataclasses import asdict
+        from datetime import UTC, datetime
+
         data = asdict(state)
         data["updated"] = datetime.now(UTC).isoformat(timespec="seconds")
         temporary = self.path.with_name(self.path.name + ".tmp")

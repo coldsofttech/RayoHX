@@ -1,6 +1,6 @@
 import pytest
 
-from rayohx._mux.webvtt import format_time, merge_segments, parse_segment
+from rayohx._mux._webvtt import format_time, merge_segments, parse_segment
 from rayohx.errors import OutputFormatError
 
 SEGMENT = """WEBVTT

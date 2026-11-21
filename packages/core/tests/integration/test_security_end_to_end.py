@@ -7,18 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from rayohx import (
-    DownloadConfig,
-    Downloader,
-    HttpClient,
-    NetworkConfig,
-    NetworkError,
-    OutputConfig,
-    OutputFormat,
-    inspect,
-)
-from tests.core.media import ts_payload
-from tests.core.servers import LocalServer, Reply, Route, Seen
+from rayohx import Downloader, OutputFormat, inspect
+from rayohx._http import HttpClient
+from rayohx.config import DownloadConfig, NetworkConfig, OutputConfig
+from rayohx.errors import NetworkError
+from tests.helpers.media import ts_payload
+from tests.helpers.servers import LocalServer, Reply, Route, Seen
 
 pytestmark = pytest.mark.integration
 

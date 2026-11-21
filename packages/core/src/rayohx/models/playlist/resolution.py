@@ -6,8 +6,6 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from rayohx.errors import InvalidPlaylistError
-
 if TYPE_CHECKING:
     from typing import Self
 
@@ -34,6 +32,8 @@ class Resolution:
         """
         match = _RESOLUTION.match(text.strip())
         if not match or int(match.group(1)) == 0 or int(match.group(2)) == 0:
+            from rayohx.errors import InvalidPlaylistError
+
             raise InvalidPlaylistError(f"{text!r} is not a valid resolution.")
         return cls(int(match.group(1)), int(match.group(2)))
 

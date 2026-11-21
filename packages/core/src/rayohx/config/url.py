@@ -1,12 +1,12 @@
 """Address checks shared by the settings and the request models."""
 
-from urllib.parse import urlsplit
-
-from rayohx.errors import ConfigurationError
-
 
 def validate_url(url: str, *, name: str = "url") -> str:
     """Return ``url`` stripped, or raise if it is not an absolute http(s) address."""
+    from urllib.parse import urlsplit
+
+    from rayohx.errors import ConfigurationError
+
     cleaned = url.strip()
     if any(ord(char) < 32 for char in cleaned):
         raise ConfigurationError(f"{name} contains control characters.")

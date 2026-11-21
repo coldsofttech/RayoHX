@@ -8,7 +8,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from rayohx.enums import DownloadState
-from rayohx.errors import InvalidStateTransitionError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -63,6 +62,8 @@ class DownloadStateMachine:
         with self._lock:
             old = self._state
             if new_state not in TRANSITIONS[old]:
+                from rayohx.errors import InvalidStateTransitionError
+
                 raise InvalidStateTransitionError(
                     f"A download cannot go from {old.value} to {new_state.value}."
                 )

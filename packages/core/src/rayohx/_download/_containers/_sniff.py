@@ -1,15 +1,22 @@
 """Guessing a segment's format from its first bytes."""
 
-from rayohx._download._containers._formats import (
-    FMP4_INIT_START,
-    FMP4_SEGMENT_START,
-    looks_like_ts,
-)
-from rayohx.enums import ContainerFormat
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rayohx.enums import ContainerFormat
 
 
 def sniff_container(data: bytes) -> ContainerFormat:
     """Guess the format from the first bytes of a segment (or of an initialization section)."""
+    from rayohx._download._containers._formats import (
+        FMP4_INIT_START,
+        FMP4_SEGMENT_START,
+        looks_like_ts,
+    )
+    from rayohx.enums import ContainerFormat
+
     if data.lstrip(b"\xef\xbb\xbf").startswith(b"WEBVTT"):
         return ContainerFormat.WEBVTT
     if looks_like_ts(data):

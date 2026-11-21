@@ -5,25 +5,15 @@ The file name must match what is inside. A request that would need remuxing (for
 into MP4) is refused with an explanation rather than quietly mislabelled.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from rayohx._download._output._names import name_from_url
-from rayohx.enums import ContainerFormat, OutputFormat
-from rayohx.errors import OutputFormatError
+if TYPE_CHECKING:
+    from pathlib import Path
 
-_SUFFIX_FORMATS = {
-    ".ts": OutputFormat.TS,
-    ".m2ts": OutputFormat.TS,
-    ".mts": OutputFormat.TS,
-    ".mp4": OutputFormat.MP4,
-    ".m4v": OutputFormat.MP4,
-    ".m4a": OutputFormat.MP4,
-}
-_NATIVE = {
-    ContainerFormat.MPEG_TS: (OutputFormat.TS, ".ts"),
-    ContainerFormat.FMP4: (OutputFormat.MP4, ".mp4"),
-}
+    from rayohx.enums import ContainerFormat, OutputFormat
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +29,8 @@ class OutputPlan:
     @property
     def is_directory(self) -> bool:
         """Whether the output is a folder of separate segment files."""
+        from rayohx.enums import OutputFormat
+
         return self.format is OutputFormat.SEGMENTS
 
 
@@ -67,6 +59,25 @@ def plan_output(
         OutputFormatError: If the stream cannot be written in that format without remuxing, or
             the file name does not match the format.
     """
+    from pathlib import Path
+
+    from rayohx._download._output._names import name_from_url
+    from rayohx.enums import ContainerFormat, OutputFormat
+    from rayohx.errors import OutputFormatError
+
+    suffix_formats = {
+        ".ts": OutputFormat.TS,
+        ".m2ts": OutputFormat.TS,
+        ".mts": OutputFormat.TS,
+        ".mp4": OutputFormat.MP4,
+        ".m4v": OutputFormat.MP4,
+        ".m4a": OutputFormat.MP4,
+    }
+    natives = {
+        ContainerFormat.MPEG_TS: (OutputFormat.TS, ".ts"),
+        ContainerFormat.FMP4: (OutputFormat.MP4, ".mp4"),
+    }
+
     if container is ContainerFormat.WEBVTT:
         raise OutputFormatError(
             "This playlist contains subtitles only, which cannot be saved on their own yet.",
@@ -77,19 +88,19 @@ def plan_output(
             "The format of the segments could not be recognised.",
             hint="Only MPEG-TS and fragmented MP4 streams are supported.",
         )
-    native_format, native_suffix = _NATIVE[container]
+    native_format, native_suffix = natives[container]
 
     if requested is OutputFormat.SEGMENTS:
         folder = path if path is not None else (directory or Path.cwd()) / name_from_url(url)
         return OutputPlan(Path(folder), OutputFormat.SEGMENTS, container)
 
     suffix = path.suffix.lower() if path is not None else ""
-    if path is not None and suffix and suffix not in _SUFFIX_FORMATS:
+    if path is not None and suffix and suffix not in suffix_formats:
         raise OutputFormatError(
             f"Files ending in {path.suffix!r} are not supported.",
             hint=f"Use {native_suffix} for this stream.",
         )
-    from_name = _SUFFIX_FORMATS.get(suffix)
+    from_name = suffix_formats.get(suffix)
     if requested is not OutputFormat.AUTO and from_name not in (None, requested):
         assert path is not None  # noqa: S101 - a suffix exists only when there is a path
         raise OutputFormatError(
@@ -128,4 +139,6 @@ def plan_output(
 
 
 def _describe(container: ContainerFormat) -> str:
+    from rayohx.enums import ContainerFormat
+
     return "MPEG-TS" if container is ContainerFormat.MPEG_TS else "fragmented MP4"

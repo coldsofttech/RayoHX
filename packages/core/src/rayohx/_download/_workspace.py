@@ -5,16 +5,13 @@ address cannot point it elsewhere. The same download finds the same folder again
 makes resuming possible.
 """
 
-import hashlib
-import os
-import shutil
-import sys
-from pathlib import Path
-from types import TracebackType
-from typing import IO, Self
-from urllib.parse import urlsplit
+from __future__ import annotations
 
-from rayohx.errors import WorkspaceLockedError
+from typing import IO, TYPE_CHECKING, Self
+
+if TYPE_CHECKING:
+    from pathlib import Path
+    from types import TracebackType
 
 STATE_FILE = "state.json"
 SEGMENTS_DIR = "segments"
@@ -24,6 +21,9 @@ FOLDER_PREFIX = ".rayohx-"
 
 def workspace_key(url: str, *parts: str) -> str:
     """A short stable name for a download, ignoring query strings so signed links still match."""
+    import hashlib
+    from urllib.parse import urlsplit
+
     split = urlsplit(url)
     identity = "|".join([f"{split.scheme}://{split.netloc.lower()}{split.path}", *parts])
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
@@ -35,6 +35,8 @@ def resolve_workspace_root(workspace_dir: Path | None, output: Path | None, key:
     With ``workspace_dir`` set it is ``<workspace_dir>/<key>``. Otherwise it sits beside the
     output file, so finishing is a rename within one disk.
     """
+    from pathlib import Path
+
     if workspace_dir is not None:
         return Path(workspace_dir) / key
     base = Path(output).resolve().parent if output is not None else Path.cwd()
@@ -49,6 +51,8 @@ class _FileLock:
         self._handle: IO[bytes] | None = None
 
     def acquire(self) -> bool:
+        import sys
+
         handle = self._path.open("a+b")
         try:
             if sys.platform == "win32":
@@ -69,6 +73,8 @@ class _FileLock:
     def release(self) -> None:
         if self._handle is None:
             return
+        import sys
+
         try:
             if sys.platform == "win32":
                 import msvcrt
@@ -90,6 +96,8 @@ class Workspace:
     """A private working folder. Use it as a context manager to hold its lock."""
 
     def __init__(self, path: Path) -> None:
+        from pathlib import Path
+
         self.path = Path(path)
         self._lock = _FileLock(self.path / LOCK_FILE)
 
@@ -113,6 +121,8 @@ class Workspace:
         self.segments_path.mkdir(exist_ok=True, mode=0o700)
 
     def __enter__(self) -> Self:
+        from rayohx.errors import WorkspaceLockedError
+
         self.create()
         if not self._lock.acquire():
             raise WorkspaceLockedError(
@@ -131,6 +141,8 @@ class Workspace:
 
     def reset(self) -> None:
         """Forget any earlier run's state and staged segments, keeping the lock."""
+        import shutil
+
         _unlink(self.state_path)
         shutil.rmtree(self.segments_path, ignore_errors=True)
         self.segments_path.mkdir(exist_ok=True, mode=0o700)
@@ -141,6 +153,9 @@ class Workspace:
         With both ``keep_*`` flags off the whole folder goes. Otherwise only the kept parts
         remain, so an unfinished download holds just what resuming needs.
         """
+        import shutil
+        import sys
+
         if not self.path.is_dir():
             return
         if sys.platform == "win32":
@@ -160,6 +175,8 @@ class Workspace:
 
 
 def _unlink(path: Path) -> None:
+    import os
+
     try:
         path.unlink()
     except FileNotFoundError:

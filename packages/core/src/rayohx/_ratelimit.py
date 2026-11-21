@@ -1,11 +1,14 @@
 """A shared speed limit for all download workers."""
 
-import threading
-import time
-from collections.abc import Callable
+from __future__ import annotations
 
-from rayohx.cancellation import CancellationToken
-from rayohx.errors import CancellationError
+import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from rayohx.cancellation import CancellationToken
 
 
 class RateLimiter:
@@ -22,6 +25,8 @@ class RateLimiter:
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
+        import threading
+
         if bytes_per_second <= 0:
             raise ValueError("bytes_per_second must be positive")
         self._rate = float(bytes_per_second)
@@ -52,6 +57,8 @@ class RateLimiter:
             return
         if cancel is not None:
             if cancel.wait(wait):
+                from rayohx.errors import CancellationError
+
                 raise CancellationError("The download was cancelled.")
         else:
             self._sleep(wait)

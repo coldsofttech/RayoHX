@@ -8,14 +8,24 @@ Every record passes through a filter that removes secrets.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
-
-from rayohx._logs import HANDLER_MARK, LOG_FORMAT, RedactionFilter, get_logger
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from rayohx._logs import RedactionFilter
+
 __all__ = ["RedactionFilter", "configure_logging"]
+
+
+def __getattr__(name: str) -> Any:
+    """Import ``RedactionFilter`` the first time it is used."""
+    if name != "RedactionFilter":
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    from rayohx._logs import RedactionFilter
+
+    globals()[name] = RedactionFilter
+    return RedactionFilter
 
 
 def configure_logging(
@@ -28,6 +38,8 @@ def configure_logging(
 
     Calling it again replaces the handlers it added before, so it is safe to repeat.
     """
+    from rayohx._logs import HANDLER_MARK, LOG_FORMAT, RedactionFilter, get_logger
+
     logger = get_logger()
     for handler in list(logger.handlers):
         if getattr(handler, HANDLER_MARK, False):

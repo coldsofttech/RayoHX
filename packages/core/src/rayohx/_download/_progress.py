@@ -1,13 +1,17 @@
 """Speed, ETA and the other numbers a progress display needs."""
 
-import threading
-import time
-from collections import deque
-from collections.abc import Callable
+from __future__ import annotations
 
-from rayohx._download._storage import SizeEstimator, StorageTracker
-from rayohx.enums import DownloadState
-from rayohx.models import DownloadProgress
+import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections import deque
+    from collections.abc import Callable
+
+    from rayohx._download._storage import SizeEstimator, StorageTracker
+    from rayohx.enums import DownloadState
+    from rayohx.models import DownloadProgress
 
 #: How far back "current speed" looks, in seconds.
 SPEED_WINDOW = 5.0
@@ -25,6 +29,9 @@ class ProgressTracker:
         *,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
+        import threading
+        from collections import deque
+
         self._total_segments = total_segments
         self._estimator = estimator
         self._storage = storage
@@ -55,6 +62,8 @@ class ProgressTracker:
 
     def snapshot(self, state: DownloadState, active_workers: int) -> DownloadProgress:
         """The figures right now."""
+        from rayohx.models import DownloadProgress
+
         now = self._clock()
         metrics = self._storage.snapshot()
         total = self._estimator.total_bytes()

@@ -380,7 +380,7 @@ def test_a_failed_final_check_leaves_no_output_and_nothing_to_resume(
     def refuse(_container: ContainerFormat, _path: Path) -> None:
         raise FinalizationError("The output is not a valid file.")
 
-    monkeypatch.setattr("rayohx._download._media.validate_output", refuse)
+    monkeypatch.setattr("rayohx._download._containers.validate_output", refuse)
     downloader, events = make(ts_origin(5), tmp_path)
     result = downloader.run()
     assert result.state is DownloadState.FAILED
@@ -396,7 +396,7 @@ def test_the_final_check_can_be_switched_off(
     def refuse(_container: ContainerFormat, _path: Path) -> None:
         raise FinalizationError("never called")
 
-    monkeypatch.setattr("rayohx._download._media.validate_output", refuse)
+    monkeypatch.setattr("rayohx._download._containers.validate_output", refuse)
     downloader, _ = make(ts_origin(3), tmp_path, validate=False)
     assert downloader.run().success
 
@@ -495,7 +495,7 @@ def served(monkeypatch: pytest.MonkeyPatch) -> Origin:
         options["transport"] = httpx.MockTransport(origin)
         return HttpClient(config, **options)  # type: ignore[arg-type]
 
-    monkeypatch.setattr("rayohx.downloader.controller.HttpClient", factory)
+    monkeypatch.setattr("rayohx._http.HttpClient", factory)
     return origin
 
 

@@ -6,10 +6,6 @@ import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from rayohx._redaction import REDACTED, redact_headers
-from rayohx.config._common import check_positive, frozen_map
-from rayohx.errors import ConfigurationError
-
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
@@ -50,6 +46,9 @@ class NetworkConfig:
     credential_hosts: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
+        from rayohx.config._common import check_positive, frozen_map
+        from rayohx.errors import ConfigurationError
+
         for host in self.credential_hosts:
             if not _HOSTNAME.match(host):
                 raise ConfigurationError(
@@ -94,6 +93,8 @@ class NetworkConfig:
     def as_dict(self) -> dict[str, Any]:
         """A serializable view without secrets."""
         from pathlib import Path
+
+        from rayohx._redaction import REDACTED, redact_headers
 
         verify = str(self.verify_tls) if isinstance(self.verify_tls, Path) else self.verify_tls
         return {

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rayohx.stream.quality import quality_height
-
 if TYPE_CHECKING:
     from rayohx.models import Variant
 
@@ -30,6 +28,8 @@ def is_audio_only(variant: Variant) -> bool:
 
 
 def best_key(entry: tuple[int, Variant]) -> tuple[int, int, int, float, int, int]:
+    from rayohx.stream.quality import quality_height
+
     index, variant = entry
     return (
         quality_height(variant),
@@ -42,11 +42,15 @@ def best_key(entry: tuple[int, Variant]) -> tuple[int, int, int, float, int, int
 
 
 def worst_key(entry: tuple[int, Variant]) -> tuple[int, int, int]:
+    from rayohx.stream.quality import quality_height
+
     index, variant = entry
     return (quality_height(variant), variant.bandwidth, index)
 
 
 def describe(variant: Variant) -> str:
+    from rayohx.stream.quality import quality_height
+
     size = f"{quality_height(variant)}p" if variant.resolution else "unknown size"
     return f"{size}, {variant.bandwidth // 1000} kbps"
 
@@ -61,6 +65,8 @@ def describe_full(variant: Variant) -> str:
 
 def closest_to(entries: list[tuple[int, Variant]], target: int, notes: list[str]) -> Variant:
     """The best stream at or below ``target``; if all are larger, the smallest of them."""
+    from rayohx.stream.quality import quality_height
+
     at_or_below = [entry for entry in entries if quality_height(entry[1]) <= target]
     if at_or_below:
         return max(at_or_below, key=best_key)[1]

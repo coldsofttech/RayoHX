@@ -16,37 +16,8 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from rayohx._http._common import (
-    CHUNK_SIZE,
-    DEFAULT_MAX_BYTES,
-    DEFAULT_POOL_SIZE,
-    MAX_PLAYLIST_BYTES,
-    MAX_RETRY_AFTER,
-    host_of,
-    proxy_url,
-    translate,
-    verify,
-)
-from rayohx._http._response import (
-    HttpResponse,
-    check_content_range,
-    check_status,
-    declared_length,
-    is_redirect,
-    is_web_page_type,
-    looks_like_web_page,
-    redirect_target,
-)
+from rayohx._http._common import DEFAULT_MAX_BYTES, DEFAULT_POOL_SIZE
 from rayohx._logs import get_logger
-from rayohx._redaction import is_sensitive_name, redact_url
-from rayohx.config import validate_url
-from rayohx.errors import (
-    HTTPError,
-    InvalidResponseError,
-    NetworkError,
-    NetworkTimeoutError,
-    PlaylistNotFoundError,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -55,9 +26,11 @@ if TYPE_CHECKING:
 
     import httpx
 
+    from rayohx._http._response import HttpResponse
     from rayohx._ratelimit import RateLimiter
     from rayohx.cancellation import CancellationToken
     from rayohx.config import NetworkConfig
+    from rayohx.errors import NetworkError
     from rayohx.models import SegmentRange
 
 logger = get_logger("http")
@@ -94,6 +67,8 @@ class HttpClient:
         import threading
 
         import httpx
+
+        from rayohx._http._common import host_of, proxy_url, verify
 
         self._config = config
         self._cancel = cancel
@@ -154,6 +129,9 @@ class HttpClient:
         Raises:
             PlaylistNotFoundError: If the server says the playlist does not exist.
         """
+        from rayohx._http._common import MAX_PLAYLIST_BYTES
+        from rayohx.errors import HTTPError, PlaylistNotFoundError
+
         try:
             response = self._get(
                 url,
@@ -204,6 +182,9 @@ class HttpClient:
         byte_range: SegmentRange | None = None,
         on_bytes: Callable[[int], None] | None = None,
     ) -> HttpResponse:
+        from rayohx.config import validate_url
+        from rayohx.errors import NetworkError
+
         url = validate_url(url, name="request address")
         total = self._config.total_timeout
         deadline = None if total is None else self._clock() + total
@@ -238,6 +219,9 @@ class HttpClient:
         raise AssertionError  # pragma: no cover - the last attempt always returns or raises
 
     def _delay(self, attempt: int, error: NetworkError) -> float:
+        from rayohx._http._common import MAX_RETRY_AFTER
+        from rayohx.errors import HTTPError
+
         if isinstance(error, HTTPError) and error.retry_after is not None:
             return min(error.retry_after, MAX_RETRY_AFTER)
         base = self._config.backoff_factor * 2 ** (attempt - 1)
@@ -271,6 +255,11 @@ class HttpClient:
         deadline: float | None,
     ) -> HttpResponse:
         import httpx
+
+        from rayohx._http._common import translate
+        from rayohx._http._response import check_status, is_redirect, redirect_target
+        from rayohx._redaction import redact_url
+        from rayohx.errors import NetworkError
 
         current = url
         for _hop in range(self._config.max_redirects + 1):
@@ -310,6 +299,17 @@ class HttpClient:
         on_bytes: Callable[[int], None] | None,
         deadline: float | None,
     ) -> HttpResponse:
+        from rayohx._http._common import CHUNK_SIZE
+        from rayohx._http._response import (
+            HttpResponse,
+            check_content_range,
+            declared_length,
+            is_web_page_type,
+            looks_like_web_page,
+        )
+        from rayohx._redaction import redact_url
+        from rayohx.errors import InvalidResponseError, NetworkTimeoutError
+
         shown = redact_url(url)
         content_type = response.headers.get("content-type", "")
         if expect_media and is_web_page_type(content_type):
@@ -388,6 +388,9 @@ class HttpClient:
     def _headers_for(
         self, url: str, accept_encoding: str, byte_range: SegmentRange | None
     ) -> dict[str, str]:
+        from rayohx._http._common import host_of
+        from rayohx._redaction import is_sensitive_name
+
         trusted = self._is_trusted(host_of(url))
         headers = {"Accept-Encoding": accept_encoding}
         for name, value in self._config.request_headers().items():

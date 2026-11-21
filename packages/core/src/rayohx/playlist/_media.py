@@ -5,10 +5,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from rayohx.errors import InvalidPlaylistError
-from rayohx.playlist._lines import tag_name, tag_value
-from rayohx.playlist._values import byte_range, date_time, resolve, whole_tag_number
-
 if TYPE_CHECKING:
     from datetime import datetime
 
@@ -24,7 +20,10 @@ _VTT_SUFFIXES = (".vtt", ".webvtt")
 
 
 def parse_media(lines: list[Line], base: str) -> MediaPlaylist:
+    from rayohx.errors import InvalidPlaylistError
     from rayohx.models import MediaPlaylist, Segment, SegmentRange
+    from rayohx.playlist._lines import tag_name, tag_value
+    from rayohx.playlist._values import byte_range, date_time, resolve, whole_tag_number
 
     segments: list[Segment] = []
     target_duration: float | None = None

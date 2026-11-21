@@ -1,17 +1,17 @@
 """Where finished segments wait for their turn."""
 
-import os
-import shutil
-import struct
-import threading
-from pathlib import Path
-from typing import Protocol
+from __future__ import annotations
 
-from rayohx._download._storage._common import translate_os_error
-from rayohx._download._storage._metrics import StorageTracker
-from rayohx.config import StorageConfig
-from rayohx.enums import StorageStrategy
-from rayohx.models import SegmentData
+import struct
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from rayohx._download._storage._metrics import StorageTracker
+    from rayohx.config import StorageConfig
+    from rayohx.enums import StorageStrategy
+    from rayohx.models import SegmentData
 
 _HEADER = struct.Struct(">Q")
 
@@ -36,6 +36,8 @@ class MemoryStore:
     """Keeps segments in memory."""
 
     def __init__(self, tracker: StorageTracker) -> None:
+        import threading
+
         self._items: dict[int, SegmentData] = {}
         self._tracker = tracker
         self._lock = threading.Lock()
@@ -69,6 +71,8 @@ class DiskStore:
     """Keeps segments as files in a folder. A file appears only once it is completely written."""
 
     def __init__(self, folder: Path, tracker: StorageTracker) -> None:
+        import threading
+
         self._folder = folder
         self._tracker = tracker
         self._sizes: dict[int, int] = {}
@@ -110,6 +114,10 @@ class DiskStore:
             return False
 
     def put(self, data: SegmentData) -> None:
+        import os
+
+        from rayohx._download._storage._common import translate_os_error
+
         final = self._path(data.index)
         temporary = final.with_suffix(".tmp")
         try:
@@ -131,6 +139,8 @@ class DiskStore:
             return index in self._sizes
 
     def take(self, index: int) -> SegmentData:
+        from rayohx.models import SegmentData
+
         path = self._path(index)
         raw = path.read_bytes()
         init_length: int = _HEADER.unpack_from(raw)[0]
@@ -150,6 +160,8 @@ class DiskStore:
         return set(self._found)
 
     def clear(self) -> None:
+        import shutil
+
         with self._lock:
             freed = sum(self._sizes.values())
             self._sizes.clear()
@@ -193,6 +205,8 @@ def make_store(
     segments_dir: Path,
 ) -> SegmentStore:
     """Build the store a strategy uses."""
+    from rayohx.enums import StorageStrategy
+
     if strategy is StorageStrategy.TEMPORARY:
         return DiskStore(segments_dir, tracker)
     if strategy is StorageStrategy.HYBRID:
