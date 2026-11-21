@@ -1,4 +1,4 @@
-﻿name: Release CLI
+name: Release CLI
 
 # Tag cli-vX.Y.Z: builds the command line (rayohx-cli); the installers are built by
 # release-installer.yml. Publishing the package to PyPI and attaching the files to the GitHub
@@ -33,4 +33,3 @@ jobs:
         with:
           name: dist
           path: dist/
-
