@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         DownloadProgress,
         DownloadRequest,
         DownloadResult,
+        LeftoverWorkspace,
         OutputInfo,
         StorageMetrics,
     )
@@ -51,6 +52,7 @@ _EXPORTS = {
     "DownloadProgress": "rayohx.models.download",
     "DownloadRequest": "rayohx.models.download",
     "DownloadResult": "rayohx.models.download",
+    "LeftoverWorkspace": "rayohx.models.download",
     "OutputInfo": "rayohx.models.download",
     "StorageMetrics": "rayohx.models.download",
     "AudioTrack": "rayohx.models.playlist",
@@ -90,6 +92,7 @@ __all__ = [
     "DownloadResult",
     "EncryptionInfo",
     "InitMap",
+    "LeftoverWorkspace",
     "MasterPlaylist",
     "MediaPlaylist",
     "OutputInfo",

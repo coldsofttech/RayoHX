@@ -22,17 +22,21 @@ Want a ready-made command instead? Install the `rayohx` command line from `rayoh
 - Inspect a stream from its web address and see its qualities, audio and subtitle tracks and
   encryption, without downloading any media
 - Choose a stream by quality, resolution or bitrate limit, or exactly by its number, resolution or
-  name, and pick audio and subtitles by language or name
+  name, prefer a video codec or dynamic range, and pick audio and subtitles by language or name
 - Download in one call, with parallel segments, progress events, and cancellation that returns a
   result instead of an error
 - Pause a running download and resume it later
+- Work with a playlist you already have as text, without fetching it
+- Download several streams one after another into a folder with `download_many`
+- Find and remove the working folders that interrupted downloads leave behind
 - Resume interrupted downloads where they stopped, with disk space needed for the video only
 - Save segments as separate files in a folder, or download just the video of a stream with a
   separate audio track
 - Save MPEG-TS and fragmented MP4 streams, join a separate audio track into one MP4 and save
   subtitles as `.vtt` files, with nothing re-encoded
-- Decrypt AES-128 streams; protected (DRM) and live streams are refused with a clear explanation
-- Use proxies, TLS settings, headers, cookies and a speed limit, with automatic retries
+- Decrypt AES-128 streams, including keys given in the playlist or supplied by your own code; protected (DRM) and live streams are refused with a clear explanation
+- Use proxies (including SOCKS5 and ones from the environment), client certificates, TLS settings,
+  headers, cookies and a speed limit, with automatic retries
 - Refuse damaged or hostile streams with a clear error instead of crashing, and never replace an
   existing file unless you allow it
 - Keep secrets such as tokens, cookies and proxy passwords out of logs and error messages

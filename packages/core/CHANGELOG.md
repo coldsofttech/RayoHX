@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `find_workspaces` and `remove_workspaces` list and delete the working folders that interrupted downloads leave behind. Folders a running download is using are never removed.
 - Download or look at a playlist you already have as text (`Downloader(playlist_text=...)`, `inspect_text`) without fetching it first.
 - A download can be paused and resumed (`Downloader.pause()`, `resume()` and `is_paused`). Segments already running finish first, and `download_paused` and `download_resumed` events report the change.
 - `download_many` saves several streams one after another into a folder and reports how each one ended. `batch_outputs` shows the file names it would use, and `OutputConfig(directory=...)` sets the folder for outputs that are not named.

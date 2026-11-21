@@ -90,15 +90,20 @@ An existing output file is never replaced unless you pass `--overwrite`.
 - **Not supported.** Encrypted streams (plain AES-128) work. Protected (DRM) streams and live
   streams are refused with an explanation.
 
+## Pausing
+
+On Linux and macOS, `kill -USR1 <pid>` pauses a running download (segments already in progress
+finish) and a second `kill -USR1` continues it. Windows has no such signal.
+
+Press P (or the space bar) to pause a download and again to resume it. Downloads already
+running finish first, so the pause takes a moment to show. This works when you type into a
+terminal; it is off when input is piped.
+
 ## Resuming
 
 An interrupted or cancelled download continues where it stopped when you run the same command
 again, and needs disk space for the video only, not twice that. Use `--no-resume` to start over.
 Joining separate audio into the video is the one case that starts again.
-
-Press P (or the space bar) to pause a download and again to resume it. Downloads already
-running finish first, so the pause takes a moment to show. This works when you type into a
-terminal; it is off when input is piped.
 
 Press Ctrl+C once to stop cleanly and keep what a resume needs. A second press quits at once. See
 [Exit codes and errors](exit-codes.md#stopping-with-ctrlc).
@@ -182,7 +187,6 @@ note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
 | `--proxy-password` | | The proxy password. Prefer the environment variable `RAYOHX_PROXY_PASSWORD`. |
 | `--env-proxy` / `--no-env-proxy` | off | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. |
 | `--insecure` | | Do not check TLS certificates. Only for servers you trust. |
-| `--env-proxy` / `--no-env-proxy` | | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. Off by default. |
 | `--client-cert` | | A client certificate (PEM) for servers that require mutual TLS. |
 | `--client-key` | | The private key for `--client-cert`, if it is a separate file. |
 | `--client-key-password` | | The password of an encrypted client key. Prefer the environment variable `RAYOHX_CLIENT_KEY_PASSWORD`. |
@@ -193,9 +197,9 @@ note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
 | `--connect-timeout` | | Seconds to wait to connect. |
 | `--read-timeout` | | Seconds to wait for data. |
 | `--timeout` | | Most seconds one request may take, retries included. |
-| `--retries` | | Extra attempts after a failure (0 or more). |
 | `--backoff` | | Back-off factor between retries: the wait is this times 2 to the attempt number (default 0.5 seconds). |
 | `--max-redirects` | | Most redirects to follow for one request (default 10). |
+| `--retries` | | Extra attempts after a failure (0 or more). |
 | `--rate-limit` | | Most bytes per second to download in total, for example `2M`. |
 | `--credential-host` | | Also send headers like `Authorization` and your cookies to this host (repeatable). By default they go only to the host of the URL, and redirects never carry them elsewhere. |
 
@@ -223,8 +227,8 @@ and a speed limit.
 | Option | Description |
 |---|---|
 | `--json` | Print the result as JSON on stdout, for other programs. |
+| `--events` | Write every download event as one JSON line on stderr, for other programs. Replaces the progress display. |
 | `--progress` | How to show progress: `auto` (default), `bar`, `plain`, `none`. |
-| `--events` | Write every download event as one JSON line on stderr. Replaces the progress display. |
 
 Sizes accept `K`, `M` and `G`. Sizes are binary (`4M` is 4 MiB); bitrates are decimal (`4M` is
 4,000,000 bit/s). See [Settings](settings.md) for `@file` values and `RAYOHX_` environment

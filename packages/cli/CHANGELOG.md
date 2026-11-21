@@ -6,11 +6,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `rayohx clean` removes leftover working folders, and `rayohx config` shows the settings in effect.
 - `--playlist-file` on `download` and `info` reads a playlist you already have from a file instead of fetching it, and `--base-url` sets the address its relative links resolve against. A local playlist file can also be given in place of the address.
 - `--events` writes every download event as one JSON line on stderr, for other programs.
 - Tune retries and redirects (`--backoff`, `--max-redirects`), sign in to a proxy (`--proxy-username`, `--proxy-password`) and read cookies from a browser's `cookies.txt` (`--cookie-file`).
 - `--directory` picks the folder to save into, `--reserve-space` keeps some disk space free, and `--no-keep-state` clears what a resume needs after a failure.
-- Press P (or the space bar) during a download to pause it, and again to resume.
+- Press P (or the space bar) during a download to pause it, and again to resume. On Linux and macOS, `kill -USR1` does the same.
 - `rayohx download` accepts several addresses, or a list in a file with `--input-file` (`-` reads standard input). `--output` then names a folder, and `--stop-on-error` stops at the first failure.
 - `--allow-file-keys` lets a stream's local key files be read; streams with keys inside the playlist now download.
 - Prefer a video codec (`--codec`) or dynamic range (`--video-range`), and cap the frame rate (`--max-frame-rate`), when choosing a stream.

@@ -33,6 +33,7 @@ printed on stdout, so it is easy to use in a script.
 - Watch a progress bar, or get machine-readable output with `--json`
 - Keep settings in a file or `RAYOHX_` environment variables
 - Use `--verbose`, `--quiet`, `--no-color` and shell completion
+- Download several streams at once, read local playlist files, and clean up after interrupted downloads
 
 ## Install
 

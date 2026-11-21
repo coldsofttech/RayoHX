@@ -38,6 +38,7 @@ print(result.output.path, result.output.size_bytes)
 |---|---|
 | [Inspecting streams](python/inspecting.md) | `inspect`, `inspect_playlist`, `inspect_text`, `parse_playlist`, `is_hls_playlist`, fetchers, parsing rules |
 | [Downloading](python/downloading.md) | `download`, `Downloader`, output files, results, what is and is not supported |
+| [Leftover folders](python/workspaces.md) | `find_workspaces`, `remove_workspaces`, `LeftoverWorkspace` |
 | [Selecting tracks](python/selecting.md) | `select_stream`, `StreamSelection`, how quality, limits and languages are decided |
 | [Settings](python/settings.md) | `DownloadConfig`, `NetworkConfig`, `ProxyConfig`, `OutputConfig`, `StorageConfig`, `SelectionConfig`, constants, secrets |
 | [Models](python/models.md) | Every playlist, segment and download model, with fields, properties and methods |
@@ -125,6 +126,8 @@ from rayohx.errors import PlaylistNotFoundError
 |---|---|---|
 | `rayohx.download(url, output, **options)` | Download a stream to a file or a folder of segments | [Downloading](python/downloading.md#download) |
 | `rayohx.download_many(urls, directory, **options)` | Download several streams, one after another, into a folder | [Downloading](python/downloading.md#download_many) |
+| `rayohx.find_workspaces(folders=None, older_than_days=0)` | List working folders left by interrupted downloads | [Leftover folders](python/workspaces.md#find_workspaces) |
+| `rayohx.remove_workspaces(workspaces)` | Delete those folders, skipping any in use | [Leftover folders](python/workspaces.md#remove_workspaces) |
 | `rayohx.Downloader(url, ...)` | One download with events, state, pause/resume and cancellation | [Downloading](python/downloading.md#downloader) |
 | `rayohx.inspect(url, network=None)` | Fetch and parse the playlist at a URL | [Inspecting](python/inspecting.md#inspect) |
 | `rayohx.inspect_playlist(url, fetcher)` | The same, with a fetcher you supply | [Inspecting](python/inspecting.md#inspect_playlist) |

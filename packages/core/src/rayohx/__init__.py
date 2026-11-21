@@ -38,6 +38,7 @@ if TYPE_CHECKING:
         DownloadResult,
         EncryptionInfo,
         InitMap,
+        LeftoverWorkspace,
         MasterPlaylist,
         MediaPlaylist,
         OutputInfo,
@@ -65,6 +66,7 @@ if TYPE_CHECKING:
         result_to_dict,
     )
     from rayohx.stream import StreamSelection, select_stream
+    from rayohx.workspaces import find_workspaces, remove_workspaces
 
 _SUBMODULES = frozenset(
     {
@@ -92,6 +94,7 @@ _EXPORTS = {
     "EncryptionMethod": "rayohx.enums",
     "EventType": "rayohx.enums",
     "InitMap": "rayohx.models",
+    "LeftoverWorkspace": "rayohx.models",
     "MasterPlaylist": "rayohx.models",
     "MediaPlaylist": "rayohx.models",
     "OutputFormat": "rayohx.enums",
@@ -113,6 +116,7 @@ _EXPORTS = {
     "configure_logging": "rayohx.logs",
     "download": "rayohx.downloader",
     "download_many": "rayohx.downloader",
+    "find_workspaces": "rayohx.workspaces",
     "inspect": "rayohx.playlist.inspection",
     "inspect_playlist": "rayohx.playlist",
     "inspect_text": "rayohx.playlist",
@@ -120,6 +124,7 @@ _EXPORTS = {
     "parse_playlist": "rayohx.playlist",
     "playlist_to_dict": "rayohx.serialization",
     "progress_to_dict": "rayohx.serialization",
+    "remove_workspaces": "rayohx.workspaces",
     "result_to_dict": "rayohx.serialization",
     "select_stream": "rayohx.stream",
 }
@@ -157,6 +162,7 @@ __all__ = [
     "EncryptionMethod",
     "EventType",
     "InitMap",
+    "LeftoverWorkspace",
     "MasterPlaylist",
     "MediaPlaylist",
     "OutputFormat",
@@ -180,6 +186,7 @@ __all__ = [
     "configure_logging",
     "download",
     "download_many",
+    "find_workspaces",
     "inspect",
     "inspect_playlist",
     "inspect_text",
@@ -187,6 +194,7 @@ __all__ = [
     "parse_playlist",
     "playlist_to_dict",
     "progress_to_dict",
+    "remove_workspaces",
     "result_to_dict",
     "select_stream",
 ]

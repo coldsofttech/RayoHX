@@ -6,7 +6,7 @@ audio and subtitle tracks, and which of them a download with the same options wo
 [Back to the command line guide](../cli.md)
 
 ```bash
-rayohx info URL [OPTIONS]
+rayohx info URL_OR_FILE [OPTIONS]
 ```
 
 ```bash
@@ -103,6 +103,9 @@ These only decide which stream is marked with `*`; nothing is downloaded.
 | `--proxy-username` | | The proxy user name, if it is not in the `--proxy` address. Needs `--proxy`. |
 | `--proxy-password` | | The proxy password. Prefer the environment variable `RAYOHX_PROXY_PASSWORD`. |
 | `--insecure` | | Do not check TLS certificates. Only for servers you trust. |
+| `--proxy-username`, `--proxy-password` | | The proxy login, if it is not in the `--proxy` address. Both are needed, with `--proxy`. Prefer the environment variables. |
+| `--cookie-file` | | Read cookies from a Netscape-format `cookies.txt` (as exported by browsers). Domains are not checked. |
+| `--base-url` | | When the playlist is a local file, resolve its relative addresses against this web address. |
 | `--env-proxy` / `--no-env-proxy` | | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. Off by default. |
 | `--client-cert` | | A client certificate (PEM) for servers that require mutual TLS. |
 | `--client-key` | | The private key for `--client-cert`, if it is a separate file. |
@@ -114,6 +117,8 @@ These only decide which stream is marked with `*`; nothing is downloaded.
 | `--connect-timeout` | | Seconds to wait to connect. |
 | `--read-timeout` | | Seconds to wait for data. |
 | `--timeout` | | Most seconds one request may take, retries included. |
+| `--backoff` | | Back-off factor between retries: the wait is this times 2 to the attempt number (default 0.5 seconds). |
+| `--max-redirects` | | Most redirects to follow for one request (default 10). |
 | `--retries` | | Extra attempts after a failure. |
 | `--backoff` | | Back-off factor between retries: the wait is this times 2 to the attempt number (default 0.5 seconds). |
 | `--max-redirects` | | Most redirects to follow for one request (default 10). |

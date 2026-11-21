@@ -157,3 +157,26 @@ def test_there_is_no_key_watching_without_a_keyboard(monkeypatch: pytest.MonkeyP
     with pause_toggle(downloader):  # type: ignore[arg-type]
         pass
     assert downloader.calls == []
+
+
+@pytest.mark.skipif(not hasattr(signal, "SIGUSR1"), reason="no SIGUSR1 on this system")
+def test_sigusr1_pauses_and_resumes(capsys: pytest.CaptureFixture[str]) -> None:
+    class Pausable(_Downloader):
+        is_paused = False
+
+        def pause(self) -> None:
+            self.is_paused = True
+
+        def resume(self) -> None:
+            self.is_paused = False
+
+    usr1: int = getattr(signal, "SIGUSR1", 0)  # missing on Windows, where the test is skipped
+    downloader = Pausable()
+    before = signal.getsignal(usr1)
+    with graceful_interrupt(downloader):  # type: ignore[arg-type]
+        signal.raise_signal(usr1)
+        assert downloader.is_paused
+        signal.raise_signal(usr1)
+        assert not downloader.is_paused
+    assert signal.getsignal(usr1) is before
+    assert "Paused" in capsys.readouterr().err

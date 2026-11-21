@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from rayohx.models.download.request import DownloadRequest
     from rayohx.models.download.result import DownloadResult
     from rayohx.models.download.storage import StorageMetrics
+    from rayohx.models.download.workspace import LeftoverWorkspace
 
 _EXPORTS = {
     "DownloadProgress": "rayohx.models.download.progress",
@@ -21,6 +22,7 @@ _EXPORTS = {
     "DownloadResult": "rayohx.models.download.result",
     "OutputInfo": "rayohx.models.download.output",
     "StorageMetrics": "rayohx.models.download.storage",
+    "LeftoverWorkspace": "rayohx.models.download.workspace",
 }
 
 
@@ -42,6 +44,7 @@ __all__ = [
     "DownloadProgress",
     "DownloadRequest",
     "DownloadResult",
+    "LeftoverWorkspace",
     "OutputInfo",
     "StorageMetrics",
 ]

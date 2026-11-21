@@ -29,19 +29,23 @@ subtitles you want, and puts everything together into a single file you can keep
 ## Features
 
 - Inspect a stream's qualities, audio and subtitle tracks and encryption
-- Choose a stream by quality, resolution, bitrate limit or exact number, and pick audio and
-  subtitles by language or name
+- Choose a stream by quality, resolution, bitrate limit or exact number, prefer a video codec or
+  dynamic range, and pick audio and subtitles by language or name
 - Fast downloads with several pieces fetched at once, a progress display and an optional speed limit
-- Resume interrupted downloads
-- Download several streams in one go, from a list of addresses
+- Resume interrupted downloads, pause and continue a running one, and clean up the folders that
+  interrupted downloads leave behind
+- Download several streams in one go, from a list of addresses or a file
+- Use a playlist file you already have instead of fetching it
 - Save MPEG-TS and fragmented MP4 streams to a file, or keep the pieces as separate files in a
   folder
 - Join a separate audio track into one MP4 and save subtitles as `.vtt` files, with nothing
   re-encoded
-- Download encrypted (AES-128) streams
+- Download encrypted (AES-128) streams, including ones whose key is stored in a local file you allow
 - Clear explanation when a stream is protected (DRM) or live, as these are not supported
-- Proxies, TLS settings, custom headers and cookies, with automatic retries
-- Machine-readable output for scripts
+- Proxies (including SOCKS5 and a proxy login), client certificates, custom headers and cookies
+  (including a browser's `cookies.txt`), with automatic retries
+- Keep your usual options in a settings file, and check what is in effect with `rayohx config`
+- Machine-readable output for scripts, including a stream of download events
 - Tokens, cookies and proxy passwords are kept out of logs and error messages
 
 ## Ways to use RayoHX
@@ -54,7 +58,8 @@ subtitles you want, and puts everything together into a single file you can keep
 | [rayohx-docker](packages/docker) | The `rayohx` command as a container image | `docker pull ghcr.io/coldsofttech/rayohx` |
 
 - **Python package**: use RayoHX inside your own programs and scripts.
-- **Command line**: run `rayohx info` and `rayohx download` from a terminal or a script.
+- **Command line**: run `rayohx info`, `rayohx download`, `rayohx clean` and `rayohx config` from a
+  terminal or a script.
 - **Docker**: the same command line without installing Python, handy for servers and automation.
 - **Desktop window**: work with streams from a window on Windows, no terminal needed.
 
