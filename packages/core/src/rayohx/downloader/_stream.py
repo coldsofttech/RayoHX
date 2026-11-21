@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from rayohx._http import HttpClient
     from rayohx.enums import ContainerFormat
     from rayohx.models import MasterPlaylist, MediaPlaylist, SegmentData
@@ -29,7 +31,9 @@ def describe(stream: StreamSelection) -> dict[str, object]:
     }
 
 
-def load_media(client: HttpClient, url: str) -> MediaPlaylist:
+def load_media(
+    client: HttpClient, url: str, variables: Mapping[str, str] | None = None
+) -> MediaPlaylist:
     from rayohx.errors import InvalidPlaylistError
     from rayohx.models import MediaPlaylist
     from rayohx.playlist import is_hls_playlist, parse_playlist
@@ -40,7 +44,7 @@ def load_media(client: HttpClient, url: str) -> MediaPlaylist:
             "A stream's address did not return an HLS playlist.",
             hint="The link may have expired or need sign-in.",
         )
-    playlist = parse_playlist(text, final)
+    playlist = parse_playlist(text, final, variables=variables)
     if not isinstance(playlist, MediaPlaylist):
         raise InvalidPlaylistError("Expected a playlist of segments but found a list of streams.")
     return playlist

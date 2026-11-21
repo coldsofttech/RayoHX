@@ -155,8 +155,10 @@ except InvalidPlaylistError as exc:
 
 - A playlist is recognised by its `#EXTM3U` header, never by its file name or address.
 - Tags the parser does not know are skipped, so newer playlists keep working.
-- Playlist variables (`EXT-X-DEFINE`) and I-frame-only playlists raise `UnsupportedPlaylistError`,
-  because ignoring them would produce wrong addresses or wrong video.
+- Playlist variables (`EXT-X-DEFINE`) are replaced for you, so every address you see is final. The
+  master playlist's variables are on `MasterPlaylist.variables`.
+- I-frame-only playlists raise `UnsupportedPlaylistError`, because ignoring them would produce
+  wrong video.
 - Segment and playlist addresses must be `http` or `https`. Key addresses may use another scheme,
   so a SAMPLE-AES or DRM playlist can still be inspected. The key is marked unsupported
   (`EncryptionInfo.is_supported` is `False`) and a download refuses it later.

@@ -13,7 +13,7 @@ from rayohx.downloader._stream import (
     probe_container,
     require_single_stream,
 )
-from rayohx.errors import InvalidPlaylistError, OutputFormatError
+from rayohx.errors import InvalidPlaylistError, OutputFormatError, UnsupportedPlaylistError
 from rayohx.models import AudioTrack, MasterPlaylist, MediaPlaylist, SubtitleTrack
 from rayohx.playlist import parse_playlist
 from rayohx.stream import StreamSelection
@@ -129,6 +129,25 @@ def test_a_media_playlist_is_fetched_and_parsed() -> None:
     playlist = load_media(client, url)  # type: ignore[arg-type]
     assert isinstance(playlist, MediaPlaylist)
     assert [segment.uri for segment in playlist.segments] == [BASE + "a.ts"]
+
+
+def test_a_media_playlist_gets_the_variables_of_its_master() -> None:
+    url = BASE + "low.m3u8"
+    text = (
+        '#EXTM3U\n#EXT-X-DEFINE:IMPORT="host"\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\n'
+        "https://{$host}/a.ts\n"
+    )
+    client = FakeClient(texts={url: text})
+    playlist = load_media(client, url, {"host": "cdn.example.com"})  # type: ignore[arg-type]
+    assert [segment.uri for segment in playlist.segments] == ["https://cdn.example.com/a.ts"]
+
+
+def test_an_imported_variable_without_a_master_is_refused() -> None:
+    url = BASE + "low.m3u8"
+    text = '#EXTM3U\n#EXT-X-DEFINE:IMPORT="host"\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\na.ts\n'
+    client = FakeClient(texts={url: text})
+    with pytest.raises(UnsupportedPlaylistError, match="imports"):
+        load_media(client, url)  # type: ignore[arg-type]
 
 
 def test_something_that_is_not_a_playlist_is_explained() -> None:

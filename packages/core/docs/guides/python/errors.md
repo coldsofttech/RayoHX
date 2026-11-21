@@ -16,7 +16,7 @@ RayoHXError
 ├── ConfigurationError           an invalid setting or address
 ├── PlaylistError
 │   ├── InvalidPlaylistError     not an HLS playlist, or a broken one (has line)
-│   ├── UnsupportedPlaylistError a feature RayoHX refuses (EXT-X-DEFINE, I-frame only, live, DRM)
+│   ├── UnsupportedPlaylistError a feature RayoHX refuses (I-frame only, live, DRM)
 │   └── PlaylistNotFoundError    HTTP 404 or 410 for a playlist
 ├── NetworkError                 (has retryable)
 │   ├── NetworkConnectionError

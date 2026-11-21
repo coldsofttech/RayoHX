@@ -12,24 +12,19 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
     from pathlib import Path
 
     import httpx
 
-    from rayohx._download._output import OutputPlan
-    from rayohx._http import HttpClient
     from rayohx.cancellation import CancellationToken
     from rayohx.config import DownloadConfig
-    from rayohx.downloader._delivery import Rendition
-    from rayohx.enums import ContainerFormat, DownloadState, EventType
+    from rayohx.enums import DownloadState, EventType
     from rayohx.events import DownloadEvent, EventBus
     from rayohx.models import (
         DownloadProgress,
         DownloadResult,
-        MediaPlaylist,
         OutputInfo,
-        SubtitleTrack,
     )
     from rayohx.stream import StreamSelection
 
@@ -70,6 +65,7 @@ class Downloader:
         self._token = cancel if cancel is not None else CancellationToken()
         self._id = download_id or uuid.uuid4().hex[:12]
         self._transport = transport
+        self._variables: Mapping[str, str] | None = None  # the master playlist's variables
         self._clock = clock
         self._machine = DownloadStateMachine()
         self._progress = DownloadProgress()
@@ -151,6 +147,11 @@ class Downloader:
         from rayohx._http import HttpClient
         from rayohx._redaction import redact_url
         from rayohx.downloader._delivery import Delivery, check_free
+        from rayohx.downloader._prepare import (
+            choose_backend,
+            load_renditions,
+            load_subtitle_jobs,
+        )
         from rayohx.downloader._result import output_info
         from rayohx.downloader._stream import (
             audio_codecs,
@@ -178,7 +179,8 @@ class Downloader:
             if isinstance(playlist, MasterPlaylist):
                 stream = select_stream(playlist, config.selection)
                 self._emit(EventType.STREAM_SELECTED, data=describe(stream))
-                media = load_media(client, stream.variant.uri)
+                self._variables = playlist.variables
+                media = load_media(client, stream.variant.uri, self._variables)
                 self._emit(EventType.PLAYLIST_LOADED, data={"kind": "media"})
             else:
                 media = playlist
@@ -187,7 +189,7 @@ class Downloader:
             container = media.container
             if container is ContainerFormat.UNKNOWN:
                 container = probe_container(client, media)
-            audios = self._renditions(client, stream)
+            audios = load_renditions(client, stream, self._variables, self._emit)
             if config.output.format is OutputFormat.SEGMENTS and (
                 audios or (stream and stream.subtitle_tracks)
             ):
@@ -203,13 +205,13 @@ class Downloader:
                 allow_remux=True,
                 merge=bool(audios),
             )
-            subtitles = self._subtitle_jobs(client, stream, plan)
+            subtitles = load_subtitle_jobs(client, stream, plan, self._variables, self._emit)
             # Refuse before downloading anything if a file we will write is already there.
             targets = [path for _, _, path in subtitles]
             if not plan.is_directory:
                 targets.append(plan.path)
             check_free(targets, config.output.overwrite)
-            ffmpeg_path = self._choose_backend(client, media, container, audios, plan)
+            ffmpeg_path = choose_backend(client, media, container, audios, plan, config)
 
             delivery = Delivery(client, config, self._bus, self._id, self._token, self._finalizing)
             variant = stream.variant if stream else None
@@ -238,98 +240,6 @@ class Downloader:
         return output, summary.progress
 
     # --- preparing -------------------------------------------------------------------------
-
-    def _renditions(self, client: HttpClient, stream: StreamSelection | None) -> list[Rendition]:
-        """Load the playlists of the separate audio tracks that have to be joined in."""
-        from rayohx.downloader._delivery import Rendition
-        from rayohx.downloader._stream import load_media, probe_container
-        from rayohx.enums import ContainerFormat, EventType
-        from rayohx.errors import OutputFormatError
-
-        renditions = []
-        for track in stream.audio_tracks if stream else ():
-            assert track.uri is not None  # noqa: S101 - selection keeps only tracks with an address
-            media = load_media(client, track.uri)
-            container = media.container
-            if container is ContainerFormat.UNKNOWN:
-                container = probe_container(client, media)
-            if container not in {ContainerFormat.MPEG_TS, ContainerFormat.FMP4}:
-                raise OutputFormatError(
-                    f"The audio track {track.name!r} is in a form that cannot be joined in.",
-                    hint="Only MPEG-TS and fragmented MP4 audio are supported.",
-                )
-            self._emit(EventType.PLAYLIST_LOADED, data={"kind": "media", "audio": track.name})
-            renditions.append(Rendition(track, media, container))
-        return renditions
-
-    def _subtitle_jobs(
-        self, client: HttpClient, stream: StreamSelection | None, plan: OutputPlan
-    ) -> list[tuple[SubtitleTrack, MediaPlaylist, Path]]:
-        """Load the playlists of the subtitle tracks and decide where each is saved."""
-        from rayohx.downloader._delivery import subtitle_path
-        from rayohx.downloader._stream import load_media
-        from rayohx.enums import ContainerFormat, EventType
-        from rayohx.errors import OutputFormatError
-
-        jobs = []
-        used: set[Path] = set()
-        for track in stream.subtitle_tracks if stream else ():
-            assert track.uri is not None  # noqa: S101 - selection keeps only tracks with an address
-            media = load_media(client, track.uri)
-            if media.container not in {ContainerFormat.WEBVTT, ContainerFormat.UNKNOWN}:
-                raise OutputFormatError(
-                    f"The subtitles {track.name!r} are not WebVTT text, which is all that can "
-                    "be saved.",
-                    hint="Leave subtitles out, or set video_only.",
-                )
-            self._emit(EventType.PLAYLIST_LOADED, data={"kind": "media", "subtitles": track.name})
-            jobs.append((track, media, subtitle_path(plan.path, track, used)))
-        return jobs
-
-    def _choose_backend(
-        self,
-        client: HttpClient,
-        media: MediaPlaylist,
-        container: ContainerFormat,
-        audios: list[Rendition],
-        plan: OutputPlan,
-    ) -> Path | None:
-        """Pick what re-wraps the stream: ``None`` for the built-in remuxer, else an FFmpeg."""
-        from rayohx._mux._ffmpeg import find_ffmpeg
-        from rayohx._mux._source import probe_codecs
-        from rayohx.downloader._stream import first_segment
-        from rayohx.enums import ContainerFormat, RemuxBackend
-        from rayohx.errors import OutputFormatError, UnsupportedCodecError
-
-        if not plan.mux:
-            return None
-        wanted = self._config.output.remux_backend
-        executable = find_ffmpeg(self._config.output.ffmpeg_path)
-        if wanted is RemuxBackend.FFMPEG:
-            if executable is None:
-                raise OutputFormatError(
-                    "FFmpeg was asked for but could not be found.",
-                    hint="FFmpeg is an optional prerequisite: install it, or set its path in "
-                    "the output settings.",
-                )
-            return executable
-        inputs = [(media, container), *((audio.media, audio.container) for audio in audios)]
-        try:
-            for item, fmt in inputs:
-                if fmt is ContainerFormat.MPEG_TS:
-                    probe_codecs(first_segment(client, item).media)
-        except UnsupportedCodecError as exc:
-            if wanted is RemuxBackend.AUTO and executable is not None:
-                logger.info("Using FFmpeg because the stream uses %s.", exc.codec)
-                return executable
-            hint = (
-                "Set the remux backend to auto and install FFmpeg, an optional prerequisite."
-                if wanted is RemuxBackend.NATIVE
-                else "FFmpeg is not installed. It is an optional prerequisite for streams like "
-                "this: install it, or set its path in the output settings."
-            )
-            raise UnsupportedCodecError(exc.codec, hint=hint) from exc
-        return None
 
     def _finalizing(self) -> None:
         from rayohx.enums import DownloadState, EventType

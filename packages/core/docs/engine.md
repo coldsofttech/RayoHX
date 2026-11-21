@@ -92,7 +92,8 @@ FFmpeg runs as a separate program on files that have already been downloaded, wi
 - A playlist is recognised by its `#EXTM3U` header, never by its file name or address.
 - Tags the parser does not know are skipped, so newer playlists keep working.
 - Errors name the line. A web page or other non-playlist gets a hint to check the address, headers and cookies.
-- Playlist variables (`EXT-X-DEFINE`) and I-frame-only playlists are refused with `UnsupportedPlaylistError`, because ignoring them would produce wrong addresses or wrong video.
+- Playlist variables (`EXT-X-DEFINE` with `NAME`/`VALUE`, `QUERYPARAM` and `IMPORT`) are replaced before parsing, so every address is final. A media playlist that imports a variable gets it from its master playlist, which the downloader passes along. An undefined, repeated or malformed variable is an `InvalidPlaylistError`; `IMPORT` with no master playlist available is an `UnsupportedPlaylistError`.
+- I-frame-only playlists are refused with `UnsupportedPlaylistError`, because ignoring them would produce wrong video.
 - Segments and playlists must be `http` or `https`. Key addresses may use another scheme so that a SAMPLE-AES or DRM playlist can still be inspected. The key is marked unsupported and the download refuses it later.
 - A key without an `IV` keeps `iv=None`. The decrypting phase derives it from the segment's `sequence_number`, as the HLS specification says.
 - `EXT-X-BYTERANGE` ranges without an offset are resolved against the previous range of the same file.
