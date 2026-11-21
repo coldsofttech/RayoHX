@@ -32,3 +32,36 @@ def test_wait_wakes_when_another_thread_cancels() -> None:
         assert token.wait(5) is True
     finally:
         timer.join()
+
+
+def test_pause_and_resume_toggle_the_paused_flag() -> None:
+    token = CancellationToken()
+    assert not token.is_paused
+    token.pause()
+    assert token.is_paused
+    assert token.wait_resumed(0.01) is False
+    token.resume()
+    assert not token.is_paused
+    assert token.wait_resumed(0.01) is True
+
+
+def test_cancelling_wins_over_pausing() -> None:
+    token = CancellationToken()
+    token.pause()
+    token.cancel()
+    assert token.is_cancelled
+    assert not token.is_paused
+    assert token.wait_resumed(60) is True
+    token.pause()
+    assert not token.is_paused
+
+
+def test_wait_resumed_wakes_when_another_thread_resumes() -> None:
+    token = CancellationToken()
+    token.pause()
+    timer = threading.Timer(0.05, token.resume)
+    timer.start()
+    try:
+        assert token.wait_resumed(5) is True
+    finally:
+        timer.join()

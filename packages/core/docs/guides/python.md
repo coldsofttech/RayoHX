@@ -42,7 +42,7 @@ print(result.output.path, result.output.size_bytes)
 | [Settings](python/settings.md) | `DownloadConfig`, `NetworkConfig`, `ProxyConfig`, `OutputConfig`, `StorageConfig`, `SelectionConfig`, constants, secrets |
 | [Models](python/models.md) | Every playlist, segment and download model, with fields, properties and methods |
 | [Enums](python/enums.md) | Every enum and its members |
-| [Events and cancellation](python/events.md) | `EventBus`, `DownloadEvent`, the state machine, `CancellationToken` |
+| [Events and cancellation](python/events.md) | `EventBus`, `DownloadEvent`, the state machine, `CancellationToken` (cancel, pause, resume) |
 | [Errors](python/errors.md) | The `RayoHXError` hierarchy, attributes, handling patterns |
 | [Logging](python/logging.md) | `configure_logging`, what is redacted, using your own handlers |
 
@@ -125,7 +125,7 @@ from rayohx.errors import PlaylistNotFoundError
 |---|---|---|
 | `rayohx.download(url, output, **options)` | Download a stream to a file or a folder of segments | [Downloading](python/downloading.md#download) |
 | `rayohx.download_many(urls, directory, **options)` | Download several streams, one after another, into a folder | [Downloading](python/downloading.md#download_many) |
-| `rayohx.Downloader(url, ...)` | One download with events, state and cancellation | [Downloading](python/downloading.md#downloader) |
+| `rayohx.Downloader(url, ...)` | One download with events, state, pause/resume and cancellation | [Downloading](python/downloading.md#downloader) |
 | `rayohx.inspect(url, network=None)` | Fetch and parse the playlist at a URL | [Inspecting](python/inspecting.md#inspect) |
 | `rayohx.inspect_playlist(url, fetcher)` | The same, with a fetcher you supply | [Inspecting](python/inspecting.md#inspect_playlist) |
 | `rayohx.parse_playlist(text, uri)` | Parse playlist text you already have | [Inspecting](python/inspecting.md#parse_playlist) |

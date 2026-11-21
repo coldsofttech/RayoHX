@@ -25,6 +25,7 @@ Want a ready-made command instead? Install the `rayohx` command line from `rayoh
   name, and pick audio and subtitles by language or name
 - Download in one call, with parallel segments, progress events, and cancellation that returns a
   result instead of an error
+- Pause a running download and resume it later
 - Resume interrupted downloads where they stopped, with disk space needed for the video only
 - Save segments as separate files in a folder, or download just the video of a stream with a
   separate audio track

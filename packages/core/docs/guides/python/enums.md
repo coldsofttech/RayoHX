@@ -80,6 +80,8 @@ Kinds of event the engine emits. See [Events and cancellation](events.md#eventty
 | `DOWNLOAD_COMPLETED` | `"download_completed"` |
 | `DOWNLOAD_FAILED` | `"download_failed"` |
 | `DOWNLOAD_CANCELLED` | `"download_cancelled"` |
+| `DOWNLOAD_PAUSED` | `"download_paused"` |
+| `DOWNLOAD_RESUMED` | `"download_resumed"` |
 
 ## OutputFormat
 

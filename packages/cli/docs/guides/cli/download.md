@@ -76,6 +76,10 @@ An interrupted or cancelled download continues where it stopped when you run the
 again, and needs disk space for the video only, not twice that. Use `--no-resume` to start over.
 Joining separate audio into the video is the one case that starts again.
 
+Press P (or the space bar) to pause a download and again to resume it. Downloads already
+running finish first, so the pause takes a moment to show. This works when you type into a
+terminal; it is off when input is piped.
+
 Press Ctrl+C once to stop cleanly and keep what a resume needs. A second press quits at once. See
 [Exit codes and errors](exit-codes.md#stopping-with-ctrlc).
 

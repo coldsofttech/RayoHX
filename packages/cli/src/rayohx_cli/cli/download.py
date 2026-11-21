@@ -9,7 +9,7 @@ from rayohx.errors import ConfigurationError
 
 from rayohx_cli import output, params
 from rayohx_cli.cli.common import EXIT_CANCELLED, gather_urls, make_config, usage_error
-from rayohx_cli.cli.lifecycle import finish, graceful_interrupt
+from rayohx_cli.cli.lifecycle import finish, graceful_interrupt, pause_toggle
 from rayohx_cli.cli.root import app
 from rayohx_cli.progress import MODES, make_reporter
 
@@ -160,7 +160,7 @@ def run_one(
     downloader.events.subscribe(reporter)
     reporter.start()
     try:
-        with graceful_interrupt(downloader):
+        with graceful_interrupt(downloader), pause_toggle(downloader):
             result = downloader.run()
     finally:
         reporter.close()

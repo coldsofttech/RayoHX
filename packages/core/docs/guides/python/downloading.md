@@ -200,6 +200,9 @@ runs once.
 |---|---|
 | `run()` | A `DownloadResult` |
 | `cancel()` | `None`. Asks the download to stop; safe from any thread and safe to call more than once |
+| `pause()` | `None`. Stops new segments from starting until `resume()`; segments already running finish first. Safe from any thread, also before `run()` |
+| `resume()` | `None`. Goes on after `pause()`; does nothing if the download is not paused |
+| `is_paused` (property) | Whether the download is waiting for `resume()` |
 | `download_id` (property) | The identifier events and log lines carry |
 | `state` (property) | Where the download is now (a `DownloadState`) |
 | `events` (property) | The `EventBus`; subscribe here to follow the download |
@@ -276,6 +279,7 @@ renamed only when the download is complete and validated.
 | Fetching the stream | `PLAYLIST_LOADED` | `INSPECTING` | `data["kind"]` is `"media"` |
 | Each segment | `SEGMENT_STARTED`, `SEGMENT_COMPLETED` | `DOWNLOADING` | `segment_index`; completed also has `data["bytes"]` |
 | Periodically | `DOWNLOAD_PROGRESS` | `DOWNLOADING` | `progress` |
+| When paused or resumed | `DOWNLOAD_PAUSED`, `DOWNLOAD_RESUMED` | `PAUSED`, `DOWNLOADING` | `progress` |
 | After the last segment | `FINALIZATION_STARTED` | `FINALIZING` | `progress` |
 | After validation | `FINALIZATION_COMPLETED` | `FINALIZING` | `message` is the output path |
 | End | `DOWNLOAD_COMPLETED` | `COMPLETED` | `message` is the output path, `progress` |
@@ -320,6 +324,17 @@ worker.start()
 ...
 downloader.cancel()  # or token.cancel()
 worker.join()
+```
+
+Pause a download and go on later. A pause takes a moment to show, because segments already being
+fetched finish first. Cancelling a paused download stops it. A download that is already finalizing
+carries on to the end:
+
+```python
+downloader.pause()
+print(downloader.is_paused)  # True once the download is waiting
+...
+downloader.resume()
 ```
 
 Download the video of a stream that keeps its audio in a separate track:

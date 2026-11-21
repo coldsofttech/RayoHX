@@ -1,7 +1,8 @@
-"""How a download runs and ends: stopping on Ctrl-C, and reporting the result."""
+"""How a download runs and ends: pausing with a key, stopping on Ctrl-C, and the result."""
 
 import signal
-from collections.abc import Generator
+import sys
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from types import FrameType
 
@@ -37,6 +38,105 @@ def graceful_interrupt(downloader: Downloader) -> Generator[None]:
         yield
     finally:
         signal.signal(signal.SIGINT, previous)
+
+
+PAUSE_KEYS = frozenset("pP ")
+POLL_SECONDS = 0.1
+
+
+@contextmanager
+def _key_source() -> Generator[Callable[[float], str | None] | None]:
+    """Yield a function that waits up to a timeout for one key press, or None with no keyboard."""
+    try:
+        interactive = sys.stdin is not None and sys.stdin.isatty()
+    except (OSError, ValueError):
+        interactive = False
+    if not interactive:
+        yield None
+        return
+    if sys.platform == "win32":
+        import msvcrt
+        import time
+
+        def poll_windows(timeout: float) -> str | None:
+            deadline = time.monotonic() + timeout
+            while True:
+                if msvcrt.kbhit():
+                    key = msvcrt.getwch()
+                    if key in ("\x00", "\xe0"):  # the first half of an arrow or function key
+                        msvcrt.getwch()
+                        return None
+                    return key
+                if time.monotonic() >= deadline:
+                    return None
+                time.sleep(0.02)
+
+        yield poll_windows
+        return
+    import select
+    import termios
+    import tty
+
+    fd = sys.stdin.fileno()
+    try:
+        saved = termios.tcgetattr(fd)
+        tty.setcbreak(fd)
+    except termios.error:
+        yield None
+        return
+
+    def poll_unix(timeout: float) -> str | None:
+        ready, _, _ = select.select([fd], [], [], timeout)
+        return sys.stdin.read(1) if ready else None
+
+    try:
+        yield poll_unix
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+
+
+@contextmanager
+def pause_toggle(
+    downloader: Downloader,
+    *,
+    source: Callable[[float], str | None] | None = None,
+) -> Generator[None]:
+    """While the download runs, the P key (or the space bar) pauses it and resumes it again.
+
+    Does nothing when there is no keyboard to read, such as when input is piped. ``source`` is
+    for tests: a function that waits up to a timeout for one key and returns it.
+    """
+    import threading
+
+    with _key_source() as found:
+        poll = source or found
+        if poll is None:
+            yield
+            return
+        stop = threading.Event()
+
+        def watch() -> None:
+            paused = False
+            while not stop.is_set():
+                key = poll(POLL_SECONDS)
+                if key is None or key not in PAUSE_KEYS:
+                    continue
+                paused = not paused
+                if paused:
+                    downloader.pause()
+                    output.message("Paused. Press P to resume.", style="yellow")
+                else:
+                    downloader.resume()
+                    output.message("Resumed.")
+
+        output.message("Press P to pause or resume, Ctrl-C to stop.")
+        thread = threading.Thread(target=watch, name="rayohx-keys", daemon=True)
+        thread.start()
+        try:
+            yield
+        finally:
+            stop.set()
+            thread.join(1)
 
 
 def finish(

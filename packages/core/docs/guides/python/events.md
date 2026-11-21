@@ -88,6 +88,8 @@ for the order.
 | `DOWNLOAD_COMPLETED` | The download succeeded | `message` is the output path, `progress` |
 | `DOWNLOAD_FAILED` | The download failed | `message`, `progress`, `data["hint"]` |
 | `DOWNLOAD_CANCELLED` | The download was cancelled | `message`, `progress`, `data["hint"]` |
+| `DOWNLOAD_PAUSED` | The download was paused (`DOWNLOADING` to `PAUSED`) | `progress` |
+| `DOWNLOAD_RESUMED` | The download went on after a pause (`PAUSED` to `DOWNLOADING`) | `progress` |
 
 The `PREPARING` state has no event of its own; it is visible through `Downloader.state` and the
 `state` field of the next events.
@@ -175,6 +177,10 @@ kills anything: work stops at its next check. Calling `cancel()` again does noth
 | `is_cancelled` (property) | Whether cancellation has been requested |
 | `raise_if_cancelled()` | `None`; raises `CancellationError` if cancellation has been requested |
 | `wait(timeout)` | `bool`; sleeps up to `timeout` seconds, waking at once if cancelled. `True` means cancelled |
+| `pause()` | `None`; asks work holding the token to wait. Does nothing once cancelled |
+| `resume()` | `None`; lets paused work go on |
+| `is_paused` (property) | Whether work should wait; `False` once cancelled |
+| `wait_resumed(timeout)` | `bool`; sleeps up to `timeout` seconds, waking at once if resumed or cancelled. `True` means it is no longer paused |
 
 ```python
 from rayohx import CancellationToken
@@ -220,6 +226,10 @@ worker.start()
 token.cancel()
 worker.join()
 ```
+
+Pausing uses the same token: `token.pause()` makes a download start no new segments, and
+`token.resume()` lets it go on. `Downloader.pause()` and `resume()` do this and also move the state
+between `DOWNLOADING` and `PAUSED`.
 
 Pass a token to `download(cancel=token)` or `Downloader(cancel=token)`. The download stops waiting,
 retrying and reading between chunks as soon as the token is set, and returns a result in the

@@ -96,6 +96,8 @@ def test_event_type_values_are_stable() -> None:
         "download_completed",
         "download_failed",
         "download_cancelled",
+        "download_paused",
+        "download_resumed",
     }
 
 

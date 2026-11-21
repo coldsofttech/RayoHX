@@ -56,6 +56,9 @@ secrets. If you report a bug, include the traceback and, if you can, a `--log-fi
 
 ## Stopping with Ctrl+C
 
+Press P to pause and resume a download first if you only want to wait. Ctrl+C also stops a paused
+download.
+
 The first Ctrl+C asks the download to stop cleanly:
 
 ```text

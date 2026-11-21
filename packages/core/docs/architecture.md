@@ -57,7 +57,7 @@ packages/core/src/rayohx/
 6. **Finalizing.** The finished output is checked against the format the playlist promised, then moved into place.
 7. The result is a frozen `DownloadResult`. A failure raises an error, and a stop raises `CancellationError`.
 
-The controller moves through the states `queued`, `inspecting`, `preparing`, `downloading` and `finalizing`, and ends in `completed`, `failed` or `cancelled`. Each change is published as an event.
+The controller moves through the states `queued`, `inspecting`, `preparing`, `downloading` (or `paused`) and `finalizing`, and ends in `completed`, `failed` or `cancelled`. Each change is published as an event.
 
 ## The segment pipeline
 
@@ -88,6 +88,8 @@ Each download has its own working folder, named from a hash of the download (the
 `Downloader.events` is an `EventBus`. Listeners receive a `DownloadEvent` for each `EventType`: started, playlist loaded, stream selected, segment started, completed or failed, progress, finalization, and the three endings. A listener can be any callable, which is how front ends draw progress.
 
 Cancellation is cooperative. `Downloader.cancel()` (or a `CancellationToken` passed in) asks the workers to stop; they finish or drop what they are doing and the download ends cleanly with the partial work kept for a later resume.
+
+Pausing uses the same token. `Downloader.pause()` stops new segments from starting while the ones already running finish, and `resume()` lets the download go on. The state becomes `paused` and back to `downloading`, with `download_paused` and `download_resumed` events. Cancelling a paused download wakes it and stops it.
 
 ## HTTP and security
 

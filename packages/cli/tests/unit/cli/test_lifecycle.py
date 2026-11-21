@@ -1,6 +1,8 @@
 """How a download ends: the result, the exit code, and Ctrl-C."""
 
 import signal
+import threading
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -8,7 +10,7 @@ from rayohx import DownloadState
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
-from rayohx_cli.cli.lifecycle import graceful_interrupt
+from rayohx_cli.cli.lifecycle import graceful_interrupt, pause_toggle
 from tests.conftest import FakeDownloader, parsed
 from tests.helpers.cli import MASTER, Serve
 from tests.helpers.site import hls_site
@@ -104,3 +106,54 @@ def test_the_previous_ctrl_c_handler_comes_back() -> None:
     with graceful_interrupt(_Downloader()):  # type: ignore[arg-type]
         assert signal.getsignal(signal.SIGINT) is not before
     assert signal.getsignal(signal.SIGINT) is before
+
+
+# --- pausing with a key ---------------------------------------------------------------------------
+
+
+class _Pausable:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self.changed = threading.Event()
+
+    def pause(self) -> None:
+        self.calls.append("pause")
+        self.changed.set()
+
+    def resume(self) -> None:
+        self.calls.append("resume")
+        self.changed.set()
+
+
+def _keys(*keys: str | None) -> Callable[[float], str | None]:
+    queue: Iterator[str | None] = iter(keys)
+
+    def poll(timeout: float) -> str | None:
+        return next(queue, None)
+
+    return poll
+
+
+def test_the_p_key_pauses_and_resumes_and_other_keys_are_ignored(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    downloader = _Pausable()
+    with pause_toggle(downloader, source=_keys("x", "p", None, " ", "P")):  # type: ignore[arg-type]
+        for _ in range(100):
+            if len(downloader.calls) == 3:
+                break
+            downloader.changed.wait(0.05)
+            downloader.changed.clear()
+    assert downloader.calls == ["pause", "resume", "pause"]
+    err = capsys.readouterr().err
+    assert "Press P to pause or resume" in err
+    assert "Paused. Press P to resume." in err
+    assert "Resumed." in err
+
+
+def test_there_is_no_key_watching_without_a_keyboard(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("sys.stdin", None)
+    downloader = _Pausable()
+    with pause_toggle(downloader):  # type: ignore[arg-type]
+        pass
+    assert downloader.calls == []

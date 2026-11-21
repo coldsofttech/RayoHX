@@ -83,6 +83,7 @@ copy (see [download](cli/download.md#output-files)).
 - **Never replaces a file by accident.** An existing output file is kept unless you pass
   `--overwrite`.
 - **Resumable.** Run the same download command again and it continues where it stopped.
+- **Pausable.** Press P (or the space bar) during a download to pause it, and again to resume.
 - **Secrets stay out.** Addresses are shown with tokens, signatures and passwords hidden, and the
   log file has them removed too. Use `@file` or environment variables for headers, cookies and
   proxies, not the command line, where other users of the machine can see them.
