@@ -4,7 +4,7 @@
 #   docker run --rm -v "$PWD/downloads:/output" -v rayohx-work:/workspace \
 #       ghcr.io/coldsofttech/rayohx download https://example.com/master.m3u8 -o /output/movie.mp4
 #
-# Muxing is built in, so FFmpeg is not installed. See docs/docker.md.
+# Muxing is built in, so FFmpeg is not installed. See packages/docker/docs/docker.md.
 #
 # Build from the repository root, so both packages are in the context:
 #
@@ -19,11 +19,10 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
 WORKDIR /src
-COPY pyproject.toml README.md LICENSE ./
-COPY src/rayohx ./src/rayohx
-COPY src/rayohx_cli ./src/rayohx_cli
+COPY packages/core ./packages/core
+COPY packages/cli ./packages/cli
 RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-compile . \
+    && /opt/venv/bin/pip install --no-compile ./packages/core ./packages/cli \
     && /opt/venv/bin/pip uninstall --yes pip
 
 # --- run: the same base without compilers, pip or the sources ----------------------------------
