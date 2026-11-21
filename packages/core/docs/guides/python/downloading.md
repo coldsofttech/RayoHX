@@ -88,6 +88,7 @@ A completed download and a cancelled one both return a result; a failure raises.
 | `config` | A [`DownloadConfig`](settings.md#downloadconfig) for everything the keywords do not cover: headers, cookies, a proxy, timeouts, the storage strategy |
 | `quality` | `best`, `worst`, `auto`, or a height such as `720p` (see [Selecting tracks](selecting.md)) |
 | `max_resolution`, `max_bitrate` | Limits applied before the quality choice |
+| `codec`, `video_range`, `max_frame_rate` | Prefer a codec or dynamic range, and cap the frame rate |
 | `audio`, `subtitles` | A language code or a list of them |
 | `video_only` | Download only the video stream, leaving out separate audio and subtitle tracks |
 | `format` | `auto`, `ts`, `mp4` or `segments` (an [`OutputFormat`](enums.md#outputformat) or its name) |

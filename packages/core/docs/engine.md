@@ -109,6 +109,8 @@ FFmpeg runs as a separate program on files that have already been downloaded, wi
 | `quality="1080p"` | The best stream at or below that size. If every stream is larger, the smallest one. |
 | `quality="auto"` | Like `1080p`: sharp without the cost of the largest stream. |
 | `max_resolution`, `max_bitrate` | Limits applied before the quality choice. If nothing fits, the smallest stream is used. A stream that does not state its size is never ruled out by a size limit. |
+| `codec`, `video_range` | Prefer a video codec (`h264`, `hevc`, `vp9`, `av1`) or a dynamic range (`sdr`, `pq`, `hlg`, `hdr`). If no stream matches, the others are considered and a note says so. |
+| `max_frame_rate` | Never pick a stream above this many frames per second. |
 | `audio_languages`, `audio_names` | One track per entry, in the order given. If none is found, the default audio track is used. `en` matches `en-US`, but `en-US` does not match `en-GB`. |
 | `subtitle_languages`, `subtitle_names` | Subtitles are off by default. A missing language selects nothing and adds a note. |
 

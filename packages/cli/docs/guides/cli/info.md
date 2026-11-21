@@ -68,6 +68,9 @@ These only decide which stream is marked with `*`; nothing is downloaded.
 | `--quality` | | `best` (default), `worst`, `auto` (up to 1080p), or a height such as `720p` (the best at or below it). |
 | `--max-resolution` | | Never pick a picture taller than this, for example `1080p`. |
 | `--max-bitrate` | | Never pick a stream above this many bits per second, for example `4M`. |
+| `--codec` | | Prefer this video codec: `h264`, `hevc`, `vp9` or `av1`. Others are used if it is missing. |
+| `--video-range` | | Prefer this dynamic range: `sdr`, `pq`, `hlg` or `hdr` (`pq` or `hlg`). |
+| `--max-frame-rate` | | Never pick a stream above this many frames per second, for example `30`. |
 | `--variant` | | Download this stream, by its number in `rayohx info` (the first is 1). |
 | `--resolution` | | Only streams with exactly this size, such as `1280x720`. |
 | `--bandwidth` | | Only streams with exactly this bit rate, in bits per second (for example `2800000`). |

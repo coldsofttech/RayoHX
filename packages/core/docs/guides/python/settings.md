@@ -186,6 +186,9 @@ Which tracks to download. The rules are explained in [Selecting tracks](selectin
 | `quality` | `str` | `"best"` | `best`, `worst`, `auto`, or a height such as `720p` |
 | `max_resolution` | `str \| None` | `None` | Largest picture to consider, a height such as `1080p` |
 | `max_bitrate` | `int \| None` | `None` | Largest bandwidth in bits per second; must be greater than zero |
+| `codec` | `str \| None` | `None` | Preferred video codec: `h264`, `hevc`, `vp9` or `av1` |
+| `video_range` | `str \| None` | `None` | Preferred dynamic range: `sdr`, `pq`, `hlg` or `hdr` |
+| `max_frame_rate` | `float \| None` | `None` | Highest frame rate in frames per second; must be greater than zero |
 | `audio_languages` | `tuple[str, ...]` | `()` | Language codes, in order of preference |
 | `audio_names` | `tuple[str, ...]` | `()` | Track names, in order of preference |
 | `subtitle_languages` | `tuple[str, ...]` | `()` | Subtitle language codes |

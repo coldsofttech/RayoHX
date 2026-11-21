@@ -49,7 +49,9 @@ from rayohx_cli.params.selection import (
     Audio,
     AudioName,
     Bandwidth,
+    Codec,
     MaxBitrate,
+    MaxFrameRate,
     MaxResolution,
     Quality,
     Resolution,
@@ -59,6 +61,7 @@ from rayohx_cli.params.selection import (
     Variant,
     VariantName,
     VideoOnly,
+    VideoRange,
 )
 
 __all__ = [
@@ -70,6 +73,7 @@ __all__ = [
     "ClientCert",
     "ClientKey",
     "ClientKeyPassword",
+    "Codec",
     "Concurrency",
     "ConnectTimeout",
     "Cookie",
@@ -81,6 +85,7 @@ __all__ = [
     "Insecure",
     "JsonOutput",
     "MaxBitrate",
+    "MaxFrameRate",
     "MaxResolution",
     "MaxTempSize",
     "Origin",
@@ -107,5 +112,6 @@ __all__ = [
     "Variant",
     "VariantName",
     "VideoOnly",
+    "VideoRange",
     "Workspace",
 ]
