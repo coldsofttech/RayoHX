@@ -6,13 +6,15 @@ downloads the segments in parallel, checks every one, and puts the finished file
 [Back to the command line guide](../cli.md)
 
 ```bash
-rayohx download URL [OPTIONS]
+rayohx download [URL]... [OPTIONS]
 ```
 
 ```bash
 rayohx download https://cdn.example.com/vod/master.m3u8 -o movie.mp4
 rayohx download https://cdn.example.com/vod/master.m3u8 --quality 720p -a en -s en
 file=$(rayohx download https://cdn.example.com/vod/master.m3u8 --quiet)
+rayohx download URL1 URL2 -o videos
+rayohx download --input-file urls.txt -o videos
 ```
 
 It does the same work as [`rayohx.download`](../python/downloading.md) and
@@ -20,6 +22,20 @@ It does the same work as [`rayohx.download`](../python/downloading.md) and
 [`DownloadConfig`](../python/settings.md).
 
 Put the web address in quotes if it contains `&` or `?`, so your shell does not cut it short.
+
+## Several addresses
+
+Give more than one address, or a list with `--input-file` (one address per line; empty lines and
+lines starting with `#` are skipped; `-` reads standard input), and they are downloaded one after
+another. The two can be combined.
+
+- `--output` names a **folder**, created if needed. Files are named after the addresses, and
+  repeated names get `-2`, `-3` and so on.
+- Every address and setting is checked before anything is downloaded.
+- A failure does not stop the others unless you pass `--stop-on-error`; the exit code is that of
+  the first failure. Ctrl-C always stops the whole list (exit code 130).
+- Each saved path is printed on stdout. With `--json`, stdout holds one JSON array with a document
+  per download.
 
 ## What it prints
 
@@ -84,7 +100,9 @@ Options are grouped the same way in `rayohx download --help`.
 
 | Option | Short | Description |
 |---|---|---|
-| `--output` | `-o` | Where to save. A name without an extension gets the right one. By default it is named after the address, in the current folder. |
+| `--output` | `-o` | Where to save. A name without an extension gets the right one. By default it is named after the address, in the current folder. With several addresses, a folder. |
+| `--input-file` | | A file listing addresses, one per line (`-` for standard input). |
+| `--stop-on-error` | | With several addresses, stop at the first failure. |
 | `--format` | | `auto` (default), `ts`, `mp4`, or `segments` (one file per segment, in a folder). |
 | `--overwrite` / `--no-overwrite` | | Replace an existing output file. Off by default. |
 | `--validate` / `--no-validate` | | Check the finished file before putting it in place. On by default. |

@@ -134,6 +134,38 @@ else:
     print("cancelled" if result.cancelled else f"saved {result.output.path}")
 ```
 
+## download_many
+
+```python
+rayohx.download_many(
+    urls: Sequence[str],
+    directory: Path | str | None = None,
+    *,
+    config: DownloadConfig | None = None,
+    stop_on_error: bool = False,
+    on_event: Callable[[DownloadEvent], None] | None = None,
+    cancel: CancellationToken | None = None,
+) -> list[BatchItem]
+```
+
+Downloads each address in turn into `directory` (or `config.output.directory`, or the current
+folder). Files are named after their addresses; two addresses that would get the same name get
+`-2`, `-3` and so on, and `rayohx.batch_outputs(urls, directory)` shows the names beforehand.
+
+- `config` applies to every download. `config.output.path` is ignored.
+- All addresses are checked first, so a bad one raises `ConfigurationError` before anything is
+  downloaded. An empty list does too.
+- A failed download is not raised. Look at each `BatchItem`: `url`, `output`, `result`,
+  `exception`, and the `success` and `skipped` properties.
+- One failure does not stop the others unless `stop_on_error=True`. Cancelling through `cancel`
+  always stops the batch, and what was not started is reported as `skipped`.
+
+```python
+items = rayohx.download_many(urls, "videos", quality="720p")
+for item in items:
+    print(item.url, "ok" if item.success else "skipped" if item.skipped else item.exception)
+```
+
 ## Downloader
 
 ```python
@@ -213,7 +245,7 @@ Downloader("ftp://x")  # ConfigurationError: url must be an absolute http or htt
 | `"video.ts"` | any / auto | `video.ts` for an MPEG-TS stream; an error for an fMP4 stream or a stream with separate audio |
 | `"video.mp4"` | any / auto | `video.mp4` for an fMP4 stream; for an MPEG-TS stream the segments are re-wrapped into it |
 | `"video"` | auto | The right extension added: `video.ts` or `video.mp4` (always `.mp4` when audio is joined) |
-| `None` | auto | A file named after the address in the current folder, such as `my-show.ts` |
+| `None` | auto | A file named after the address in the current folder (or `OutputConfig(directory=...)`), such as `my-show.ts` |
 | `"parts"` | `segments` | A folder `parts/` with `segment-00001.ts`, `segment-00002.ts`, ... and `init-00001.mp4` for fMP4 |
 
 - An explicit `format` must agree with the file name; `format="mp4"` for a `.ts` name is an error.

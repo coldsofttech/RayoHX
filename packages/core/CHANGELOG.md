@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `download_many` saves several streams one after another into a folder and reports how each one ended. `batch_outputs` shows the file names it would use, and `OutputConfig(directory=...)` sets the folder for outputs that are not named.
 - Streams whose AES-128 key is given inside the playlist (`data:` addresses) now download. Local key files (`file:`) can be allowed with `allow_file_keys`, and `key_fetcher` lets you supply keys from anywhere.
 - Streams that use playlist variables (`EXT-X-DEFINE`) are now read and downloaded instead of refused.
 - Prefer a video codec (`codec`) or dynamic range (`video_range`), and cap the frame rate (`max_frame_rate`), in `SelectionConfig`.

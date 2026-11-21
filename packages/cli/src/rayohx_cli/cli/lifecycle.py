@@ -39,9 +39,21 @@ def graceful_interrupt(downloader: Downloader) -> Generator[None]:
         signal.signal(signal.SIGINT, previous)
 
 
-def finish(result: DownloadResult, downloader: Downloader, *, json_output: bool) -> None:
-    """Report how the download ended and set the exit code."""
-    if json_output:
+def finish(
+    result: DownloadResult,
+    downloader: Downloader,
+    *,
+    json_output: bool,
+    documents: list[dict[str, object]] | None = None,
+) -> None:
+    """Report how the download ended and set the exit code.
+
+    With ``documents`` (several downloads), the JSON result is added to it instead of printed,
+    so the caller can print one array at the end.
+    """
+    if json_output and documents is not None:
+        documents.append(result_to_dict(result))
+    elif json_output:
         output.print_json(result_to_dict(result))
     if result.success and result.output is not None:
         if not json_output:

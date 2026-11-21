@@ -1,5 +1,7 @@
 """What every command shares: exit codes, and bad settings reported as usage errors."""
 
+from pathlib import Path
+
 import pytest
 import typer
 from rayohx.errors import ConfigurationError
@@ -10,6 +12,7 @@ from rayohx_cli.cli.common import (
     EXIT_CANCELLED,
     EXIT_FAILED,
     EXIT_USAGE,
+    gather_urls,
     make_config,
     usage_error,
 )
@@ -66,3 +69,18 @@ def test_the_number_conflicts_with_other_choices_and_must_be_positive(runner: Cl
     assert "by itself" in result.stderr
     assert runner.invoke(app, ["download", MASTER, "--variant", "0"]).exit_code == 2
     assert runner.invoke(app, ["download", MASTER, "--resolution", "720p"]).exit_code == 2
+
+
+def test_arguments_come_before_the_listed_addresses(tmp_path: Path) -> None:
+    listing = tmp_path / "urls.txt"
+    listing.write_text("# comment\n\n https://b.test/b.m3u8 \n", encoding="utf-8")
+    assert gather_urls(["https://a.test/a.m3u8"], listing) == [
+        "https://a.test/a.m3u8",
+        "https://b.test/b.m3u8",
+    ]
+
+
+def test_without_addresses_it_is_a_usage_error() -> None:
+    with pytest.raises(typer.Exit) as raised:
+        gather_urls([], None)
+    assert raised.value.exit_code == EXIT_USAGE

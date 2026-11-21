@@ -33,6 +33,7 @@ subtitles you want, and puts everything together into a single file you can keep
   subtitles by language or name
 - Fast downloads with several pieces fetched at once, a progress display and an optional speed limit
 - Resume interrupted downloads
+- Download several streams in one go, from a list of addresses
 - Save MPEG-TS and fragmented MP4 streams to a file, or keep the pieces as separate files in a
   folder
 - Join a separate audio track into one MP4 and save subtitles as `.vtt` files, with nothing

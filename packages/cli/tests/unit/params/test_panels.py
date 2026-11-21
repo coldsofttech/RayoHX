@@ -48,4 +48,4 @@ def test_everything_exported_is_an_option_or_the_url() -> None:
         for name in params.__all__
         if not isinstance(declaration(getattr(params, name)), OptionInfo)
     ]
-    assert arguments == ["Url"]
+    assert arguments == ["Url", "Urls"]

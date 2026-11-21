@@ -202,6 +202,7 @@ class Downloader:
                 requested=config.output.format,
                 container=container,
                 url=self._url,
+                directory=config.output.directory,
                 allow_remux=True,
                 merge=bool(audios),
             )

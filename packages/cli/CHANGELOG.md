@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `rayohx download` accepts several addresses, or a list in a file with `--input-file` (`-` reads standard input). `--output` then names a folder, and `--stop-on-error` stops at the first failure.
 - `--allow-file-keys` lets a stream's local key files be read; streams with keys inside the playlist now download.
 - Prefer a video codec (`--codec`) or dynamic range (`--video-range`), and cap the frame rate (`--max-frame-rate`), when choosing a stream.
 - SOCKS5 proxies, `--env-proxy` to use the proxy environment variables, and client certificates for mutual TLS (`--client-cert`, `--client-key`, `--client-key-password`).

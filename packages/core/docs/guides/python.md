@@ -124,6 +124,7 @@ from rayohx.errors import PlaylistNotFoundError
 | Function | Purpose | Page |
 |---|---|---|
 | `rayohx.download(url, output, **options)` | Download a stream to a file or a folder of segments | [Downloading](python/downloading.md#download) |
+| `rayohx.download_many(urls, directory, **options)` | Download several streams, one after another, into a folder | [Downloading](python/downloading.md#download_many) |
 | `rayohx.Downloader(url, ...)` | One download with events, state and cancellation | [Downloading](python/downloading.md#downloader) |
 | `rayohx.inspect(url, network=None)` | Fetch and parse the playlist at a URL | [Inspecting](python/inspecting.md#inspect) |
 | `rayohx.inspect_playlist(url, fetcher)` | The same, with a fetcher you supply | [Inspecting](python/inspecting.md#inspect_playlist) |
