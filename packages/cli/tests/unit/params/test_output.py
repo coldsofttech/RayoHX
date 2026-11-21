@@ -12,6 +12,7 @@ from tests.helpers.params import Declared, check_declaration, option, parse
 
 CASES = [
     Declared("output", params.OutputPath, ("--output", "-o"), None),
+    Declared("directory", params.Directory, ("--directory", "-d"), "RAYOHX_DIRECTORY"),
     Declared("format", params.Format, ("--format",), "RAYOHX_FORMAT"),
     Declared("overwrite", params.Overwrite, ("--overwrite/--no-overwrite",), "RAYOHX_OVERWRITE"),
     Declared("validate", params.Validate, ("--validate/--no-validate",), "RAYOHX_VALIDATE"),
@@ -39,6 +40,13 @@ def test_the_output_is_a_path_given_in_full_or_short(runner: CliRunner) -> None:
 def test_the_output_is_never_taken_from_the_environment() -> None:
     # One variable would send every download to the same file.
     assert option(params.OutputPath).envvar is None
+
+
+def test_the_directory_is_a_path_given_in_full_or_short(runner: CliRunner) -> None:
+    assert parse(runner, params.Directory, None, []).value is None
+    assert parse(runner, params.Directory, None, ["--directory", "out"]).value == Path("out")
+    assert parse(runner, params.Directory, None, ["-d", "out"]).value == Path("out")
+    assert parse(runner, params.Directory, None, [], {"RAYOHX_DIRECTORY": "x"}).value == Path("x")
 
 
 # --- format ---------------------------------------------------------------------------------------

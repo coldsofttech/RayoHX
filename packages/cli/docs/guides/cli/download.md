@@ -105,6 +105,7 @@ Options are grouped the same way in `rayohx download --help`.
 | Option | Short | Description |
 |---|---|---|
 | `--output` | `-o` | Where to save. A name without an extension gets the right one. By default it is named after the address, in the current folder. With several addresses, a folder. |
+| `--directory` | `-d` | The folder for a file that `--output` does not name, and for several addresses. Created if missing. |
 | `--input-file` | | A file listing addresses, one per line (`-` for standard input). |
 | `--stop-on-error` | | With several addresses, stop at the first failure. |
 | `--format` | | `auto` (default), `ts`, `mp4`, or `segments` (one file per segment, in a folder). |
@@ -147,10 +148,13 @@ note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
 |---|---|---|
 | `--header` | `-H` | Send a header, as `Name: value` (repeatable). `@file` reads them from a file. |
 | `--cookie` | | Send a cookie, as `name=value` (repeatable). `@file` reads them from a file. |
+| `--cookie-file` | | Read cookies from a browser-exported `cookies.txt` (Netscape format). Domains are not checked. |
 | `--user-agent` | | The `User-Agent` to send. |
 | `--referer` | | The `Referer` to send. |
 | `--origin` | | The `Origin` to send. |
 | `--proxy` | | An `http://`, `https://`, `socks5://` or `socks5h://` proxy, for example `http://user:pass@host:3128`. Prefer the environment variable, since command lines can be seen by other users. |
+| `--proxy-username` | | The proxy user name, if it is not in the `--proxy` address. Needs `--proxy`. |
+| `--proxy-password` | | The proxy password. Prefer the environment variable `RAYOHX_PROXY_PASSWORD`. |
 | `--env-proxy` / `--no-env-proxy` | off | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. |
 | `--insecure` | | Do not check TLS certificates. Only for servers you trust. |
 | `--env-proxy` / `--no-env-proxy` | | Use `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` when `--proxy` is not given. Off by default. |
@@ -165,6 +169,8 @@ note on stderr says why. Use [`rayohx info`](info.md) first to see what exists.
 | `--read-timeout` | | Seconds to wait for data. |
 | `--timeout` | | Most seconds one request may take, retries included. |
 | `--retries` | | Extra attempts after a failure (0 or more). |
+| `--backoff` | | Back-off factor between retries: the wait is this times 2 to the attempt number (default 0.5 seconds). |
+| `--max-redirects` | | Most redirects to follow for one request (default 10). |
 | `--rate-limit` | | Most bytes per second to download in total, for example `2M`. |
 | `--credential-host` | | Also send headers like `Authorization` and your cookies to this host (repeatable). By default they go only to the host of the URL, and redirects never carry them elsewhere. |
 
@@ -183,6 +189,8 @@ and a speed limit.
 | `--buffer-size` | | Memory for the segment buffer, for example `64M`. |
 | `--max-temp-size` | | Most working disk space to use, for example `2G`. |
 | `--allow-file-keys` / `--no-allow-file-keys` | | Let a playlist's `file:` key addresses read a key from this machine. Off by default; only for streams you trust. |
+| `--reserve-space` | | Free disk space that must remain after the download, for example `1G` (default 256M; `0` for none). |
+| `--keep-state` / `--no-keep-state` | | Keep what a resume needs after a failure or Ctrl-C (on by default). |
 | `--space-check` / `--no-space-check` | | Check that the disk has room (on by default). Turn it off if the free space is reported wrongly, for example on some network drives. |
 
 ### Display

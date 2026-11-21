@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Tune retries and redirects (`--backoff`, `--max-redirects`), sign in to a proxy (`--proxy-username`, `--proxy-password`) and read cookies from a browser's `cookies.txt` (`--cookie-file`).
+- `--directory` picks the folder to save into, `--reserve-space` keeps some disk space free, and `--no-keep-state` clears what a resume needs after a failure.
 - Press P (or the space bar) during a download to pause it, and again to resume.
 - `rayohx download` accepts several addresses, or a list in a file with `--input-file` (`-` reads standard input). `--output` then names a folder, and `--stop-on-error` stops at the first failure.
 - `--allow-file-keys` lets a stream's local key files be read; streams with keys inside the playlist now download.

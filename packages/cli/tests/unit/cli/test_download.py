@@ -137,6 +137,8 @@ def test_subtitles_and_audio_options_reach_the_download(
 def test_options_are_turned_into_settings(
     runner: CliRunner, fake_downloader: type[FakeDownloader], tmp_path: Path
 ) -> None:
+    cookies = tmp_path / "cookies.txt"
+    cookies.write_text("example.com\tTRUE\t/\tFALSE\t0\tf\t1\n", encoding="utf-8")
     result = runner.invoke(
         app,
         [
@@ -153,6 +155,9 @@ def test_options_are_turned_into_settings(
             "--rate-limit", "2M", "--credential-host", "cdn.example.com",
             "-j", "12", "--no-resume", "--storage", "hybrid", "--workspace", str(tmp_path),
             "--buffer-size", "16M", "--max-temp-size", "1G",
+            "--proxy-username", "u", "--proxy-password", "pw", "--backoff", "1.5",
+            "--max-redirects", "3", "--cookie-file", str(cookies),
+            "--reserve-space", "1G", "--no-keep-state",
         ],
     )  # fmt: skip
     assert result.exit_code == 0, result.output
@@ -177,11 +182,18 @@ def test_options_are_turned_into_settings(
     }
     assert config.network.verify_tls is False
     assert config.network.retries == 7
+    assert config.network.backoff_factor == 1.5
+    assert config.network.max_redirects == 3
+    assert config.network.cookies == {"f": "1", "a": "b"}
+    assert config.network.proxy is not None
+    assert (config.network.proxy.username, config.network.proxy.password) == ("u", "pw")
     assert config.network.rate_limit == 2 * 1024**2
     assert config.concurrency == 12
     assert not config.resume
     assert config.storage.strategy is StorageStrategy.HYBRID
     assert config.storage.buffer_bytes == 16 * 1024**2
+    assert config.storage.reserve_bytes == 1024**3
+    assert not config.storage.keep_state_on_failure
 
 
 def test_option_values_are_case_insensitive_for_choices(

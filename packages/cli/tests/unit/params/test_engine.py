@@ -23,6 +23,10 @@ CASES = [
         ("--space-check/--no-space-check",),
         "RAYOHX_SPACE_CHECK",
     ),
+    Declared("reserve-space", params.ReserveSpace, ("--reserve-space",), "RAYOHX_RESERVE_SPACE"),
+    Declared(
+        "keep-state", params.KeepState, ("--keep-state/--no-keep-state",), "RAYOHX_KEEP_STATE"
+    ),
 ]
 
 
@@ -67,8 +71,9 @@ def test_concurrency_can_come_from_the_environment(runner: CliRunner) -> None:
     [
         (params.Resume, "--no-resume", "RAYOHX_RESUME"),
         (params.SpaceCheck, "--no-space-check", "RAYOHX_SPACE_CHECK"),
+        (params.KeepState, "--no-keep-state", "RAYOHX_KEEP_STATE"),
     ],
-    ids=["resume", "space-check"],
+    ids=["resume", "space-check", "keep-state"],
 )
 def test_resume_and_the_space_check_are_on_unless_turned_off(
     runner: CliRunner, annotated: object, off: str, variable: str
@@ -119,8 +124,9 @@ def test_the_workspace_is_a_folder_path(runner: CliRunner) -> None:
     [
         (params.BufferSize, "--buffer-size", "RAYOHX_BUFFER_SIZE"),
         (params.MaxTempSize, "--max-temp-size", "RAYOHX_MAX_TEMP_SIZE"),
+        (params.ReserveSpace, "--reserve-space", "RAYOHX_RESERVE_SPACE"),
     ],
-    ids=["buffer-size", "max-temp-size"],
+    ids=["buffer-size", "max-temp-size", "reserve-space"],
 )
 def test_sizes_are_passed_on_as_typed(
     runner: CliRunner, annotated: object, flag: str, variable: str

@@ -75,6 +75,25 @@ SpaceCheck = Annotated[
         rich_help_panel=ENGINE,
     ),
 ]
+ReserveSpace = Annotated[
+    str | None,
+    typer.Option(
+        "--reserve-space",
+        envvar="RAYOHX_RESERVE_SPACE",
+        help="Free disk space that must remain after the download, for example 1G "
+        "(default 256M; 0 for none).",
+        rich_help_panel=ENGINE,
+    ),
+]
+KeepState = Annotated[
+    bool,
+    typer.Option(
+        "--keep-state/--no-keep-state",
+        envvar="RAYOHX_KEEP_STATE",
+        help="Keep what a resume needs after a failure or Ctrl-C (on by default).",
+        rich_help_panel=ENGINE,
+    ),
+]
 AllowFileKeys = Annotated[
     bool,
     typer.Option(

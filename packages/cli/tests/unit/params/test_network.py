@@ -24,6 +24,15 @@ CASES = [
     Declared("read-timeout", params.ReadTimeout, ("--read-timeout",), "RAYOHX_READ_TIMEOUT"),
     Declared("timeout", params.Timeout, ("--timeout",), "RAYOHX_TIMEOUT"),
     Declared("retries", params.Retries, ("--retries",), "RAYOHX_RETRIES"),
+    Declared("backoff", params.Backoff, ("--backoff",), "RAYOHX_BACKOFF"),
+    Declared("max-redirects", params.MaxRedirects, ("--max-redirects",), "RAYOHX_MAX_REDIRECTS"),
+    Declared(
+        "proxy-username", params.ProxyUsername, ("--proxy-username",), "RAYOHX_PROXY_USERNAME"
+    ),
+    Declared(
+        "proxy-password", params.ProxyPassword, ("--proxy-password",), "RAYOHX_PROXY_PASSWORD"
+    ),
+    Declared("cookie-file", params.CookieFile, ("--cookie-file",), "RAYOHX_COOKIE_FILE"),
     Declared("rate-limit", params.RateLimit, ("--rate-limit",), "RAYOHX_RATE_LIMIT"),
     Declared("credential-host", params.CredentialHost, ("--credential-host",), None),
 ]
@@ -104,7 +113,33 @@ def test_the_ca_bundle_is_a_file_path(runner: CliRunner) -> None:
     assert parse(runner, params.CaBundle, None, ["--ca-bundle", "ca.pem"]).value == Path("ca.pem")
 
 
+def test_the_proxy_login_is_passed_on_as_typed(runner: CliRunner) -> None:
+    for annotated, flag, variable in (
+        (params.ProxyUsername, "--proxy-username", "RAYOHX_PROXY_USERNAME"),
+        (params.ProxyPassword, "--proxy-password", "RAYOHX_PROXY_PASSWORD"),
+    ):
+        assert parse(runner, annotated, None, []).value is None
+        assert parse(runner, annotated, None, [flag, "x"]).value == "x"
+        assert parse(runner, annotated, None, [], {variable: "y"}).value == "y"
+
+
+def test_the_cookie_file_is_a_file_path(runner: CliRunner) -> None:
+    assert parse(runner, params.CookieFile, None, []).value is None
+    assert parse(runner, params.CookieFile, None, ["--cookie-file", "c.txt"]).value == Path("c.txt")
+
+
 # --- timeouts and retries -------------------------------------------------------------------------
+
+
+def test_the_backoff_and_redirect_limit_cannot_be_negative(runner: CliRunner) -> None:
+    assert option(params.Backoff).min == 0
+    assert parse(runner, params.Backoff, None, ["--backoff", "1.5"]).value == 1.5
+    assert parse(runner, params.Backoff, None, ["--backoff", "-1"]).exit_code == 2
+    assert parse(runner, params.Backoff, None, [], {"RAYOHX_BACKOFF": "2"}).value == 2.0
+    assert option(params.MaxRedirects).min == 0
+    assert parse(runner, params.MaxRedirects, None, ["--max-redirects", "0"]).value == 0
+    assert parse(runner, params.MaxRedirects, None, ["--max-redirects", "-1"]).exit_code == 2
+    assert parse(runner, params.MaxRedirects, None, [], {"RAYOHX_MAX_REDIRECTS": "3"}).value == 3
 
 
 @pytest.mark.parametrize(

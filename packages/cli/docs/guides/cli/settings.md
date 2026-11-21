@@ -77,7 +77,7 @@ Do not put secrets in a settings file you share. Use `@file` references or envir
 ## Sizes, bitrates and `@file`
 
 - **Sizes** accept `K`, `M`, `G` and `T`, and are binary: `64M` is 64 MiB. This applies to
-  `--buffer-size`, `--max-temp-size` and `--rate-limit` (bytes per second).
+  `--buffer-size`, `--max-temp-size`, `--reserve-space` and `--rate-limit` (bytes per second).
 - **Bitrates** (`--max-bitrate`) are decimal: `4M` is 4,000,000 bit/s.
 - **`@file`**: `--header`, `--cookie` and the other repeatable options accept `@file` to read their
   values from a file, one per line (blank lines and lines starting with `#` are skipped). That keeps secrets out of your shell history and out of the

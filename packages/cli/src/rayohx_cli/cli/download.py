@@ -47,6 +47,11 @@ def download(
     referer: params.Referer = None,
     origin: params.Origin = None,
     proxy: params.Proxy = None,
+    proxy_username: params.ProxyUsername = None,
+    proxy_password: params.ProxyPassword = None,
+    backoff: params.Backoff = None,
+    max_redirects: params.MaxRedirects = None,
+    cookie_file: params.CookieFile = None,
     insecure: params.Insecure = False,
     ca_bundle: params.CaBundle = None,
     env_proxy: params.EnvProxy = False,
@@ -66,6 +71,9 @@ def download(
     buffer_size: params.BufferSize = None,
     max_temp_size: params.MaxTempSize = None,
     space_check: params.SpaceCheck = True,
+    reserve_space: params.ReserveSpace = None,
+    keep_state: params.KeepState = True,
+    directory: params.Directory = None,
     allow_file_keys: params.AllowFileKeys = False,
     json_output: params.JsonOutput = False,
     progress: params.ProgressMode = "auto",
@@ -108,6 +116,11 @@ def download(
         referer=referer,
         origin=origin,
         proxy=proxy,
+        proxy_username=proxy_username,
+        proxy_password=proxy_password,
+        backoff=backoff,
+        max_redirects=max_redirects,
+        cookie_file=cookie_file,
         insecure=insecure,
         ca_bundle=ca_bundle,
         env_proxy=env_proxy,
@@ -127,9 +140,16 @@ def download(
         buffer_size=buffer_size,
         max_temp_size=max_temp_size,
         space_check=space_check,
+        reserve_space=reserve_space,
+        keep_state=keep_state,
+        directory=directory,
         allow_file_keys=allow_file_keys,
     )
     targets = gather_urls(urls or [], input_file)
+    if directory is not None:
+        directory.mkdir(parents=True, exist_ok=True)
+        if len(targets) > 1 and output_path is None:
+            output_path = directory
     if len(targets) == 1:
         run_one(targets[0], output_path, config, progress, json_output)
         return

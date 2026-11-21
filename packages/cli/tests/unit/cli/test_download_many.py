@@ -104,3 +104,22 @@ def test_an_unreadable_list_is_a_usage_error(runner: CliRunner, tmp_path: Path) 
     result = runner.invoke(app, ["download", "-i", str(tmp_path / "missing.txt")])
     assert result.exit_code == 2
     assert "cannot be read" in result.stderr
+
+
+def test_directory_sets_where_a_single_download_goes(
+    runner: CliRunner, serve: Serve, tmp_path: Path
+) -> None:
+    serve(two_streams())
+    folder = tmp_path / "made" / "here"
+    result = runner.invoke(app, ["download", ONE, "-d", str(folder)])
+    assert result.exit_code == 0, result.stderr
+    assert Path(result.stdout.strip()).parent == folder
+
+
+def test_directory_is_the_folder_for_several_addresses(
+    runner: CliRunner, serve: Serve, tmp_path: Path
+) -> None:
+    serve(two_streams())
+    result = runner.invoke(app, ["download", ONE, TWO, "-d", str(tmp_path / "d")])
+    assert result.exit_code == 0, result.stderr
+    assert {Path(p).parent for p in result.stdout.split()} == {tmp_path / "d"}

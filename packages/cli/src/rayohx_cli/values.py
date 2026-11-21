@@ -94,6 +94,34 @@ def parse_cookies(values: Sequence[str]) -> dict[str, str]:
     return cookies
 
 
+def parse_cookie_file(path: Path) -> dict[str, str]:
+    """Read a Netscape ``cookies.txt`` (seven tab-separated fields per line) into name -> value.
+
+    ``#HttpOnly_`` lines count; other ``#`` lines are comments. The domain, path and expiry are
+    not used: the engine scopes cookies by host rules of its own.
+
+    Raises:
+        ConfigurationError: If the file cannot be read or has no cookie in it.
+    """
+    try:
+        text = path.expanduser().read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ConfigurationError(f"The cookie file {path} cannot be read.") from exc
+    cookies: dict[str, str] = {}
+    for raw in text.splitlines():
+        line = raw.removeprefix("#HttpOnly_")
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        fields = line.split("\t")
+        if len(fields) < 7 or not fields[5].strip():
+            raise ConfigurationError(
+                f"The cookie file {path} is not in the Netscape cookies.txt format.",
+                hint="Each line needs seven tab-separated fields.",
+            )
+        cookies[fields[5].strip()] = fields[6].strip()
+    return cookies
+
+
 def build_config(
     *,
     quality: str = "best",
@@ -117,6 +145,11 @@ def build_config(
     referer: str | None = None,
     origin: str | None = None,
     proxy: str | None = None,
+    proxy_username: str | None = None,
+    proxy_password: str | None = None,
+    backoff: float | None = None,
+    max_redirects: int | None = None,
+    cookie_file: Path | None = None,
     insecure: bool = False,
     ca_bundle: Path | None = None,
     env_proxy: bool = False,
@@ -136,6 +169,9 @@ def build_config(
     buffer_size: str | None = None,
     max_temp_size: str | None = None,
     space_check: bool = True,
+    reserve_space: str | None = None,
+    keep_state: bool = True,
+    directory: Path | None = None,
     allow_file_keys: bool = False,
     format: OutputFormat = OutputFormat.AUTO,
     overwrite: bool = False,
@@ -161,7 +197,10 @@ def build_config(
 
     network_options: dict[str, object] = {
         "headers": headers,
-        "cookies": parse_cookies(cookie),
+        "cookies": {
+            **(parse_cookie_file(cookie_file) if cookie_file else {}),
+            **parse_cookies(cookie),
+        },
         "verify_tls": False if insecure else (ca_bundle if ca_bundle else True),
         "credential_hosts": tuple(credential_host),
         "proxy_from_env": env_proxy,
@@ -175,19 +214,32 @@ def build_config(
         ("read_timeout", read_timeout),
         ("total_timeout", timeout),
         ("retries", retries),
+        ("backoff_factor", backoff),
+        ("max_redirects", max_redirects),
     )
     for key, chosen in optional:
         if chosen is not None:
             network_options[key] = chosen
+    if (proxy_username or proxy_password) and not proxy:
+        raise ConfigurationError(
+            "A proxy user name or password was given without a proxy.", hint="Add --proxy."
+        )
     if proxy:
-        network_options["proxy"] = ProxyConfig(url=proxy)
+        network_options["proxy"] = ProxyConfig(
+            url=proxy, username=proxy_username, password=proxy_password
+        )
     if rate_limit:
         network_options["rate_limit"] = parse_size(rate_limit, name="rate limit")
     storage_options: dict[str, object] = {
         "strategy": storage,
         "workspace_dir": workspace,
         "check_space": space_check,
+        "keep_state_on_failure": keep_state,
     }
+    if reserve_space is not None:
+        storage_options["reserve_bytes"] = (
+            0 if reserve_space.strip() == "0" else parse_size(reserve_space, name="reserve space")
+        )
     if buffer_size:
         storage_options["buffer_bytes"] = parse_size(buffer_size, name="buffer size")
     if max_temp_size:
@@ -222,6 +274,7 @@ def build_config(
         output=OutputConfig(
             format=format,
             overwrite=overwrite,
+            directory=directory,
             validate=validate,
             remux_backend=remux_backend,
             ffmpeg_path=ffmpeg,

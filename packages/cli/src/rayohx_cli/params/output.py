@@ -18,6 +18,16 @@ OutputPath = Annotated[
         rich_help_panel=OUTPUT,
     ),
 ]
+Directory = Annotated[
+    Path | None,
+    typer.Option(
+        "--directory",
+        "-d",
+        envvar="RAYOHX_DIRECTORY",
+        help="The folder for a file that --output does not name. Created if missing.",
+        rich_help_panel=OUTPUT,
+    ),
+]
 Format = Annotated[
     OutputFormat,
     typer.Option(
