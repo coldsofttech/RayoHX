@@ -63,9 +63,27 @@ repos:
         files: ^src/rayohx_ui/ui/
         exclude: ^src/rayohx_ui/ui/package-lock\.json$
         pass_filenames: false
-      - id: pytest
-        name: pytest
-        entry: uv run python scripts/run_tests.py -n auto
+      - id: pytest-core
+        name: pytest (core)
+        entry: uv run pytest -c packages/core/pyproject.toml packages/core/tests -n auto
         language: system
-        types: [python]
+        files: ^packages/core/.*\.py$
+        pass_filenames: false
+      - id: pytest-cli
+        name: pytest (cli)
+        entry: uv run pytest -c packages/cli/pyproject.toml packages/cli/tests -n auto
+        language: system
+        files: ^packages/cli/.*\.py$
+        pass_filenames: false
+      - id: pytest-api
+        name: pytest (api)
+        entry: uv run pytest -c packages/api/pyproject.toml packages/api/tests -n auto
+        language: system
+        files: ^packages/api/.*\.py$
+        pass_filenames: false
+      - id: pytest-ui
+        name: pytest (ui)
+        entry: uv run pytest -c packages/ui/pyproject.toml packages/ui/tests -n auto
+        language: system
+        files: ^packages/ui/.*\.py$
         pass_filenames: false
