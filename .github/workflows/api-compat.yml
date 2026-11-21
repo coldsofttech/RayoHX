@@ -6,7 +6,7 @@ name: API compatibility
 # or be merged knowingly after review.
 on:
   pull_request:
-    paths: [docs/openapi.json]
+    paths: [packages/api/docs/openapi.json]
 
 permissions:
   contents: read
@@ -27,9 +27,9 @@ jobs:
         with:
           path: head
       - name: Check for breaking changes
-        if: hashFiles('base/docs/openapi.json') != ''
+        if: hashFiles('base/packages/api/docs/openapi.json') != ''
         uses: oasdiff/oasdiff-action/breaking@v0.1.21
         with:
-          base: base/docs/openapi.json
-          revision: head/docs/openapi.json
+          base: base/packages/api/docs/openapi.json
+          revision: head/packages/api/docs/openapi.json
           fail-on: ERR

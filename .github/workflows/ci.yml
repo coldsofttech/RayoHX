@@ -1,5 +1,7 @@
 name: CI
 
+# Calls one workflow per package (ci-core, ci-cli, ci-api, ci-ui, ci-docker) and one for the rest
+# of the repository (ci-repo); `ci` at the end is the single required check for the branch ruleset.
 on:
   pull_request:
   push:
@@ -13,222 +15,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Read project names
-        shell: bash
-        run: python3 installer/projectinfo.py github || python installer/projectinfo.py github
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.3
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: ${{ env.UI_DIR }}/.nvmrc
-          cache: npm
-          cache-dependency-path: ${{ env.UI_DIR }}/package-lock.json
-      - name: Install dependencies
-        run: uv sync --locked
-      - name: Install UI dependencies
-        run: npm ci --prefix "$UI_DIR"
-      - name: Check the OpenAPI document is up to date
-        run: |
-          uv run python scripts/export_openapi.py
-          git diff --exit-code docs/openapi.json
-      - name: Check dependency licenses
-        run: uv run pip-licenses --from=mixed --partial-match --fail-on="GPL" --format=plain
-      - name: Run pre-commit hooks
-        uses: pre-commit/action@v3.0.1
-        env:
-          SKIP: pytest # covered by the test job across all Python versions
+  core:
+    uses: ./.github/workflows/ci-core.yml
+
+  cli:
+    uses: ./.github/workflows/ci-cli.yml
+
+  api:
+    uses: ./.github/workflows/ci-api.yml
 
   ui:
-    name: ui (node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: ["22", "24"]
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Read project names
-        shell: bash
-        run: python3 installer/projectinfo.py github || python installer/projectinfo.py github
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-          cache-dependency-path: ${{ env.UI_DIR }}/package-lock.json
-      - name: Install UI dependencies
-        run: npm ci
-        working-directory: ${{ env.UI_DIR }}
-      - name: Lint the UI
-        run: npm run lint
-        working-directory: ${{ env.UI_DIR }}
-      - name: Check UI formatting
-        run: npm run format:check
-        working-directory: ${{ env.UI_DIR }}
-      - name: Run UI tests
-        run: npm test
-        working-directory: ${{ env.UI_DIR }}
-      - name: Build the UI
-        run: npm run build
-        working-directory: ${{ env.UI_DIR }}
-      - name: Upload the UI build
-        uses: actions/upload-artifact@v7
-        if: matrix.node-version == '24'
-        with:
-          name: ui-dist
-          path: ${{ env.UI_DIR }}/dist/
-          if-no-files-found: error
+    uses: ./.github/workflows/ci-ui.yml
 
-  test:
-    name: test (${{ matrix.os }}, ${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-        include:
-          - os: windows-latest
-            python-version: "3.11"
-          - os: macos-latest # Apple silicon
-            python-version: "3.11"
-          - os: macos-15-intel
-            python-version: "3.11"
-          - os: ubuntu-24.04-arm
-            python-version: "3.11"
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: uv sync --locked
-      - name: Run tests
-        run: uv run python scripts/run_tests.py
+  docker:
+    uses: ./.github/workflows/ci-docker.yml
 
-  integration:
-    name: integration (${{ matrix.os }}, ${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-        include:
-          - os: windows-latest
-            python-version: "3.11"
-          - os: macos-latest # Apple silicon
-            python-version: "3.11"
-          - os: macos-15-intel
-            python-version: "3.11"
-          - os: ubuntu-24.04-arm
-            python-version: "3.11"
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: uv sync --locked
-      # One step per component (packages/<component>/tests/integration), so a failure names its area. The
-      # UI's integration test needs the built frontend and Windows, so the ui-windows job runs it.
-      - name: Integration tests (core)
-        run: uv run pytest -m integration packages/core/tests --no-cov
-      - name: Integration tests (cli)
-        if: ${{ !cancelled() }}
-        run: uv run pytest -m integration packages/cli/tests --no-cov
-      - name: Integration tests (api)
-        if: ${{ !cancelled() }}
-        run: uv run pytest -m integration packages/api/tests --no-cov
+  repo:
+    uses: ./.github/workflows/ci-repo.yml
 
-  # The UI Python tests need the built frontend and Windows, where Cornea Shell runs.
-  ui-windows:
-    name: UI window (windows)
-    needs: ui
-    runs-on: windows-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Read project names
-        shell: bash
-        run: python3 installer/projectinfo.py github || python installer/projectinfo.py github
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.3
-        with:
-          python-version: "3.11"
-      - name: Download the UI build
-        uses: actions/download-artifact@v8
-        with:
-          name: ui-dist
-          path: ${{ env.UI_DIR }}/dist/
-      - name: Install dependencies
-        run: uv sync --locked
-      - name: Run the UI window integration test
-        run: uv run pytest -m integration packages/ui/tests/integration/test_ui_window.py --no-cov
-
-  build:
-    name: Build the package
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Read project names
-        shell: bash
-        run: python3 installer/projectinfo.py github || python installer/projectinfo.py github
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.3
-      - name: Build the package
-        run: uv build
-      - name: Check the package metadata
-        run: uvx twine check --strict dist/*
-      - name: Check the package holds the core library and command line only
-        run: |
-          unzip -l dist/*.whl > wheel.txt
-          grep -q " ${CORE_PACKAGE}/" wheel.txt
-          grep -q " ${CLI_PACKAGE}/" wheel.txt
-          if grep -E " (${API_PACKAGE}|${UI_PACKAGE})/" wheel.txt; then
-            echo "the wheel must not contain the API or the window"; exit 1
-          fi
-      - name: Smoke test the built wheel
-        run: uvx --from dist/*.whl "$CLI_NAME" --version
-
-  # Single required status check for the branch ruleset.
   ci:
     name: CI result
     if: always()
-    needs: [lint, ui, test, integration, ui-windows, build]
+    needs: [core, cli, api, ui, docker, repo]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check results
+        env:
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          echo "lint:        ${{ needs.lint.result }}"
-          echo "ui:          ${{ needs.ui.result }}"
-          echo "test:        ${{ needs.test.result }}"
-          echo "integration: ${{ needs.integration.result }}"
-          echo "ui-windows:  ${{ needs.ui-windows.result }}"
-          echo "build:       ${{ needs.build.result }}"
-          [ "${{ needs.lint.result }}" = success ] &&
-          [ "${{ needs.ui.result }}" = success ] &&
-          [ "${{ needs.test.result }}" = success ] &&
-          [ "${{ needs.integration.result }}" = success ] &&
-          [ "${{ needs.ui-windows.result }}" = success ] &&
-          [ "${{ needs.build.result }}" = success ]
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
+          jq -e 'all(.[]; .result == "success")' <<< "$NEEDS" > /dev/null

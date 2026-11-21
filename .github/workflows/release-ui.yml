@@ -1,0 +1,71 @@
+name: Release UI
+
+# Tag ui-vX.Y.Z: builds the Windows installer of the desktop window, which carries the UI, the API
+# and the core library. Nothing goes to PyPI. Attaching the installer to the GitHub release waits for
+# the approval of the `ui` environment. Called by release.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  ui-check:
+    name: ui check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Check the tag
+        uses: ./.github/actions/check-release-tag
+        with:
+          package: rayohx-ui
+          prefix: ui-v
+
+  ui-installer-windows:
+    name: ui installer (windows)
+    needs: ui-check
+    runs-on: windows-latest
+    timeout-minutes: 30 # target: under 10 minutes
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Read project names
+        uses: ./.github/actions/project-info
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          python-version: "3.15"
+          sync-args: --locked --package rayohx-ui --group installer
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ${{ env.UI_DIR }}/.nvmrc
+          cache: npm
+          cache-dependency-path: ${{ env.UI_DIR }}/package-lock.json
+      - name: Install installer tools
+        uses: ./.github/actions/install-installer-tools
+      - name: Build, sign (if SIGN_COMMAND is set) and smoke test the installer
+        env:
+          SIGN_COMMAND: ${{ vars.SIGN_COMMAND }}
+        run: uv run --no-sync python packages/ui/scripts/build_installer.py --build-frontend --smoke
+      - name: Upload the Windows installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: installers-ui-windows
+          path: dist/installer/*.exe
+
+  ui-publish:
+    name: ui publish (GitHub release)
+    needs: ui-installer-windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ui
+    permissions:
+      contents: write # attach files to the release
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Attach the installer to the release
+        uses: ./.github/actions/attach-release-files
