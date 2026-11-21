@@ -1968,6 +1968,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "cornea-shell" },
     { name = "httpx2" },
     { name = "mypy" },
     { name = "pytest" },
@@ -1989,6 +1990,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "cornea-shell", specifier = ">=0.1.1" },
     { name = "httpx2", specifier = ">=2.16.2" },
     { name = "mypy", specifier = ">=1.13" },
     { name = "pytest", specifier = ">=8.3" },

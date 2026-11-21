@@ -1,6 +1,6 @@
 name: CI CLI
 
-# packages/cli: lint, tests, integration tests, build and installer. Called by ci.yml.
+# packages/cli: lint, tests, integration tests and build. Called by ci.yml.
 on:
   workflow_call:
 
@@ -90,48 +90,10 @@ jobs:
         run: uvx twine check --strict dist/*
       - name: Check the CLI package holds the command line only
         run: |
-          unzip -l dist/${CLI_PACKAGE}-*.whl > wheel.txt
+          unzip -l dist/"${CLI_PACKAGE}"-*.whl > wheel.txt
           grep -q " ${CLI_PACKAGE}/" wheel.txt
           if grep -E " (${API_PACKAGE}|${UI_PACKAGE})/" wheel.txt; then
             echo "the CLI wheel must not contain the API or the window"; exit 1
           fi
       - name: Smoke test the built wheel
-        run: uvx --find-links dist --from dist/${CLI_PACKAGE}-*.whl "$CLI_NAME" --version
-
-  # Builds the deb and rpm packages (Linux, x86_64 and arm64), starts the frozen program, then
-  # installs, runs and removes the result. The Windows setup holds the window too: see ci-ui.yml.
-  cli-installer:
-    name: cli installer (${{ matrix.os }})
-    needs: [cli-build]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Read project names
-        uses: ./.github/actions/project-info
-      - name: Set up uv
-        uses: ./.github/actions/setup-uv
-        with:
-          python-version: "3.15"
-          sync-args: --locked --package rayohx-cli --group installer
-      - name: Install installer tools
-        uses: ./.github/actions/install-installer-tools
-      - name: Build the installer and smoke test the executable
-        run: uv run --no-sync python installer/scripts/build.py --smoke
-      - name: Test the Linux packages
-        if: runner.os == 'Linux'
-        uses: ./.github/actions/test-linux-packages
-      - name: Upload the installers
-        uses: actions/upload-artifact@v7
-        with:
-          name: installers-cli-${{ matrix.os }}
-          path: |
-            dist/installer/*.deb
-            dist/installer/*.rpm
-          retention-days: 7
-          if-no-files-found: error
+        run: uvx --find-links dist --from dist/"${CLI_PACKAGE}"-*.whl "$CLI_NAME" --version

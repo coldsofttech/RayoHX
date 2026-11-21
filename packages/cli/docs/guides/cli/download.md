@@ -165,7 +165,7 @@ Options are grouped the same way in `rayohx download --help`.
 | `--subtitles` | `-s` | Subtitle language to save beside the video (repeat for several). |
 | `--subtitle-name` | | Save the subtitle track with this exact name (repeatable). |
 | `--video-only` | | Download only the video, leaving out separate audio and subtitle tracks. |
-| `--input-file` | `-i` | Also download the addresses listed in this file (see [Several streams](#several-streams)). |
+| `--input-file` | `-i` | Also download the addresses listed in this file (see [Several addresses](#several-addresses)). |
 | `--playlist-file` | | Read the playlist from this file instead of fetching it (see [A playlist you already have](#a-playlist-you-already-have)). |
 | `--stop-on-error` | | With several addresses, stop at the first failure. |
 

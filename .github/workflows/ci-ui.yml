@@ -1,7 +1,7 @@
 name: CI UI
 
-# packages/ui: the Python window and the npm frontend. Lint, tests, integration tests, build and
-# installer. Called by ci.yml.
+# packages/ui: the Python window and the npm frontend. Lint, tests, integration tests and build.
+# Called by ci.yml.
 on:
   workflow_call:
 
@@ -178,42 +178,3 @@ jobs:
           node-version: ${{ matrix.node-version }}
           command: npm run build
           upload-dist: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '24' }}
-
-  # Builds the full setup.exe (command line and window) and the command line's zip from the frontend
-  # build above, starts the frozen programs, then installs, runs and removes the setup.
-  ui-installer:
-    name: full installer (windows)
-    needs: [ui-build, ui-build-npm]
-    runs-on: windows-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Read project names
-        uses: ./.github/actions/project-info
-      - name: Set up uv
-        uses: ./.github/actions/setup-uv
-        with:
-          python-version: "3.15"
-          sync-args: --locked --all-packages --group installer
-      - name: Download the UI build
-        uses: actions/download-artifact@v8
-        with:
-          name: ui-dist
-          path: ${{ env.UI_DIR }}/dist/
-      - name: Install installer tools
-        uses: ./.github/actions/install-installer-tools
-      - name: Build the installer and smoke test the executables
-        run: uv run --no-sync python installer/scripts/build.py --smoke
-      - name: Test the Windows setup
-        uses: ./.github/actions/test-windows-installer
-      - name: Upload the installers
-        uses: actions/upload-artifact@v7
-        with:
-          name: installers-windows
-          path: |
-            dist/installer/*.exe
-            dist/installer/*.json
-            dist/installer/*.zip
-          retention-days: 7
-          if-no-files-found: error

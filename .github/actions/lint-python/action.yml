@@ -27,6 +27,6 @@ runs:
     - name: Run pre-commit hooks
       shell: bash
       env:
-        SKIP: pytest # covered by the test jobs across all Python versions
+        SKIP: pytest-core,pytest-cli,pytest-api,pytest-ui # covered by the test jobs across all Python versions
         LINT_PATH: ${{ inputs.path }}
       run: uvx pre-commit run --files $(git ls-files "$LINT_PATH")

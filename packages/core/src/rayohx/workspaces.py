@@ -51,7 +51,8 @@ def find_workspaces(
             if not (named or keyed):
                 continue
             state = child / STATE_FILE
-            age = (now - (state if state.is_file() else child).stat().st_mtime) / _SECONDS_PER_DAY
+            modified = (state if state.is_file() else child).stat().st_mtime
+            age = max(0.0, now - modified) / _SECONDS_PER_DAY  # a new file can be dated ahead
             if age < older_than_days:
                 continue
             size = sum(item.stat().st_size for item in child.rglob("*") if item.is_file())

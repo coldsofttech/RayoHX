@@ -38,6 +38,7 @@ packages = ["src/rayohx_ui"]
 
 [dependency-groups]
 dev = [
+  "cornea-shell>=0.1.1",
   "httpx2>=2.16.2",
   "mypy>=1.13",
   "pytest>=8.3",
