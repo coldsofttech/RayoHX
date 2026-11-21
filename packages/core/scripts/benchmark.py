@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
     from tests.helpers.servers import Route
 
-    from rayohx import DownloadConfig
+    from rayohx.config import DownloadConfig
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -88,7 +88,8 @@ def scenarios(args: argparse.Namespace) -> list[Callable[[], dict[str, object]]]
     """The scenarios to run, each a function returning one result row."""
     from tests.helpers.media import ts_payload
 
-    from rayohx import DownloadConfig, OutputConfig, OutputFormat
+    from rayohx import OutputFormat
+    from rayohx.config import DownloadConfig, OutputConfig
 
     plain = DownloadConfig(
         concurrency=args.concurrency, output=OutputConfig(format=OutputFormat.TS)

@@ -44,6 +44,8 @@ jobs:
         with:
           scan-type: config
           scan-ref: packages/docker
+          # Trivy reads Dockerfile.dockerignore as a Dockerfile and fails on it
+          skip-files: packages/docker/Dockerfile.dockerignore
           severity: HIGH,CRITICAL
           format: sarif
           output: trivy-config.sarif

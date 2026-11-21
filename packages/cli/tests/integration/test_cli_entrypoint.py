@@ -10,10 +10,12 @@ import rayohx
 
 from tests.helpers.media import ts_payload
 from tests.helpers.servers import LocalServer, Reply, Seen
+from tests.helpers.site import fixture
 
 pytestmark = pytest.mark.integration
 
 COUNT = 6
+SECRET = "hunter2-very-secret"
 
 
 def _run(*command: str) -> subprocess.CompletedProcess[str]:
@@ -79,3 +81,30 @@ def test_info_and_download_against_a_server(tmp_path: Path) -> None:
     result = json.loads(done.stdout)
     assert result["success"] is True
     assert out.read_bytes() == b"".join(ts_payload(i) for i in range(COUNT))
+
+
+def test_the_command_never_prints_secrets(tmp_path: Path) -> None:
+    secret_headers = tmp_path / "headers.txt"
+    secret_headers.write_text(f"Authorization: Bearer {SECRET}\n", encoding="utf-8")
+    log = tmp_path / "run.log"
+    out = tmp_path / "clip.ts"
+    seen: list[Seen] = []
+
+    def index(request: Seen) -> Reply:
+        seen.append(request)
+        return Reply(body=fixture("single_segment.m3u8"))
+
+    routes = {"/index.m3u8": index, "/s0.ts": lambda _s: Reply(body=ts_payload(0))}
+    with LocalServer(routes) as server:
+        command = [
+            sys.executable, "-m", "rayohx_cli", "--verbose", "--log-file", str(log),
+            "download", f"{server.url}/index.m3u8?token={SECRET}", "-o", str(out),
+            "--format", "ts", "-H", f"@{secret_headers}", "--cookie", f"sid={SECRET}",
+        ]  # fmt: skip
+        done = subprocess.run(command, capture_output=True, text=True, check=False, timeout=120)
+    assert done.returncode == 0, done.stderr
+    assert seen[0].headers["authorization"] == f"Bearer {SECRET}"  # the server did get it
+    assert SECRET not in done.stdout
+    assert SECRET not in done.stderr
+    assert SECRET not in log.read_text(encoding="utf-8")
+    assert not list(tmp_path.glob("*.part"))

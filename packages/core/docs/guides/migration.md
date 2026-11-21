@@ -36,7 +36,7 @@ pip install rayohx
 
 ## Downloading a playlist
 
-**Before**
+Before:
 
 ```python
 from pym3u8downloader import M3U8Downloader
@@ -48,7 +48,7 @@ downloader = M3U8Downloader(
 downloader.download_playlist()
 ```
 
-**After**
+After:
 
 ```python
 import rayohx
@@ -69,7 +69,7 @@ An existing file is never replaced unless you pass `overwrite=True`; otherwise `
 
 The old package had a separate method for master playlists, and its arguments picked the variant. RayoHX uses the same `download()` and a `SelectionConfig`.
 
-**Before**
+Before:
 
 ```python
 downloader = M3U8Downloader(
@@ -80,7 +80,7 @@ downloader.download_master_playlist(name="720")
 downloader.download_master_playlist(bandwidth="2500000", resolution="1280x720")
 ```
 
-**After**
+After:
 
 ```python
 from rayohx import download
@@ -113,7 +113,7 @@ download(
 
 The old package returned the variants only when you called `download_master_playlist()` with no arguments, in the `json_data` of an `M3U8DownloaderWarning`. RayoHX has an explicit call that downloads nothing.
 
-**Before**
+Before:
 
 ```python
 from pym3u8downloader import M3U8Downloader, M3U8DownloaderWarning
@@ -125,7 +125,7 @@ except M3U8DownloaderWarning as warning:
     variants = warning.json_data
 ```
 
-**After**
+After:
 
 ```python
 import rayohx
@@ -149,13 +149,13 @@ print(choice.variant.uri, choice.notes)
 
 ## Keeping the segments separate
 
-**Before**
+Before:
 
 ```python
 downloader.download_playlist(merge=False)
 ```
 
-**After**
+After:
 
 ```python
 rayohx.download(url, "segments_folder", format="segments")
@@ -165,7 +165,7 @@ The output is a folder. Each segment is saved as `segment-00001.ts`, `segment-00
 
 ## Threads, TLS and the space check
 
-**Before**
+Before:
 
 ```python
 downloader = M3U8Downloader(
@@ -178,7 +178,7 @@ downloader = M3U8Downloader(
 downloader.download_playlist()
 ```
 
-**After**
+After:
 
 ```python
 from pathlib import Path
@@ -204,7 +204,7 @@ Other settings the old package had no equivalent for are in the same objects: he
 
 ## Debug logging
 
-**Before**
+Before:
 
 ```python
 downloader = M3U8Downloader(
@@ -215,7 +215,7 @@ downloader = M3U8Downloader(
 )
 ```
 
-**After**
+After:
 
 ```python
 import rayohx
@@ -230,7 +230,7 @@ Call `configure_logging` once, before downloading. It writes to the screen (stde
 
 The old package printed three progress bars (verify, download, build). RayoHX prints nothing; you receive events and show what you like.
 
-**Before**
+Before:
 
 ```text
 Verify  : [##################################################] 100%
@@ -238,7 +238,7 @@ Download: [##################################################] 100%
 Build   : [##################################################] 100%
 ```
 
-**After**
+After:
 
 ```python
 from rayohx import EventType, download
@@ -258,7 +258,7 @@ download(url, "output_video.ts", on_event=show)
 
 ## Success and errors
 
-**Before**
+Before:
 
 ```python
 from pym3u8downloader import M3U8Downloader, M3U8DownloaderError
@@ -272,7 +272,7 @@ if downloader.is_download_complete:
     print("done")
 ```
 
-**After**
+After:
 
 ```python
 from rayohx import download
