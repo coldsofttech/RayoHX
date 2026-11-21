@@ -21,7 +21,7 @@ classifiers = [
 ]
 dependencies = [
   "rayohx",
-  "click>=8.1",
+  "click>=8.5.1",
   "rich>=13.9",
   "typer>=0.29.1",
 ]
