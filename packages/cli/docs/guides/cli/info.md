@@ -15,7 +15,8 @@ rayohx info https://cdn.example.com/vod/master.m3u8 --playlist-file master.m3u8
 ```
 
 `--playlist-file PATH` reads the playlist from a file instead of fetching it (the address is still
-needed to resolve relative addresses), like [`rayohx.inspect_text`](../python/inspecting.md#inspect_text).
+needed to resolve relative addresses), like [`rayohx.inspect_text`](../python/inspecting.md#inspect_text). The file can also be given in
+place of the address, with `--base-url` for its relative addresses.
 
 It does the same work as [`rayohx.inspect`](../python/inspecting.md) followed by
 [`rayohx.select_stream`](../python/selecting.md).

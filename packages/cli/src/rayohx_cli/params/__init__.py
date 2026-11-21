@@ -5,6 +5,7 @@ Every option that takes one value can also be set with a ``RAYOHX_<NAME>`` envir
 """
 
 from rayohx_cli.params.display import (
+    Events,
     JsonOutput,
     ProgressMode,
 )
@@ -22,6 +23,7 @@ from rayohx_cli.params.engine import (
 )
 from rayohx_cli.params.network import (
     Backoff,
+    BaseUrl,
     CaBundle,
     ClientCert,
     ClientKey,
@@ -83,6 +85,7 @@ __all__ = [
     "AudioName",
     "Backoff",
     "Bandwidth",
+    "BaseUrl",
     "BufferSize",
     "CaBundle",
     "ClientCert",
@@ -96,6 +99,7 @@ __all__ = [
     "CredentialHost",
     "Directory",
     "EnvProxy",
+    "Events",
     "Ffmpeg",
     "Format",
     "Header",

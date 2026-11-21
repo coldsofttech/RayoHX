@@ -48,6 +48,13 @@ several or `--input-file`.
 rayohx download https://cdn.example.com/vod/master.m3u8 --playlist-file master.m3u8
 ```
 
+You can also give the file in place of the address. Use `--base-url` to say where its relative
+addresses resolve; without it, the playlist's addresses must all be absolute.
+
+```bash
+rayohx download master.m3u8 --base-url https://cdn.example.com/vod/
+```
+
 It does the same work as `Downloader(playlist_text=...)` in the [Python guide](../python/downloading.md#downloader).
 
 ## What it prints
@@ -109,6 +116,9 @@ Press Ctrl+C once to stop cleanly and keep what a resume needs. A second press q
 
 `--quiet` and `--json` show no progress.
 
+`--events` replaces the display with one JSON line per download event on stderr, for other programs
+to follow; stdout still holds only the result.
+
 ## Options
 
 Options are grouped the same way in `rayohx download --help`.
@@ -120,6 +130,7 @@ Options are grouped the same way in `rayohx download --help`.
 | `--output` | `-o` | Where to save. A name without an extension gets the right one. By default it is named after the address, in the current folder. With several addresses, a folder. |
 | `--directory` | `-d` | The folder for a file that `--output` does not name, and for several addresses. Created if missing. |
 | `--input-file` | | A file listing addresses, one per line (`-` for standard input). |
+| `--base-url` | | The web address a local playlist's relative addresses resolve against. |
 | `--stop-on-error` | | With several addresses, stop at the first failure. |
 | `--format` | | `auto` (default), `ts`, `mp4`, or `segments` (one file per segment, in a folder). |
 | `--overwrite` / `--no-overwrite` | | Replace an existing output file. Off by default. |
@@ -213,6 +224,7 @@ and a speed limit.
 |---|---|
 | `--json` | Print the result as JSON on stdout, for other programs. |
 | `--progress` | How to show progress: `auto` (default), `bar`, `plain`, `none`. |
+| `--events` | Write every download event as one JSON line on stderr. Replaces the progress display. |
 
 Sizes accept `K`, `M` and `G`. Sizes are binary (`4M` is 4 MiB); bitrates are decimal (`4M` is
 4,000,000 bit/s). See [Settings](settings.md) for `@file` values and `RAYOHX_` environment

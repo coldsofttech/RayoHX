@@ -1,11 +1,11 @@
 """The ``info`` command: show what a stream offers without downloading it."""
 
 import typer
-from rayohx import MasterPlaylist, inspect, playlist_to_dict, select_stream
+from rayohx import MasterPlaylist, inspect, inspect_text, playlist_to_dict, select_stream
 from rayohx.errors import ConfigurationError, RayoHXError
 
 from rayohx_cli import output, params, render
-from rayohx_cli.cli.common import EXIT_FAILED, make_config, read_playlist_file, usage_error
+from rayohx_cli.cli.common import EXIT_FAILED, make_config, open_source, usage_error
 from rayohx_cli.cli.root import app
 
 
@@ -13,6 +13,7 @@ from rayohx_cli.cli.root import app
 def info(
     url: params.Url,
     playlist_file: params.PlaylistFile = None,
+    base_url: params.BaseUrl = None,
     quality: params.Quality = "best",
     max_resolution: params.MaxResolution = None,
     max_bitrate: params.MaxBitrate = None,
@@ -97,12 +98,11 @@ def info(
         credential_host=credential_host or [],
     )
     try:
-        from rayohx import inspect_text
-
+        source = open_source(url, base_url, playlist_file)
         playlist = (
-            inspect(url, config.network)
-            if playlist_file is None
-            else inspect_text(read_playlist_file(playlist_file), url)
+            inspect(source.url, config.network)
+            if source.text is None
+            else inspect_text(source.text, source.url)
         )
         selection = (
             select_stream(playlist, config.selection)
