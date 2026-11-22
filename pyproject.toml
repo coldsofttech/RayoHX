@@ -55,10 +55,20 @@ select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 [tool.mypy]
 strict = true
 explicit_package_bases = true
-mypy_path = "packages/core/src:packages/cli/src:packages/api/src:packages/ui/src"
+mypy_path = "tests/helpers:packages/core/src:packages/cli/src:packages/api/src:packages/ui/src"
 files = ["packages"]
 
+[tool.pyright]
+extraPaths = [
+  "tests/helpers",
+  "packages/core/src",
+  "packages/cli/src",
+  "packages/api/src",
+  "packages/ui/src",
+]
+
 [tool.pytest.ini_options]
+pythonpath = ["tests/helpers"]
 addopts = "-m 'not integration' --strict-markers --cov=rayohx --cov=rayohx_cli --cov=rayohx_api --cov=rayohx_ui --cov-report=term-missing --cov-fail-under=80"
 markers = ["integration: slower end-to-end tests, run in CI but not by default or in pre-commit"]
 

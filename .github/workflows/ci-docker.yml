@@ -28,21 +28,11 @@ jobs:
           tags: rayohx:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Check it runs, as a normal user, with its folders in place
-        run: |
-          set -euxo pipefail
-          docker run --rm rayohx:test --version
-          docker run --rm rayohx:test download --help > /dev/null
-          test "$(docker run --rm --entrypoint id rayohx:test -u)" != 0
-          docker run --rm --entrypoint sh rayohx:test -c 'touch /output/x /workspace/x'
-          test "$(docker run --rm --entrypoint printenv rayohx:test RAYOHX_WORKSPACE)" = /workspace
-          # A failure is reported with exit code 1 and a message on stderr, not a traceback.
-          set +e
-          docker run --rm rayohx:test info http://127.0.0.1:1/none.m3u8 --retries 0 2> err.txt
-          code=$?
-          set -e
-          test "$code" = 1
-          grep -q '^Error:' err.txt
-          ! grep -q Traceback err.txt
+      - name: Set up Python and uv
+        uses: astral-sh/setup-uv@v6
+      - name: Test the image
+        run: uv run --with pytest pytest -c packages/docker/pytest.ini packages/docker/tests
+        env:
+          RAYOHX_IMAGE: rayohx:test
       - name: Image size
         run: docker image ls rayohx:test --format '{{.Size}}'

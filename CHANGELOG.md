@@ -6,6 +6,14 @@ This file covers the repository as a whole. Each package keeps its own changelog
 
 ## [Unreleased]
 
+### Added
+
+- Shared test helpers and sample streams that the library, command line and API tests all use, so each package no longer keeps its own copy.
+
+### Changed
+
+- The Docker image checks in continuous integration are now an automated test suite instead of a shell script.
+
 ## [0.1.0] - 2026-11-21
 
 ### Added

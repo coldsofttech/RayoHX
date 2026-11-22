@@ -5,3 +5,6 @@ config:
 ignores:
   - "**/node_modules/**"
   - "**/dist/**"
+  - "**/.venv/**"
+  - "**/build/installer/**"
+  - "**/build/installer-work/**"

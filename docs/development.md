@@ -12,6 +12,7 @@ packages/ui/       the `rayohxu` window (Cornea Shell) and its React + Vite fron
 packages/docker/   the container image
 installer/         shared installer pieces: NSIS behavior and pinned tool versions
 scripts/           repository settings and the shared installer build helpers
+tests/             fixtures and helpers shared by every package's tests (see [Testing](testing.md))
 docs/              repository-wide documentation
 pyproject.toml     workspace metadata and tool configuration
 uv.lock            locked dependencies (commit this file)
