@@ -73,3 +73,7 @@ uv run pytest -m integration tests/integration/test_downloads_live.py
 ```
 
 The integration tests start local servers on free ports and, for the API, a real `rayohx_api` process. They need no network access and write only to pytest's temporary folders.
+
+## Manual testing
+
+For trying RayoHX against real streams by hand, see [Manual test streams](manual-test-streams.md).
