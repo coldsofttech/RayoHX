@@ -55,6 +55,8 @@ Check it works:
 rayohx --version
 ```
 
+Prefer a ready-made installer (Windows setup, Linux `.deb` and `.rpm`)? The newest ones are under [`installer-latest`](https://github.com/coldsofttech/RayoHX/releases/tag/installer-latest) on the releases page.
+
 ## Learn more
 
 - [Command line guide](https://github.com/coldsofttech/RayoHX/blob/main/docs/guides/cli.md): every

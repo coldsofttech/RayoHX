@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-21
+
 ### Added
 
 - `find_workspaces` and `remove_workspaces` list and delete the working folders that interrupted downloads leave behind. Folders a running download is using are never removed.

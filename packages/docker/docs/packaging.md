@@ -34,7 +34,7 @@ docker build -f packages/docker/Dockerfile --build-arg VERSION=0.1.0 -t rayohx:0
 The image is released by the tag `docker-v<version>`, for example `docker-v0.1.0`. Other packages use their own prefixes (`v`, `cli-v`, `ui-v`) and are not affected.
 
 1. Move the `[Unreleased]` entries in `packages/docker/CHANGELOG.md` under the new version, in a pull request.
-2. After it is merged, publish a GitHub release tagged `docker-v<version>`. Mark it as a pre-release if it should not become `latest`.
+2. After it is merged, publish a GitHub release tagged `docker-v<version>`. Mark it as a pre-release if it should not become `latest`. For a full release, the workflow also moves the `docker-latest` tag and pre-release on GitHub to the new version.
 3. `release.yml` sees the `docker-v` prefix and calls `release-docker.yml`, whose `docker-publish` job runs in the `docker` environment, so it waits for a reviewer's approval. It then builds both platforms with QEMU and Buildx and pushes:
    - `ghcr.io/<owner>/<repository>:<version>`
    - `ghcr.io/<owner>/<repository>:latest`, unless the release is a pre-release

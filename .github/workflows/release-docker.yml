@@ -3,7 +3,7 @@ name: Release Docker
 # Tag docker-vX.Y.Z: builds the command line image (packages/docker/Dockerfile) for linux/amd64 and
 # linux/arm64 and pushes it to GHCR, as ghcr.io/<owner>/<repository> (lowercase) tagged X.Y.Z, and
 # latest unless the release is a pre-release. Pushing waits for the approval of the `docker`
-# environment. Called by release.yml.
+# environment. Then moves the docker-latest pointer. Called by release.yml.
 on:
   workflow_call:
 
@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 45
     environment: docker
     permissions:
-      contents: read
+      contents: write # move the docker-latest pointer
       packages: write # push the image to GHCR
     steps:
       - name: Check out the repository
@@ -59,3 +59,7 @@ jobs:
           provenance: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Update the latest markers
+        uses: ./.github/actions/update-latest
+        with:
+          package: docker

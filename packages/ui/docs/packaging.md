@@ -22,4 +22,4 @@ The window uses the Microsoft Edge WebView2 runtime, already part of Windows 10 
 
 ## Making a release
 
-The window has no release of its own. Set `version` in `packages/ui/pyproject.toml` and move the `[Unreleased]` entries in `packages/ui/CHANGELOG.md` under a `## [x.y.z]` heading, then ship it in a new setup version: see [Making a release](../../../installer/docs/packaging.md#making-a-release) in the installer notes.
+The window has no release of its own. Set `version` in `packages/ui/pyproject.toml` and move the `[Unreleased]` entries in `packages/ui/CHANGELOG.md` under a `## [x.y.z]` heading, then ship it in a new setup version: see [Making a release](../../../installer/docs/packaging.md#making-a-release) in the installer notes. The newest setup is always under the `installer-latest` pre-release on GitHub, which the installer release moves after each full release.
