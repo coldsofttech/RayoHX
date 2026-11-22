@@ -1,15 +1,15 @@
 """Error responses in the RFC 9457 "problem details" format."""
 
-import logging
-from collections.abc import Mapping
-from http import HTTPStatus
-from typing import Any
+from __future__ import annotations
 
-from fastapi import FastAPI, Request
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
+import logging
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from fastapi import FastAPI, Request
+    from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,10 @@ def problem(
     **extra: Any,
 ) -> JSONResponse:
     """Build a problem details response."""
+    from http import HTTPStatus
+
+    from fastapi.responses import JSONResponse
+
     body: dict[str, Any] = {
         "type": "about:blank",
         "title": HTTPStatus(status_code).phrase,
@@ -35,11 +39,16 @@ def problem(
 
 
 async def _http_error(_: Request, exc: Exception) -> JSONResponse:
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
     assert isinstance(exc, StarletteHTTPException)  # noqa: S101
     return problem(exc.status_code, str(exc.detail), headers=exc.headers)
 
 
 async def _validation_error(_: Request, exc: Exception) -> JSONResponse:
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.exceptions import RequestValidationError
+
     assert isinstance(exc, RequestValidationError)  # noqa: S101
     return problem(422, "Request validation failed.", errors=jsonable_encoder(exc.errors()))
 
@@ -51,6 +60,9 @@ async def _unexpected_error(_: Request, exc: Exception) -> JSONResponse:
 
 def register_error_handlers(app: FastAPI) -> None:
     """Make every error response use the same shape. Details of 500 errors are never exposed."""
+    from fastapi.exceptions import RequestValidationError
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
     app.add_exception_handler(StarletteHTTPException, _http_error)
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(Exception, _unexpected_error)

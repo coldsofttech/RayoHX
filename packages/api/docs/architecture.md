@@ -17,10 +17,13 @@ packages/api/src/rayohx_api/
   errors.py        problem-details responses and the exception handlers
   logs.py          JSON logging and the request ID middleware
   security.py      security headers and the request size limit
-  schemas.py       request and response models
+  jobs.py          runs downloads in background threads and keeps their state in memory
+  schemas/
+    health.py      models for /health and /ready
+    v1/            /api/v1 models, one file per route group (inspect, downloads, settings, clean) and common.py for what they share
   routers/
     health.py      /health and /ready, at the root, no authentication
-    v1.py          the /api/v1 router (no routes yet)
+    v1/            the /api/v1 router: one file per route group, and deps.py for the shared state and helpers
 ```
 
 ## One app, two ways to run it

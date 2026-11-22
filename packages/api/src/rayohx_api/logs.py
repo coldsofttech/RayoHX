@@ -1,14 +1,18 @@
 """Structured JSON logging with a request ID on every line."""
 
-import json
+from __future__ import annotations
+
 import logging
-import uuid
-from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
+from typing import TYPE_CHECKING
 
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from starlette.requests import Request
+    from starlette.responses import Response
 
 REQUEST_ID_HEADER = "X-Request-ID"
 
@@ -19,6 +23,8 @@ class JsonFormatter(logging.Formatter):
     """Format log records as one JSON object per line."""
 
     def format(self, record: logging.LogRecord) -> str:
+        import json
+
         payload = {
             "time": self.formatTime(record),
             "level": record.levelname,
@@ -46,6 +52,8 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
+        import uuid
+
         request_id = request.headers.get(REQUEST_ID_HEADER) or uuid.uuid4().hex
         token = request_id_var.set(request_id)
         try:

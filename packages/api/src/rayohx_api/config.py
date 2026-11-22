@@ -1,11 +1,17 @@
 """Settings, read from ``RAYOHX_API_*`` environment variables or a ``.env`` file."""
 
+from __future__ import annotations
+
 from enum import StrEnum
 from functools import lru_cache
-from typing import Self
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+if TYPE_CHECKING:
+    from typing import Self
 
 
 class AuthMode(StrEnum):
@@ -26,6 +32,10 @@ class Settings(BaseSettings):
     docs_enabled: bool = False
     max_body_bytes: int = Field(default=1_048_576, ge=1)
     cors_origins: list[str] = []
+    #: Folder downloads are saved in. Clients choose file names, never folders.
+    download_dir: Path = Path.home() / "Downloads" / "RayoHX"
+    #: Downloads that run at once; the rest wait in the queue.
+    max_active_downloads: int = Field(default=2, ge=1, le=16)
 
     auth_mode: AuthMode = AuthMode.API_KEY
     api_keys: list[SecretStr] = []

@@ -30,8 +30,8 @@ Tests live in `packages/api/tests`: unit tests in `unit/` and integration tests 
 
 ## Adding an endpoint
 
-1. Add the request and response models to `schemas.py`, with `Field` descriptions, examples and a maximum length on every string.
-2. Add the handler to `routers/v1.py` (or a new router file). Keep it thin: validate, call `rayohx`, return the model. Annotate the return type, use plain `def` for anything that can block, and declare every non-200 response in `responses=`.
+1. Add the request and response models to the matching file in `schemas/v1/` (or a new one, re-exported from `schemas/v1/__init__.py`), with `Field` descriptions, examples and a maximum length on every string.
+2. Add the handler to the matching file in `routers/v1/` (or a new one, included in `routers/v1/__init__.py`). Keep it thin: validate, call `rayohx`, return the model. Annotate the return type, use plain `def` for anything that can block, and declare every non-200 response in `responses=`.
 3. Map library errors to HTTP errors in the router. Never return the text of an unexpected exception.
 4. Protect it with `Depends(authenticate)` unless it is a probe.
 5. Add tests for the behaviour and for each status code the route declares.

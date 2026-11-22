@@ -1,0 +1,109 @@
+"""Start, follow and control downloads."""
+
+from fastapi import APIRouter, Request, Response, status
+from fastapi.responses import StreamingResponse
+
+from rayohx_api.routers.v1.deps import Jobs
+from rayohx_api.schemas.v1.downloads import DownloadCreate, Job, JobList
+
+router = APIRouter()
+
+
+@router.get("/downloads", summary="List downloads, newest first")
+async def list_downloads(jobs: Jobs) -> JobList:
+    from rayohx_api.routers.v1.deps import to_job
+
+    return JobList(items=[to_job(r) for r in jobs.list()])
+
+
+@router.post("/downloads", status_code=status.HTTP_202_ACCEPTED, summary="Start a download")
+async def create_download(body: DownloadCreate, jobs: Jobs) -> Job:
+    from rayohx.errors import RayoHXError
+
+    from rayohx_api.jobs import UnsafeFilenameError
+    from rayohx_api.routers.v1.deps import prefs, problem, to_job
+
+    try:
+        record = jobs.create(body, concurrency=prefs().concurrency)
+    except UnsafeFilenameError as exc:
+        raise problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
+    except RayoHXError as exc:
+        raise problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
+    return to_job(record)
+
+
+@router.get("/downloads/{job_id}", summary="One download")
+async def get_download(job_id: str, jobs: Jobs) -> Job:
+    from rayohx_api.routers.v1.deps import find_job, to_job
+
+    return to_job(find_job(jobs, job_id))
+
+
+@router.post("/downloads/{job_id}/pause", summary="Pause a download")
+async def pause_download(job_id: str, jobs: Jobs) -> Job:
+    from rayohx_api.routers.v1.deps import find_job, to_job
+
+    record = find_job(jobs, job_id)
+    jobs.pause(record)
+    return to_job(record)
+
+
+@router.post("/downloads/{job_id}/resume", summary="Resume a paused download")
+async def resume_download(job_id: str, jobs: Jobs) -> Job:
+    from rayohx_api.routers.v1.deps import find_job, to_job
+
+    record = find_job(jobs, job_id)
+    jobs.resume(record)
+    return to_job(record)
+
+
+@router.post("/downloads/{job_id}/cancel", summary="Cancel a download")
+async def cancel_download(job_id: str, jobs: Jobs) -> Job:
+    from rayohx_api.routers.v1.deps import find_job, to_job
+
+    record = find_job(jobs, job_id)
+    jobs.cancel(record)
+    return to_job(record)
+
+
+@router.delete(
+    "/downloads/{job_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Forget a finished download",
+)
+async def remove_download(job_id: str, jobs: Jobs) -> Response:
+    from fastapi import HTTPException
+
+    from rayohx_api.routers.v1.deps import find_job
+
+    record = find_job(jobs, job_id)
+    if not jobs.remove(record):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Cancel the download before removing it.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/downloads/{job_id}/events", summary="Follow a download as server-sent events")
+async def download_events(job_id: str, request: Request, jobs: Jobs) -> StreamingResponse:
+    import asyncio
+    from collections.abc import AsyncIterator
+
+    from rayohx_api.routers.v1.deps import find_job, to_job
+
+    record = find_job(jobs, job_id)
+
+    async def stream() -> AsyncIterator[str]:
+        last = ""
+        while not await request.is_disconnected():
+            payload = to_job(record).model_dump_json()
+            if payload != last:
+                last = payload
+                yield f"event: job\ndata: {payload}\n\n"
+            if record.state.is_terminal:
+                return
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )

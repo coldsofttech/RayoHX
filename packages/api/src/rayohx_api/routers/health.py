@@ -1,7 +1,6 @@
 """Liveness and readiness probes, used by monitors and load balancers."""
 
 from fastapi import APIRouter
-from rayohx import __version__
 
 from rayohx_api.schemas import HealthResponse, ReadyResponse
 
@@ -17,4 +16,6 @@ async def health() -> HealthResponse:
 @router.get("/ready", summary="Readiness probe")
 async def ready() -> ReadyResponse:
     """Return 200 when the service can take traffic. Add checks for your dependencies here."""
+    from rayohx import __version__
+
     return ReadyResponse(version=__version__)

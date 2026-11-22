@@ -1,9 +1,5 @@
 """Start the server with ``python -m rayohx_api``."""
 
-import uvicorn
-
-from rayohx_api.config import get_settings
-
 
 def serve(host: str | None = None, port: int | None = None) -> None:
     """Run uvicorn. Arguments left out come from the settings.
@@ -11,6 +7,10 @@ def serve(host: str | None = None, port: int | None = None) -> None:
     Raises:
         ValueError: If authentication is misconfigured (no API key and auth not switched off).
     """
+    import uvicorn
+
+    from rayohx_api.config import get_settings
+
     settings = get_settings()
     settings.check_auth()
     # log_config=None keeps uvicorn's logs on our JSON handler.

@@ -5,14 +5,13 @@ Under Cornea the API is mounted behind its security gate and this check is switc
 ``RAYOHX_API_AUTH_MODE=none`` is set for local development.
 """
 
-import secrets
 from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import Depends, Security
 from fastapi.security import APIKeyHeader
 
-from rayohx_api.config import AuthMode, Settings, get_settings
+from rayohx_api.config import Settings, get_settings
 
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -30,6 +29,12 @@ def authenticate(
     api_key: Annotated[str | None, Security(_api_key_header)],
 ) -> Principal:
     """Dependency that returns the caller, or raises 401."""
+    import secrets
+
+    from fastapi import HTTPException, status
+
+    from rayohx_api.config import AuthMode
+
     if settings.auth_mode is AuthMode.NONE:
         return Principal(subject="anonymous", method=AuthMode.NONE)
     if api_key is not None and any(

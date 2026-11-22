@@ -4,14 +4,18 @@ HTTPS itself, request timeouts and connection limits belong to the reverse proxy
 Under Cornea its own middleware sets strict headers, so only the body limit is kept there.
 """
 
-from collections.abc import Awaitable, Callable
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-from starlette.types import ASGIApp
 
-from rayohx_api.errors import problem
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from starlette.requests import Request
+    from starlette.responses import Response
+    from starlette.types import ASGIApp
 
 # The interactive docs load scripts and styles, so a strict policy would break them.
 DOCS_PREFIXES = ("/docs", "/redoc")
@@ -54,6 +58,8 @@ class BodyLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
+        from rayohx_api.errors import problem
+
         declared = request.headers.get("content-length", "")
         if declared.isdigit() and int(declared) > self._max_bytes:
             return problem(413, f"Request body is larger than {self._max_bytes} bytes.")

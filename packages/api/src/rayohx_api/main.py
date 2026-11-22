@@ -1,15 +1,11 @@
 """Application factory."""
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from rayohx import __version__
+from __future__ import annotations
 
-from rayohx_api.auth import authenticate, embedded_principal
-from rayohx_api.config import get_settings
-from rayohx_api.errors import register_error_handlers
-from rayohx_api.logs import RequestIdMiddleware, configure_logging
-from rayohx_api.routers import health, v1
-from rayohx_api.security import BodyLimitMiddleware, SecurityHeadersMiddleware
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 
 def create_app(*, embedded: bool = False) -> FastAPI:
@@ -19,6 +15,17 @@ def create_app(*, embedded: bool = False) -> FastAPI:
     request: API-key authentication and the duplicate response headers are left out. A standalone
     app refuses to start without an API key unless ``RAYOHX_API_AUTH_MODE=none``.
     """
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    from rayohx import __version__
+
+    from rayohx_api.auth import authenticate, embedded_principal
+    from rayohx_api.config import get_settings
+    from rayohx_api.errors import register_error_handlers
+    from rayohx_api.logs import RequestIdMiddleware, configure_logging
+    from rayohx_api.routers import health, v1
+    from rayohx_api.security import BodyLimitMiddleware, SecurityHeadersMiddleware
+
     settings = get_settings()
     if not embedded:
         settings.check_auth()
