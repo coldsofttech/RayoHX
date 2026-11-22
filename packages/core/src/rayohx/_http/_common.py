@@ -142,11 +142,17 @@ def translate(exc: Exception, url: str) -> NetworkError:
     shown = redact_url(url)
     cause: BaseException | None = exc
     while cause is not None:
-        if isinstance(cause, ssl.SSLError):
+        if isinstance(cause, ssl.SSLCertVerificationError):
             return TLSError(
                 f"The secure connection to {shown} failed the certificate check.",
                 hint="If you trust this server, supply its certificate authority file or turn "
                 "TLS verification off.",
+            )
+        if isinstance(cause, ssl.SSLError):
+            # A broken secure connection, not a bad certificate, so it is worth retrying.
+            return NetworkConnectionError(
+                f"The secure connection to {shown} broke off ({type(cause).__name__}: {cause}).",
+                hint="Check the connection, or try fewer parallel downloads.",
             )
         cause = cause.__cause__ or cause.__context__
     if isinstance(exc, httpx.TimeoutException):

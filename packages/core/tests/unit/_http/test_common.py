@@ -57,6 +57,17 @@ def test_certificate_problems_are_not_retried() -> None:
     assert len(recorder.requests) == 1
 
 
+def test_a_broken_secure_connection_is_retried() -> None:
+    error = httpx.ConnectError("handshake failed")
+    error.__cause__ = ssl.SSLError("EOF occurred in violation of protocol")
+    client, recorder, _ = make(failing(error), retries=2)
+    with pytest.raises(NetworkConnectionError) as info:
+        client.fetch_bytes(URL)
+    assert not isinstance(info.value, TLSError)
+    assert info.value.hint
+    assert len(recorder.requests) == 3
+
+
 def test_error_messages_never_contain_credentials() -> None:
     url = "https://user:pw@media.example.com/a.ts?token=secret123"
     client, _, _ = make(lambda _r: httpx.Response(500), retries=0)

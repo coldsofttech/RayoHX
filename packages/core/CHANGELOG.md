@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - A paused download no longer reports itself as downloading again while the segments already in progress finish.
+- A secure connection that drops partway through is now retried as a connection problem instead of failing as a certificate error. Only genuine certificate failures are reported as such.
 
 ### Changed
 
