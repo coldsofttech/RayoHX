@@ -21,7 +21,7 @@ uv run python -m rayohx_ui --dev           # Vite with hot reload (needs Node)
 
 - Plain JavaScript with JSX. Call Python only through `src/api.js`.
 - Put styles in CSS files; the content security policy forbids inline scripts and styles.
-- Add UI kits such as Fluent UI as optional dependencies when needed; none is included.
+- The interface uses Fluent UI (`@fluentui/react-components`). Colours live in one place, `src/theme.js`, built from the logo in `brand/` (amber to red-orange, maroon, near-black neutrals), with red for danger and amber for warnings. Fluent adds its styles through the browser's style API, which Cornea's default `style-src 'self'` blocks. The window therefore uses that policy with `'unsafe-inline'` added to `style-src` only (scripts stay strict).
 - Node version is in `.nvmrc`.
 
 ```bash

@@ -67,16 +67,23 @@ def test_static_mode_serves_the_bundled_frontend(shell_on_windows: type[FakeShel
     shell = shell_on_windows.instances[0]
     assert isinstance(shell.source, cornea.Static)
     assert shell.options["window"].title == ui_app.TITLE
-    assert shell.options["security"].csp == cornea.Security().csp
+    csp = shell.options["security"].csp
+    assert "style-src 'self' 'unsafe-inline'" in csp
+    assert "script-src 'self';" in csp
     assert shell.options["identity"].id == ui_app.APP_ID
 
 
-def test_dev_mode_starts_vite_through_cornea(shell_on_windows: type[FakeShell]) -> None:
+def test_dev_mode_starts_vite_through_cornea(
+    shell_on_windows: type[FakeShell], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ui_app, "dev_port", lambda: 6000)
+
     ui_app.build_shell(dev=True)
 
     shell = shell_on_windows.instances[0]
     assert isinstance(shell.source, cornea.Process)
-    assert shell.source.command == ui_app.DEV_COMMAND
+    assert shell.source.command == "npm run dev -- --port 6000 --strictPort"
+    assert shell.source.url == "http://localhost:6000"
     assert shell.source.mode == "proxy"
     assert shell.options["security"].csp == cornea.DEV_CSP
 

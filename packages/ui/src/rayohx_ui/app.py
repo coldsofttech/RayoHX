@@ -4,29 +4,32 @@ Cornea serves the built frontend, gates every mounted router behind its session 
 registers the native actions. It never prints or exits; the CLI shows errors and picks exit codes.
 """
 
+from __future__ import annotations
+
 import os
 import sys
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter
-
 from rayohx import __version__
-from rayohx_api.config import AuthMode, get_settings
-from rayohx_api.routers import v1
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from cornea import Shell
+    from fastapi import APIRouter
 
 UI_DIR = Path(__file__).parent / "ui"
-DEV_URL = "http://localhost:5173"
-DEV_COMMAND = "npm run dev"
+DEV_HOST = "localhost"
+DEV_PORT = 5173
 APP_ID = "com.rayohx.app"
 TITLE = "RayoHX"
 VERSION = __version__
-# Window and taskbar icon: public/icon.png is copied into dist by the build. Replace it with yours.
+# Window and taskbar icon: public/icon.png (from brand/light/png) is copied into dist by the build.
 ICON = UI_DIR / "dist" / "icon.png"
+LOADING_ICON = UI_DIR / "dist" / "loading.png"
+TAGLINE = "Fast, private HLS downloads"
+LOADING_SECONDS = 5.0
 
 
 class UiUnavailableError(RuntimeError):
@@ -39,6 +42,11 @@ def api_router() -> APIRouter:
     Cornea adds the ``/api`` prefix itself and its session gate has already authenticated the
     request, so the standalone API key check is switched off for this process.
     """
+    from fastapi import APIRouter
+
+    from rayohx_api.config import AuthMode, get_settings
+    from rayohx_api.routers import v1
+
     os.environ["RAYOHX_API_AUTH_MODE"] = AuthMode.NONE
     get_settings.cache_clear()
     router = APIRouter(prefix="/v1")
@@ -46,12 +54,26 @@ def api_router() -> APIRouter:
     return router
 
 
+def dev_port() -> int:
+    """Return ``DEV_PORT`` when it is free, otherwise a free port chosen by the system."""
+    import socket
+
+    for port in (DEV_PORT, 0):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind((DEV_HOST, port))
+            except OSError:
+                continue
+            return int(sock.getsockname()[1])
+    raise UiUnavailableError("No free port was found for the dev server.")
+
+
 def app_info() -> dict[str, str]:
     """Native action ``app_info``: what the page may ask the app about itself."""
     return {"name": TITLE, "version": VERSION}
 
 
-def build_shell(*, dev: bool = False, window: bool = True) -> "Shell":
+def build_shell(*, dev: bool = False, window: bool = True) -> Shell:
     """Build the Cornea shell.
 
     Args:
@@ -64,14 +86,22 @@ def build_shell(*, dev: bool = False, window: bool = True) -> "Shell":
     if sys.platform != "win32":
         raise UiUnavailableError("The UI needs Windows. The CLI and API work on every system.")
     try:
-        from cornea import DEV_CSP, App, Process, Security, Shell, Static, Window
+        from cornea import DEV_CSP, App, Loading, Process, Security, Shell, Static, Window
     except ImportError as exc:
         raise UiUnavailableError("The UI needs the 'cornea-shell' package.") from exc
 
     source: Any
-    security = Security()
+    # Fluent writes its theme variables into a <style> tag, which style-src 'self' blocks.
+    csp = Security().csp.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'")
+    security = Security(csp=csp)
     if dev:
-        source = Process(DEV_COMMAND, url=DEV_URL, cwd=UI_DIR, mode="proxy")
+        port = dev_port()
+        source = Process(
+            f"npm run dev -- --port {port} --strictPort",
+            url=f"http://{DEV_HOST}:{port}",
+            cwd=UI_DIR,
+            mode="proxy",
+        )
         security = Security(csp=DEV_CSP)
     else:
         source = Static(package="rayohx_ui", package_path="ui/dist")
@@ -84,6 +114,11 @@ def build_shell(*, dev: bool = False, window: bool = True) -> "Shell":
             Window(title=TITLE, size=(1024, 768), icon=ICON if ICON.is_file() else None)
             if window
             else None
+        ),
+        loading=Loading(
+            subtitle=TAGLINE,
+            icon=LOADING_ICON if LOADING_ICON.is_file() else None,
+            min_display=LOADING_SECONDS,
         ),
         identity=App(id=APP_ID),
     )
