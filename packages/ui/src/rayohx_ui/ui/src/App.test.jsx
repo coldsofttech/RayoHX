@@ -7,9 +7,11 @@ import App from './App.jsx';
 const SETTINGS = {
   download_dir: '/d',
   max_active_downloads: 2,
+  allow_local_paths: true,
   concurrency: 4,
   quality: 'best',
   overwrite: false,
+  limits: { min_concurrency: 1, max_concurrency: 64 },
   version: '0.1.0',
 };
 const PLAYLIST = {
@@ -85,7 +87,7 @@ describe('App', () => {
       const call = fetchMock().mock.calls.find(
         ([, init]) => init?.method === 'POST' && init.body.includes('audio'),
       );
-      expect(JSON.parse(call?.[1].body).audio).toEqual(['en']);
+      expect(JSON.parse(call?.[1].body).selection.audio).toEqual(['en']);
     });
     expect(await screen.findByRole('heading', { name: 'Downloads' })).toBeInTheDocument();
   });

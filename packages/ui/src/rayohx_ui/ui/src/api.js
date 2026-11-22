@@ -48,6 +48,7 @@ export const controlDownload = (id, action) =>
   call(`/downloads/${id}/${action}`, { method: 'POST' });
 /** @param {string} id */
 export const removeDownload = (id) => call(`/downloads/${id}`, { method: 'DELETE' });
+export const clearDownloads = () => call('/downloads', { method: 'DELETE' });
 export const getSettings = () => call('/settings');
 /** @param {Record<string, unknown>} changes */
 export const saveSettings = (changes) => call('/settings', { method: 'PATCH', body: changes });

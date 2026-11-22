@@ -8,19 +8,40 @@ import {
   ProgressBar,
   Text,
   Title3,
+  Tooltip,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import {
+  ArrowClockwise24Regular,
+  Broom24Regular,
   Delete24Regular,
   Dismiss24Regular,
   Pause24Regular,
   Play24Regular,
 } from '@fluentui/react-icons';
-import { controlDownload, errorMessage, listDownloads, removeDownload } from '../api.js';
+import {
+  clearDownloads,
+  controlDownload,
+  errorMessage,
+  listDownloads,
+  removeDownload,
+} from '../api.js';
 import { ACTIVE, bytes, duration, speed } from '../format.js';
 
 const useStyles = makeStyles({
+  card: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusXLarge,
+    boxShadow: tokens.shadow4,
+    padding: tokens.spacingHorizontalXL,
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: tokens.spacingVerticalM,
+  },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  heading: { margin: 0 },
   list: {
     display: 'flex',
     flexDirection: 'column',
@@ -30,10 +51,9 @@ const useStyles = makeStyles({
     listStyle: 'none',
   },
   item: {
-    backgroundColor: tokens.colorNeutralBackground1,
+    backgroundColor: tokens.colorNeutralBackground2,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusXLarge,
-    boxShadow: tokens.shadow4,
+    borderRadius: tokens.borderRadiusLarge,
     padding: tokens.spacingHorizontalL,
     display: 'flex',
     flexDirection: 'column',
@@ -129,8 +149,21 @@ export default function Downloads({ onCount }) {
   const error = actionError || loadError;
 
   return (
-    <div>
-      <Title3 as="h2">Downloads</Title3>
+    <section className={styles.card} aria-label="Downloads">
+      <div className={styles.header}>
+        <Title3 as="h2" className={styles.heading}>
+          Downloads
+        </Title3>
+        {items.some((job) => !ACTIVE.includes(job.state)) && (
+          <Tooltip content="Clear history" relationship="label">
+            <Button
+              icon={<Broom24Regular />}
+              appearance="subtle"
+              onClick={() => act(clearDownloads)}
+            />
+          </Tooltip>
+        )}
+      </div>
       {error && (
         <MessageBar intent="error" role="alert">
           <MessageBarBody>{error}</MessageBarBody>
@@ -149,6 +182,11 @@ export default function Downloads({ onCount }) {
                   <Text weight="semibold" className={styles.url} title={job.url}>
                     {job.output_path ?? job.url}
                   </Text>
+                  {job.quality && (
+                    <Badge appearance="outline" color="informative">
+                      {job.quality}
+                    </Badge>
+                  )}
                   <StateBadge state={job.state} />
                   <div className={styles.actions}>
                     {job.state === 'downloading' && (
@@ -165,6 +203,14 @@ export default function Downloads({ onCount }) {
                         appearance="subtle"
                         aria-label={`Resume ${job.id}`}
                         onClick={() => act(() => controlDownload(job.id, 'resume'))}
+                      />
+                    )}
+                    {job.retryable && (
+                      <Button
+                        icon={<ArrowClockwise24Regular />}
+                        appearance="subtle"
+                        aria-label={`Retry ${job.id}`}
+                        onClick={() => act(() => controlDownload(job.id, 'retry'))}
                       />
                     )}
                     {running ? (
@@ -211,6 +257,6 @@ export default function Downloads({ onCount }) {
           })}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

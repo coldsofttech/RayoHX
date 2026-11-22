@@ -9,6 +9,7 @@ This file covers the repository as a whole. Each package keeps its own changelog
 ### Added
 
 - Shared test helpers and sample streams that the library, command line and API tests all use, so each package no longer keeps its own copy.
+- Downloads through the HTTP API accept every engine option, several addresses at once and playlist text, and the window can use files on this computer for them.
 
 ### Changed
 

@@ -139,6 +139,19 @@ def test_api_router_is_mounted_under_cornea_prefix() -> None:
     assert response.json() == {"ok": True}
 
 
+def test_api_router_allows_local_paths_because_the_client_is_the_window(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from rayohx_api.config import get_settings
+
+    monkeypatch.setenv("RAYOHX_API_ALLOW_LOCAL_PATHS", "false")
+    ui_app.api_router()
+    try:
+        assert get_settings().allow_local_paths is True
+    finally:
+        get_settings.cache_clear()
+
+
 def test_api_router_leaves_authentication_to_cornea(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAYOHX_API_AUTH_MODE", "api_key")
     monkeypatch.setenv("RAYOHX_API_API_KEYS", '["s3cret"]')
@@ -170,3 +183,48 @@ def test_run_passes_the_ready_line_to_the_callback(shell_on_windows: type[FakeSh
 
     on_ready = shell_on_windows.instances[0].run_kwargs["on_ready"]  # type: ignore[index]
     assert callable(on_ready)
+
+
+class FakeSocket:
+    """Stands in for a socket that can bind only the ports in ``free``."""
+
+    free: set[int] = set()  # noqa: RUF012
+
+    def __init__(self, *_args: Any) -> None:
+        self.port = 0
+
+    def __enter__(self) -> "FakeSocket":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def bind(self, address: tuple[str, int]) -> None:
+        if address[1] not in self.free:
+            raise OSError("in use")
+        self.port = address[1] or 49152
+
+    def getsockname(self) -> tuple[str, int]:
+        return ("localhost", self.port)
+
+
+def test_dev_port_prefers_the_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("socket.socket", FakeSocket)
+    monkeypatch.setattr(FakeSocket, "free", {ui_app.DEV_PORT, 0})
+
+    assert ui_app.dev_port() == ui_app.DEV_PORT
+
+
+def test_dev_port_falls_back_to_a_free_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("socket.socket", FakeSocket)
+    monkeypatch.setattr(FakeSocket, "free", {0})
+
+    assert ui_app.dev_port() == 49152
+
+
+def test_dev_port_fails_when_nothing_is_free(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("socket.socket", FakeSocket)
+    monkeypatch.setattr(FakeSocket, "free", set())
+
+    with pytest.raises(ui_app.UiUnavailableError):
+        ui_app.dev_port()

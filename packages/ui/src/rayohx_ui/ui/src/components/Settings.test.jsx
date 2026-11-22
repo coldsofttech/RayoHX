@@ -8,9 +8,11 @@ import Settings from './Settings.jsx';
 const SETTINGS = {
   download_dir: '/d',
   max_active_downloads: 2,
+  allow_local_paths: true,
   concurrency: 4,
   quality: 'best',
   overwrite: false,
+  limits: { min_concurrency: 1, max_concurrency: 64 },
   version: '0.1.0',
 };
 
@@ -67,6 +69,17 @@ describe('Settings', () => {
     expect(
       screen.getByRole('switch', { name: 'Replace files that already exist' }),
     ).not.toBeChecked();
+  });
+
+  it('lets the slider span the range the API reports', async () => {
+    mockApi({
+      'GET /api/v1/settings': () =>
+        json({ ...SETTINGS, limits: { min_concurrency: 2, max_concurrency: 32 } }),
+    });
+    renderSettings();
+    const slider = await screen.findByRole('slider');
+    expect(slider).toHaveAttribute('min', '2');
+    expect(slider).toHaveAttribute('max', '32');
   });
 
   it('has no accessibility violations', async () => {

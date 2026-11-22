@@ -104,7 +104,7 @@ export default function NewDownload({ onStarted, defaultQuality = 'best' }) {
     setBusy(true);
     setError('');
     try {
-      await startDownload({ url: url.trim(), quality, audio, subtitles });
+      await startDownload({ url: url.trim(), selection: { quality, audio, subtitles } });
       setPlaylist(null);
       setUrl('');
       onStarted();

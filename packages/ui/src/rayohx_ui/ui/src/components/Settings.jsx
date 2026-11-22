@@ -29,15 +29,22 @@ const useStyles = makeStyles({
     rowGap: tokens.spacingVerticalM,
     marginBottom: tokens.spacingVerticalL,
   },
+  heading: { margin: 0 },
   row: { display: 'flex', columnGap: tokens.spacingHorizontalM },
 });
 
+/**
+ * @typedef {object} Limits
+ * @property {number} min_concurrency
+ * @property {number} max_concurrency
+ */
 /**
  * @typedef {object} AppSettings
  * @property {string} download_dir
  * @property {number} concurrency
  * @property {string} quality
  * @property {boolean} overwrite
+ * @property {Limits} limits
  * @property {string} version
  */
 /**
@@ -98,14 +105,16 @@ export default function Settings({ onChanged }) {
         </MessageBar>
       )}
       <section className={styles.card} aria-label="Defaults">
-        <Title3 as="h2">Defaults</Title3>
+        <Title3 as="h2" className={styles.heading}>
+          Defaults
+        </Title3>
         <Text>
           Saved in: <code>{settings.download_dir}</code>
         </Text>
         <Field label={`Parallel segments: ${settings.concurrency}`}>
           <Slider
-            min={1}
-            max={16}
+            min={settings.limits.min_concurrency}
+            max={settings.limits.max_concurrency}
             value={settings.concurrency}
             onChange={(_, data) => change({ concurrency: data.value })}
           />
@@ -132,7 +141,9 @@ export default function Settings({ onChanged }) {
       </section>
 
       <section className={styles.card} aria-label="Clean up">
-        <Title3 as="h2">Clean up</Title3>
+        <Title3 as="h2" className={styles.heading}>
+          Clean up
+        </Title3>
         <Body1>
           Interrupted downloads leave working folders behind. Removing one means that download
           starts again from the beginning. Running downloads are never touched.

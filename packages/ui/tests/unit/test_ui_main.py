@@ -53,3 +53,16 @@ def test_version(capsys: pytest.CaptureFixture[str]) -> None:
 
     assert exit_info.value.code == 0
     assert capsys.readouterr().out.startswith("rayohxu ")
+
+
+def test_running_the_module_exits_with_the_main_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import runpy
+
+    monkeypatch.setattr("sys.argv", ["rayohxu", "--version"])
+
+    with pytest.raises(SystemExit) as exit_info:
+        runpy.run_module("rayohx_ui.__main__", run_name="__main__")
+
+    assert exit_info.value.code == 0

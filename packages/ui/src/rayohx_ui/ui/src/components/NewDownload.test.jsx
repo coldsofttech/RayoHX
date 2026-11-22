@@ -128,9 +128,7 @@ describe('NewDownload', () => {
     await waitFor(() => expect(onStarted).toHaveBeenCalled());
     expect(JSON.parse(String(start.mock.calls[0][0].body))).toEqual({
       url: 'https://x/m.m3u8',
-      quality: '720p',
-      audio: ['en'],
-      subtitles: ['fr'],
+      selection: { quality: '720p', audio: ['en'], subtitles: ['fr'] },
     });
     expect(screen.getByLabelText('Playlist address')).toHaveValue('');
     expect(screen.queryByRole('region', { name: 'Stream details' })).not.toBeInTheDocument();
