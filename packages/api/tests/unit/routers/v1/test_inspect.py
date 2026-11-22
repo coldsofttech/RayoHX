@@ -56,8 +56,57 @@ def test_inspect_engine_error_is_422(client: TestClient, monkeypatch: pytest.Mon
     assert "not a playlist" in response.json()["detail"]
 
 
-@pytest.mark.parametrize("body", [{}, {"url": ""}, {"url": URL, "quality": "fast"}])
+@pytest.mark.parametrize("body", [{"url": "u" * 4097}, {"url": URL, "network": {"retries": 99}}])
 def test_inspect_validates_body(client: TestClient, body: dict[str, Any]) -> None:
     response = client.post("/api/v1/inspect", json=body)
     assert response.status_code == 422
     assert response.json()["errors"]
+
+
+def test_inspect_uses_playlist_text_without_a_request(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def never(url: str, network: Any = None) -> None:
+        raise AssertionError("the network must not be used")
+
+    monkeypatch.setattr("rayohx.playlist.inspection.inspect", never)
+    response = client.post("/api/v1/inspect", json={"playlist_text": MASTER, "base_url": URL})
+    assert response.status_code == 200
+    assert len(response.json()["playlist"]["variants"]) == 2
+
+
+def test_inspect_playlist_text_needs_a_base_address(client: TestClient) -> None:
+    response = client.post("/api/v1/inspect", json={"playlist_text": MASTER})
+    assert response.status_code == 422
+    assert "base_url" in response.json()["detail"]
+
+
+def test_inspect_refuses_local_files_by_default(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/inspect", json={"url": URL, "network": {"cookie_file": "/etc/passwd"}}
+    )
+    assert response.status_code == 422
+    assert "ALLOW_LOCAL_PATHS" in response.json()["detail"]
+
+
+def test_inspect_applies_network_options(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from rayohx.playlist import inspect_text
+
+    seen: dict[str, Any] = {}
+
+    def fake(url: str, network: Any = None) -> Any:
+        seen.update(headers=dict(network.headers), cookies=dict(network.cookies))
+        return inspect_text(MASTER, url)
+
+    monkeypatch.setattr("rayohx.playlist.inspection.inspect", fake)
+    body = {"url": URL, "network": {"referer": "https://r.test", "cookies": {"a": "b"}}}
+    assert client.post("/api/v1/inspect", json=body).status_code == 200
+    assert seen == {"headers": {"Referer": "https://r.test"}, "cookies": {"a": "b"}}
+
+
+def test_inspect_needs_an_address(client: TestClient) -> None:
+    response = client.post("/api/v1/inspect", json={})
+    assert response.status_code == 422
+    assert "url" in response.json()["detail"]

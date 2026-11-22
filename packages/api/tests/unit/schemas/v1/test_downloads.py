@@ -3,34 +3,52 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from rayohx_api.schemas.v1 import DownloadCreate, Job, JobList, Progress
+from rayohx_api.schemas.v1 import DownloadCreate, Job, JobList, Output, Progress
 
 URL = "https://example.test/master.m3u8"
 
 
 def test_download_create_defaults() -> None:
-    assert DownloadCreate(url=URL).model_dump() == {
-        "url": URL,
-        "filename": None,
-        "quality": "best",
-        "audio": [],
-        "subtitles": [],
-        "video_only": False,
-        "format": "auto",
-        "overwrite": False,
-        "network": {"headers": {}},
-    }
+    data = DownloadCreate(url=URL).model_dump()
+    assert data["url"] == URL
+    assert (data["urls"], data["playlist_text"], data["base_url"], data["filename"]) == (
+        [],
+        None,
+        None,
+        None,
+    )
+    assert data["selection"]["quality"] == "best"
+    assert data["selection"]["audio"] == []
+    assert data["output"]["format"] == "auto"
+    assert data["output"]["validate_output"] is True
+    assert data["output"]["overwrite"] is False
+    assert data["storage"]["strategy"] == "auto"
+    assert data["engine"] == {"concurrency": None, "resume": True, "allow_file_keys": False}
+    assert data["network"]["headers"] == {}
 
 
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"url": ""},
         {"url": "u" * 4097},
         {"filename": "f" * 201},
-        {"audio": ["x"] * 17},
-        {"subtitles": ["x"] * 17},
-        {"format": "avi"},
+        {"urls": ["x"] * 101},
+        {"playlist_text": "x" * 1_000_001},
+        {"selection": {"audio": ["x"] * 17}},
+        {"selection": {"subtitles": ["x"] * 17}},
+        {"selection": {"quality": "fast"}},
+        {"selection": {"codec": "mpeg2"}},
+        {"selection": {"variant": 0}},
+        {"selection": {"resolution": "720p"}},
+        {"storage": {"strategy": "fast"}},
+        {"storage": {"buffer_bytes": 0}},
+        {"output": {"format": "mkv"}},
+        {"output": {"remux_backend": "gstreamer"}},
+        {"engine": {"concurrency": 65}},
+        {"network": {"retries": 21}},
+        {"network": {"max_redirects": 51}},
+        {"network": {"timeout": 0}},
+        {"network": {"rate_limit": 0}},
     ],
 )
 def test_download_create_rejects_invalid(overrides: dict[str, Any]) -> None:
@@ -40,16 +58,41 @@ def test_download_create_rejects_invalid(overrides: dict[str, Any]) -> None:
 
 def test_download_create_accepts_limits() -> None:
     request = DownloadCreate(
-        url="u" * 4096, filename="f" * 200, audio=["en"] * 16, format="mkv", video_only=True
+        url="u" * 4096,
+        filename="f" * 200,
+        urls=["x"] * 100,
+        selection={"audio": ["en"] * 16, "video_only": True},  # type: ignore[arg-type]
+        output={"format": "segments"},  # type: ignore[arg-type]
     )
-    assert request.format == "mkv"
-    assert len(request.audio) == 16
+    assert request.output.format == "segments"
+    assert len(request.selection.audio) == 16
+
+
+def test_output_accepts_validate_by_name_or_alias() -> None:
+    assert Output(validate=False).validate_output is False
+    assert Output.model_validate({"validate_output": False}).validate_output is False
+
+
+def test_secrets_are_hidden() -> None:
+    request = DownloadCreate(
+        url=URL,
+        network={  # type: ignore[arg-type]
+            "client_key_password": "k3y",
+            "proxy": {"url": "http://p", "password": "pw"},
+        },
+    )
+    assert "k3y" not in repr(request)
+    assert "pw'" not in repr(request)
+    assert "k3y" not in request.model_dump_json()
+    assert request.network.proxy is not None
+    assert request.network.proxy.password is not None
+    assert request.network.proxy.password.get_secret_value() == "pw"
 
 
 def test_download_create_list_defaults_are_independent() -> None:
     first, second = DownloadCreate(url=URL), DownloadCreate(url=URL)
-    first.audio.append("en")
-    assert second.audio == []
+    first.selection.audio.append("en")
+    assert second.selection.audio == []
 
 
 def test_progress_defaults_and_required_state() -> None:

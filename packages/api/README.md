@@ -19,6 +19,7 @@ The service listens on `http://127.0.0.1:8000`. Its interactive documentation is
 ## What you can do
 
 - Protect the service with API keys, or turn authentication off for local development
+- Inspect a playlist, or start one or many downloads with every engine option (network, selection, storage and output settings)
 - Check that the service is running with the health and readiness endpoints
 - Get JSON logs and consistent error responses
 - Configure everything with `RAYOHX_API_` environment variables or a `.env` file

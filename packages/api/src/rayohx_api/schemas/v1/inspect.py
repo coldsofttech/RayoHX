@@ -4,12 +4,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from rayohx_api.schemas.v1.common import QUALITY, Network
+from rayohx_api.schemas.v1.common import Network, Source
 
 
-class InspectRequest(BaseModel):
-    url: str = Field(min_length=1, max_length=4096, description="Address of an HLS playlist.")
-    quality: str = Field(default="best", pattern=QUALITY)
+class InspectRequest(Source):
     network: Network = Field(default_factory=Network)
 
 

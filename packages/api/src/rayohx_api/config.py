@@ -14,6 +14,12 @@ if TYPE_CHECKING:
     from typing import Self
 
 
+def _default_db_path() -> Path:
+    from rayohx_api.store import default_db_path
+
+    return default_db_path()
+
+
 class AuthMode(StrEnum):
     """How requests to protected routes are authenticated."""
 
@@ -34,8 +40,16 @@ class Settings(BaseSettings):
     cors_origins: list[str] = []
     #: Folder downloads are saved in. Clients choose file names, never folders.
     download_dir: Path = Path.home() / "Downloads" / "RayoHX"
+    #: Let requests name files on this machine (cookie files, certificates, FFmpeg, file keys).
+    #: Off for a network service, because a client could then make the server read its own files.
+    #: The desktop window turns it on, since there the client is you.
+    allow_local_paths: bool = False
     #: Downloads that run at once; the rest wait in the queue.
     max_active_downloads: int = Field(default=2, ge=1, le=16)
+
+    #: SQLite file holding the download list and saved defaults.
+    #: Defaults to the per-user app data folder.
+    db_path: Path = Field(default_factory=lambda: _default_db_path())
 
     auth_mode: AuthMode = AuthMode.API_KEY
     api_keys: list[SecretStr] = []

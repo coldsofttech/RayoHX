@@ -1,26 +1,21 @@
 """Models for starting, listing and following downloads."""
 
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
-from rayohx_api.schemas.v1.common import QUALITY, Network
+from rayohx_api.schemas.v1.common import Engine, Network, Output, Selection, Source, Storage
 
 
-class DownloadCreate(BaseModel):
-    url: str = Field(min_length=1, max_length=4096)
+class DownloadCreate(Source):
     filename: str | None = Field(
         default=None,
         max_length=200,
         description="File name inside the download folder. Folders are not accepted.",
     )
-    quality: str = Field(default="best", pattern=QUALITY)
-    audio: list[str] = Field(default_factory=list, max_length=16)
-    subtitles: list[str] = Field(default_factory=list, max_length=16)
-    video_only: bool = False
-    format: Literal["auto", "mp4", "mkv", "ts"] = "auto"
-    overwrite: bool = False
     network: Network = Field(default_factory=Network)
+    selection: Selection = Field(default_factory=Selection)
+    storage: Storage = Field(default_factory=Storage)
+    output: Output = Field(default_factory=Output)
+    engine: Engine = Field(default_factory=Engine)
 
 
 class Progress(BaseModel):
@@ -47,6 +42,8 @@ class Job(BaseModel):
     output_path: str | None = None
     output_size_bytes: int | None = None
     error: str | None = None
+    quality: str | None = Field(default=None, description="The quality that was asked for.")
+    retryable: bool = Field(default=False, description="Can be started again with retry.")
 
 
 class JobList(BaseModel):

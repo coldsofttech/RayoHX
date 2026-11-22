@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
@@ -13,8 +14,9 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _fresh_state(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Give every test new settings, with no API key needed."""
+def _fresh_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
+    """Give every test new settings, with no API key needed and its own database file."""
+    monkeypatch.setenv("RAYOHX_API_DB_PATH", str(tmp_path / "rayohx.db"))
     monkeypatch.setenv("RAYOHX_API_AUTH_MODE", "none")
     monkeypatch.delenv("RAYOHX_API_API_KEYS", raising=False)
     get_settings.cache_clear()

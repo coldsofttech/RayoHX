@@ -187,18 +187,13 @@ def test_clean_leaves_running_downloads_alone_and_removes_leftovers(tmp_path: Pa
         "auto",
         "mp4",
         "ts",
-        pytest.param(
-            "mkv",
-            marks=pytest.mark.xfail(
-                strict=True, reason="The schema accepts 'mkv' but the engine has no such format."
-            ),
-        ),
+        "segments",
     ],
 )
 def test_every_format_the_schema_accepts_starts_a_download(tmp_path: Path, fmt: str) -> None:
     with HlsServer(count=2) as site, ApiProcess(tmp_path) as api:
         response = api.client.post(
-            "/api/v1/downloads", json={"url": site.playlist_url, "format": fmt}
+            "/api/v1/downloads", json={"url": site.playlist_url, "output": {"format": fmt}}
         )
         assert response.status_code == 202, response.text
-        api.wait_for(response.json()["id"], *TERMINAL)
+        api.wait_for(response.json()["items"][0]["id"], *TERMINAL)

@@ -17,6 +17,7 @@ packages/api/src/rayohx_api/
   errors.py        problem-details responses and the exception handlers
   logs.py          JSON logging and the request ID middleware
   security.py      security headers and the request size limit
+  build.py         turns a request into engine settings and holds the rules for what a client may ask
   jobs.py          runs downloads in background threads and keeps their state in memory
   schemas/
     health.py      models for /health and /ready

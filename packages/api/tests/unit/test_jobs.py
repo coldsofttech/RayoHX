@@ -6,6 +6,7 @@ from rayohx.enums import DownloadState
 
 from rayohx_api import jobs
 from rayohx_api.jobs import JobManager, JobRecord, UnsafeFilenameError, safe_filename
+from rayohx_api.schemas.v1 import DownloadCreate
 
 
 @pytest.mark.parametrize("name", ["", "  ", ".", "..", "a/b.mp4", "a\b.mp4", "a:b", "a\x00b"])
@@ -26,7 +27,7 @@ def test_remove_only_finished_jobs(tmp_path: Path) -> None:
     assert manager.remove(running) is False
     assert manager.remove(done) is True
     assert manager.get("b") is None
-    assert [j.id for j in manager.list()] == ["a"]
+    assert [j.id for j in manager.all()] == ["a"]
 
 
 def test_cancel_queued_job_is_cancelled_at_once(tmp_path: Path) -> None:
@@ -78,7 +79,7 @@ def test_list_is_newest_first_and_get_finds_by_id(tmp_path: Path) -> None:
     manager = JobManager(tmp_path, max_active=1)
     for name in ("a", "b", "c"):
         manager._jobs[name] = JobRecord(id=name, url="u")
-    assert [j.id for j in manager.list()] == ["c", "b", "a"]
+    assert [j.id for j in manager.all()] == ["c", "b", "a"]
     assert manager.get("b") is manager._jobs["b"]
     assert manager.get("missing") is None
 
@@ -142,8 +143,70 @@ def test_on_event_without_progress_keeps_previous(tmp_path: Path) -> None:
 
 def test_create_rejects_unsafe_filename_before_starting(tmp_path: Path) -> None:
     manager = JobManager(tmp_path / "dl", max_active=1)
-    request = SimpleNamespace(filename="../evil.mp4")
+    request = DownloadCreate(url="https://a.test/m.m3u8", filename="../evil.mp4")
     with pytest.raises(UnsafeFilenameError):
-        manager.create(request, concurrency=1)  # type: ignore[arg-type]
-    assert manager.list() == []
+        manager.create(request, concurrency=1, local_paths=False)
+    assert manager.all() == []
     assert not (tmp_path / "dl").exists()
+
+
+def test_create_rejects_a_file_name_for_a_batch(tmp_path: Path) -> None:
+    from rayohx.errors import ConfigurationError
+
+    manager = JobManager(tmp_path, max_active=1)
+    request = DownloadCreate(urls=["https://a.test/1.m3u8", "https://a.test/2.m3u8"], filename="x")
+    with pytest.raises(ConfigurationError, match="single download"):
+        manager.create(request, concurrency=1, local_paths=False)
+    assert manager.all() == []
+
+
+def test_create_starts_one_job_per_address(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    created: list[dict[str, object]] = []
+
+    class Stub:
+        def __init__(self, url: str, **kwargs: object) -> None:
+            from rayohx.events import EventBus
+
+            created.append({"url": url, **kwargs})
+            self.events = EventBus()
+
+        def run(self) -> None:
+            raise AssertionError("not reached")
+
+    monkeypatch.setattr("rayohx.downloader.Downloader", Stub)
+    monkeypatch.setattr(JobManager, "_run", lambda self, record: None)
+    manager = JobManager(tmp_path, max_active=1)
+    request = DownloadCreate(
+        urls=["https://a.test/1.m3u8?token=hunter2", "https://b.test/2.m3u8"],
+        output={"directory": "shows"},  # type: ignore[arg-type]
+    )
+    records = manager.create(request, concurrency=3, local_paths=False)
+    assert [r.id for r in manager.all()] == [r.id for r in reversed(records)]
+    assert all("hunter2" not in r.url for r in records)
+    assert [c["url"] for c in created] == [
+        "https://a.test/1.m3u8?token=hunter2",
+        "https://b.test/2.m3u8",
+    ]
+    assert all(c["output"].parent == tmp_path / "shows" for c in created)  # type: ignore[attr-defined]
+    assert (tmp_path / "shows").is_dir()
+
+
+def test_create_passes_playlist_text_to_the_engine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, object] = {}
+
+    class Stub:
+        def __init__(self, url: str, **kwargs: object) -> None:
+            from rayohx.events import EventBus
+
+            seen.update(url=url, **kwargs)
+            self.events = EventBus()
+
+    monkeypatch.setattr("rayohx.downloader.Downloader", Stub)
+    monkeypatch.setattr(JobManager, "_run", lambda self, record: None)
+    request = DownloadCreate(playlist_text="#EXTM3U", base_url="https://a.test/m.m3u8")
+    JobManager(tmp_path, max_active=1).create(request, concurrency=1, local_paths=False)
+    assert seen["url"] == "https://a.test/m.m3u8"
+    assert seen["playlist_text"] == "#EXTM3U"
+    assert seen["output"] is None

@@ -1,8 +1,11 @@
 """Start, follow and control downloads."""
 
-from fastapi import APIRouter, Request, Response, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import StreamingResponse
 
+from rayohx_api.config import Settings, get_settings
 from rayohx_api.routers.v1.deps import Jobs
 from rayohx_api.schemas.v1.downloads import DownloadCreate, Job, JobList
 
@@ -13,23 +16,39 @@ router = APIRouter()
 async def list_downloads(jobs: Jobs) -> JobList:
     from rayohx_api.routers.v1.deps import to_job
 
-    return JobList(items=[to_job(r) for r in jobs.list()])
+    return JobList(items=[to_job(r) for r in jobs.all()])
 
 
-@router.post("/downloads", status_code=status.HTTP_202_ACCEPTED, summary="Start a download")
-async def create_download(body: DownloadCreate, jobs: Jobs) -> Job:
+@router.post(
+    "/downloads",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Start one download for each address",
+)
+async def create_download(
+    body: DownloadCreate, jobs: Jobs, settings: Annotated[Settings, Depends(get_settings)]
+) -> JobList:
     from rayohx.errors import RayoHXError
 
     from rayohx_api.jobs import UnsafeFilenameError
     from rayohx_api.routers.v1.deps import prefs, problem, to_job
 
     try:
-        record = jobs.create(body, concurrency=prefs().concurrency)
-    except UnsafeFilenameError as exc:
+        records = jobs.create(
+            body, concurrency=prefs().concurrency, local_paths=settings.allow_local_paths
+        )
+    except (UnsafeFilenameError, RayoHXError) as exc:
         raise problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
-    except RayoHXError as exc:
-        raise problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
-    return to_job(record)
+    return JobList(items=[to_job(r) for r in records])
+
+
+@router.delete(
+    "/downloads",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Clear the history of finished downloads",
+)
+async def clear_downloads(jobs: Jobs) -> Response:
+    jobs.clear()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/downloads/{job_id}", summary="One download")
@@ -54,6 +73,30 @@ async def resume_download(job_id: str, jobs: Jobs) -> Job:
 
     record = find_job(jobs, job_id)
     jobs.resume(record)
+    return to_job(record)
+
+
+@router.post("/downloads/{job_id}/retry", summary="Start a failed or cancelled download again")
+async def retry_download(
+    job_id: str, jobs: Jobs, settings: Annotated[Settings, Depends(get_settings)]
+) -> Job:
+    from fastapi import HTTPException
+    from rayohx.errors import RayoHXError
+
+    from rayohx_api.jobs import UnsafeFilenameError
+    from rayohx_api.routers.v1.deps import find_job, prefs, problem, to_job
+
+    record = find_job(jobs, job_id)
+    try:
+        started = jobs.retry(
+            record, concurrency=prefs().concurrency, local_paths=settings.allow_local_paths
+        )
+    except (UnsafeFilenameError, RayoHXError) as exc:
+        raise problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc
+    if not started:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Only a failed or cancelled download can be retried."
+        )
     return to_job(record)
 
 

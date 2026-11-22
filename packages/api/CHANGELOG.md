@@ -6,8 +6,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- The download list and the concurrency default are now saved between restarts, and a new call clears finished downloads. Downloads cut short by a restart show as failed.
 - `/api/v1` routes to inspect a playlist, run, pause, resume, cancel and follow downloads (with server-sent events), read and change defaults, and clean leftover working folders.
 - The `rayohx-api` web service, with health and readiness checks and API-key authentication (or none, for local development).
 - Settings through `RAYOHX_API_` environment variables or a `.env` file, JSON logs and consistent error responses.
+- Every engine option can be set when starting a download, grouped as network, selection, storage, output and engine settings.
+- Several addresses can be started at once, and a playlist you already have as text can be inspected or downloaded.
+- The settings endpoint reports the fewest and most parallel segments the engine accepts, so clients need not hard-code them.
+- Settings that point at files on the server are refused unless `RAYOHX_API_ALLOW_LOCAL_PATHS` is on.
 - Requires Python 3.15 or newer.
 - Security headers on every response and a limit on request size.

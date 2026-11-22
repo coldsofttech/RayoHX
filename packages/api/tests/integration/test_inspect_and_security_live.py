@@ -63,7 +63,7 @@ def test_downloads_need_the_api_key_too(tmp_path: Path) -> None:
         HlsServer(count=1) as site,
         ApiProcess(tmp_path, auth_mode="api_key", api_keys='["s3cret"]') as api,
     ):
-        body = {"url": site.playlist_url, "format": "ts"}
+        body = {"url": site.playlist_url, "output": {"format": "ts"}}
         assert api.client.post("/api/v1/downloads", json=body).status_code == 401
         assert site.segment_requests == []
         ok = api.client.post("/api/v1/downloads", json=body, headers={"X-API-Key": "s3cret"})

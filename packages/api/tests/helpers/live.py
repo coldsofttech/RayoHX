@@ -106,10 +106,13 @@ class ApiProcess:
                 time.sleep(0.2)
         raise RuntimeError("the API did not become ready")
 
-    def start_download(self, url: str, **body: Any) -> dict[str, Any]:
+    def start_download(self, url: str, *, format: str | None = None, **body: Any) -> dict[str, Any]:
+        """Start one download. ``format`` is a shortcut for ``output={"format": ...}``."""
+        if format:
+            body["output"] = {**body.get("output", {}), "format": format}
         response = self.client.post("/api/v1/downloads", json={"url": url, **body})
         assert response.status_code == 202, response.text
-        return dict(response.json())
+        return dict(response.json()["items"][0])
 
     def job(self, job_id: str) -> dict[str, Any]:
         return dict(self.client.get(f"/api/v1/downloads/{job_id}").json())

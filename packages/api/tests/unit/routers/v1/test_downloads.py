@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
@@ -58,7 +59,7 @@ def fake(monkeypatch: pytest.MonkeyPatch) -> type[FakeDownloader]:
 def _start(client: TestClient, **extra: Any) -> dict[str, Any]:
     response = client.post(BASE, json={"url": URL, **extra})
     assert response.status_code == 202
-    return response.json()  # type: ignore[no-any-return]
+    return response.json()["items"][0]  # type: ignore[no-any-return]
 
 
 def _wait_for(client: TestClient, job_id: str, state: str) -> None:
@@ -132,12 +133,17 @@ def test_cancel_before_start_is_immediate(
 
 def test_create_uses_current_concurrency(client: TestClient, fake: type[FakeDownloader]) -> None:
     client.patch("/api/v1/settings", json={"concurrency": 7})
-    job = _start(client, quality="720p", audio=["en"], video_only=True, format="mp4")
+    job = _start(
+        client,
+        selection={"quality": "720p", "audio": ["en"], "video_only": True},
+        output={"format": "mp4"},
+    )
     config = fake.instances[-1].config
     assert config.concurrency == 7
     assert config.selection.quality == "720p"
     assert config.selection.audio_languages == ("en",)
     assert config.selection.video_only is True
+    assert config.output.format.value == "mp4"
     client.post(f"{BASE}/{job['id']}/cancel")
 
 
@@ -169,18 +175,18 @@ def test_create_engine_error_is_422(client: TestClient, monkeypatch: pytest.Monk
     assert client.get(BASE).json() == {"items": []}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="The schema accepts format 'mkv' but rayohx's OutputFormat has no such value.",
-)
+@pytest.mark.parametrize("fmt", ["auto", "ts", "mp4", "segments"])
 def test_every_accepted_format_is_supported_by_the_engine(
-    client: TestClient, fake: type[FakeDownloader]
+    client: TestClient, fake: type[FakeDownloader], fmt: str
 ) -> None:
-    raising = TestClient(client.app, raise_server_exceptions=False)
-    assert raising.post(BASE, json={"url": URL, "format": "mkv"}).status_code < 500
+    job = _start(client, output={"format": fmt})
+    assert fake.instances[-1].config.output.format.value == fmt
+    client.post(f"{BASE}/{job['id']}/cancel")
 
 
-@pytest.mark.parametrize("body", [{}, {"url": ""}, {"url": URL, "format": "avi"}])
+@pytest.mark.parametrize(
+    "body", [{}, {"url": ""}, {"urls": ["a"] * 101}, {"url": URL, "output": {"format": "mkv"}}]
+)
 def test_create_validates_body(client: TestClient, body: dict[str, Any]) -> None:
     assert client.post(BASE, json=body).status_code == 422
 
@@ -229,3 +235,99 @@ def test_remove_unknown_vs_running(client: TestClient, fake: type[FakeDownloader
     assert conflict.status_code == 409
     assert "Cancel" in conflict.json()["detail"]
     client.post(f"{BASE}/{job['id']}/cancel")
+
+
+def _post(client: TestClient, **body: object) -> Any:
+    return client.post(BASE, json={"url": URL, **body})
+
+
+def test_local_files_are_refused_by_default(client: TestClient) -> None:
+    for network in ({"cookie_file": "/etc/passwd"}, {"client_cert": "/x.pem"}, {"ca_bundle": "/c"}):
+        response = _post(client, network=network)
+        assert response.status_code == 422, network
+        assert "ALLOW_LOCAL_PATHS" in response.json()["detail"]
+    assert _post(client, engine={"allow_file_keys": True}).status_code == 422
+    assert _post(client, output={"ffmpeg": "/bin/ffmpeg"}).status_code == 422
+    assert client.get(BASE).json() == {"items": []}
+
+
+@pytest.mark.parametrize("bad", ["../x", "/srv/x", "a/../../x"])
+def test_folders_cannot_leave_download_dir(client: TestClient, bad: str) -> None:
+    assert _post(client, output={"directory": bad}).status_code == 422
+    assert _post(client, storage={"workspace": bad}).status_code == 422
+
+
+def test_conflicting_selection_is_422(client: TestClient) -> None:
+    response = _post(client, selection={"variant": 1, "codec": "hevc"})
+    assert response.status_code == 422
+    assert "variant" in response.json()["detail"]
+
+
+def test_a_batch_starts_one_job_per_address(client: TestClient, fake: type[FakeDownloader]) -> None:
+    response = client.post(
+        BASE,
+        json={
+            "urls": ["https://a.example.com/x.m3u8", "https://b.example.com/x.m3u8"],
+            "network": {
+                "proxy": {"url": "socks5h://127.0.0.1:1080", "username": "u", "password": "s3cret"},
+                "cookies": {"a": "b"},
+                "retries": 5,
+            },
+            "selection": {"codec": "hevc", "max_frame_rate": 30, "audio_names": ["English"]},
+            "storage": {"strategy": "buffered", "reserve_bytes": 0},
+            "output": {"format": "mp4", "directory": "shows", "validate": False},
+            "engine": {"concurrency": 8, "resume": False},
+        },
+    )
+    assert response.status_code == 202
+    jobs = response.json()["items"]
+    assert len(jobs) == 2
+    assert "s3cret" not in str(jobs)
+    config = fake.instances[-1].config
+    assert config.concurrency == 8
+    assert config.resume is False
+    assert config.network.retries == 5
+    assert config.network.cookies == {"a": "b"}
+    assert config.selection.audio_names == ("English",)
+    assert config.output.validate is False
+    for job in jobs:
+        client.post(f"{BASE}/{job['id']}/cancel")
+
+
+def test_filename_with_a_batch_is_rejected(client: TestClient) -> None:
+    response = client.post(
+        BASE, json={"urls": ["https://a/x.m3u8", "https://b/x.m3u8"], "filename": "a.mp4"}
+    )
+    assert response.status_code == 422
+    assert client.get(BASE).json() == {"items": []}
+
+
+def test_playlist_text_is_handed_to_the_engine(
+    client: TestClient, fake: type[FakeDownloader]
+) -> None:
+    response = client.post(BASE, json={"playlist_text": "#EXTM3U", "base_url": URL})
+    assert response.status_code == 202
+    assert fake.instances[-1].kwargs["playlist_text"] == "#EXTM3U"
+    client.post(f"{BASE}/{response.json()['items'][0]['id']}/cancel")
+
+
+def test_local_paths_are_accepted_when_enabled(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake: type[FakeDownloader]
+) -> None:
+    from fastapi.testclient import TestClient
+
+    from rayohx_api.config import get_settings
+    from rayohx_api.main import create_app
+    from rayohx_api.routers.v1 import reset_state
+
+    cookies = tmp_path / "c.txt"
+    cookies.write_text("# c\n.example.com\tTRUE\t/\tFALSE\t0\tsid\tabc\n")
+    monkeypatch.setenv("RAYOHX_API_ALLOW_LOCAL_PATHS", "true")
+    monkeypatch.setenv("RAYOHX_API_DOWNLOAD_DIR", str(tmp_path))
+    get_settings.cache_clear()
+    reset_state()
+    local = TestClient(create_app())
+    response = local.post(BASE, json={"url": URL, "network": {"cookie_file": str(cookies)}})
+    assert response.status_code == 202
+    assert fake.instances[-1].config.network.cookies == {"sid": "abc"}
+    local.post(f"{BASE}/{response.json()['items'][0]['id']}/cancel")

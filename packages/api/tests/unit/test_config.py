@@ -15,6 +15,7 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.auth_mode is AuthMode.API_KEY
     assert settings.api_keys == []
     assert settings.max_active_downloads == 2
+    assert settings.allow_local_paths is False
 
 
 def test_reads_prefixed_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

@@ -26,6 +26,7 @@ Read from `RAYOHX_API_*` environment variables or a `.env` file. List values are
 | `RAYOHX_API_MAX_BODY_BYTES` | `1048576` | Largest request body |
 | `RAYOHX_API_CORS_ORIGINS` | none | Origins allowed by CORS |
 | `RAYOHX_API_DOWNLOAD_DIR` | `~/Downloads/RayoHX` | Folder downloads are saved in (clients choose file names only) |
+| `RAYOHX_API_ALLOW_LOCAL_PATHS` | `false` | Let requests name files on the server (cookie files, certificates, FFmpeg, file keys); the desktop window turns it on |
 | `RAYOHX_API_MAX_ACTIVE_DOWNLOADS` | `2` | Downloads that run at once; the rest queue |
 
 ## Endpoints
@@ -33,13 +34,31 @@ Read from `RAYOHX_API_*` environment variables or a `.env` file. List values are
 | Method and path | Purpose |
 | --- | --- |
 | `GET /health`, `GET /ready` | Liveness and readiness probes, no authentication |
-| `POST /api/v1/inspect` | Variants and tracks of a playlist, without downloading |
-| `GET`/`POST /api/v1/downloads` | List download jobs, or start one (202) |
+| `POST /api/v1/inspect` | Variants and tracks of a playlist (from an address, or from playlist text and a base address), without downloading |
+| `GET`/`POST /api/v1/downloads` | List download jobs, or start one job for each address in the request (202, returns a list) |
 | `GET`/`DELETE /api/v1/downloads/{id}` | One job, or forget a finished one |
 | `POST /api/v1/downloads/{id}/pause`, `/resume`, `/cancel` | Control a job |
 | `GET /api/v1/downloads/{id}/events` | Server-sent `job` events until the job ends |
-| `GET`/`PATCH /api/v1/settings` | Defaults (parallel segments, quality, overwrite) for this run |
+| `GET`/`PATCH /api/v1/settings` | Defaults (parallel segments, quality, overwrite) for this run, and the `limits` the engine accepts for parallel segments |
 | `POST /api/v1/clean` | Remove leftover working folders in the download folder (`dry_run` by default) |
+
+## Starting downloads
+
+`POST /api/v1/downloads` takes where the playlist comes from, and then groups of options. Every option is optional; the ones you leave out use the engine's defaults.
+
+| Part | What it holds |
+| --- | --- |
+| `url`, `urls`, `playlist_text` and `base_url` | One address, up to 100 addresses (one job each), or playlist text you already have plus the address its relative links resolve against. Text and addresses cannot be mixed |
+| `filename` | A file name for a single download. Not allowed with more than one address |
+| `network` | Headers, cookies, user agent, referer, origin, proxy, TLS settings, timeouts, retries, redirects and a speed limit |
+| `selection` | Quality, maximum resolution or bitrate, a stream number, exact resolution or bandwidth, name, codec, video range, frame rate, and the audio and subtitle tracks |
+| `storage` | Storage strategy, a working folder, buffer and temporary size limits, free-space reserve and check, and whether to keep state after a failure |
+| `output` | Format (`auto`, `ts`, `mp4` or `segments`), a sub-folder, overwrite, validation, the remux backend and the FFmpeg path |
+| `engine` | Parallel segments, resuming, and reading key files |
+
+`POST /api/v1/inspect` accepts the same source fields and `network`.
+
+Folders (`output.directory` and `storage.workspace`) must be relative and stay inside the download folder. Settings that point at files on the server (`network.cookie_file`, `ca_bundle`, `client_cert`, `client_key`, `output.ffmpeg` and `engine.allow_file_keys`) are refused unless `RAYOHX_API_ALLOW_LOCAL_PATHS=true`, so a client cannot make the server read its own files. Proxy passwords and key passwords are never returned or logged.
 
 Jobs live in memory and are lost when the process stops; the engine resumes partial files. Signed-URL tokens are removed from every address returned. Errors use the problem-details format (`application/problem+json`).
 

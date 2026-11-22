@@ -74,13 +74,20 @@
       },
       "DownloadCreate": {
         "properties": {
-          "audio": {
-            "items": {
-              "type": "string"
-            },
-            "maxItems": 16,
-            "title": "Audio",
-            "type": "array"
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "engine": {
+            "$ref": "#/components/schemas/Engine"
           },
           "filename": {
             "anyOf": [
@@ -95,55 +102,84 @@
             "description": "File name inside the download folder. Folders are not accepted.",
             "title": "Filename"
           },
-          "format": {
-            "default": "auto",
-            "enum": [
-              "auto",
-              "mp4",
-              "mkv",
-              "ts"
-            ],
-            "title": "Format",
-            "type": "string"
-          },
           "network": {
             "$ref": "#/components/schemas/Network"
           },
-          "overwrite": {
-            "default": false,
-            "title": "Overwrite",
-            "type": "boolean"
+          "output": {
+            "$ref": "#/components/schemas/Output"
           },
-          "quality": {
-            "default": "best",
-            "pattern": "(?i)^(best|worst|auto|\\d{3,4}p)$",
-            "title": "Quality",
-            "type": "string"
+          "playlist_text": {
+            "anyOf": [
+              {
+                "maxLength": 1000000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Text"
           },
-          "subtitles": {
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/Storage"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "urls": {
+            "description": "Download each.",
             "items": {
               "type": "string"
             },
-            "maxItems": 16,
-            "title": "Subtitles",
+            "maxItems": 100,
+            "title": "Urls",
             "type": "array"
-          },
-          "url": {
-            "maxLength": 4096,
-            "minLength": 1,
-            "title": "Url",
-            "type": "string"
-          },
-          "video_only": {
+          }
+        },
+        "title": "DownloadCreate",
+        "type": "object"
+      },
+      "Engine": {
+        "properties": {
+          "allow_file_keys": {
             "default": false,
-            "title": "Video Only",
+            "description": "Needs local paths enabled.",
+            "title": "Allow File Keys",
+            "type": "boolean"
+          },
+          "concurrency": {
+            "anyOf": [
+              {
+                "maximum": 64.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Parallel segments.",
+            "title": "Concurrency"
+          },
+          "resume": {
+            "default": true,
+            "title": "Resume",
             "type": "boolean"
           }
         },
-        "required": [
-          "url"
-        ],
-        "title": "DownloadCreate",
+        "title": "Engine",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -173,26 +209,55 @@
       },
       "InspectRequest": {
         "properties": {
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
           "network": {
             "$ref": "#/components/schemas/Network"
           },
-          "quality": {
-            "default": "best",
-            "pattern": "(?i)^(best|worst|auto|\\d{3,4}p)$",
-            "title": "Quality",
-            "type": "string"
+          "playlist_text": {
+            "anyOf": [
+              {
+                "maxLength": 1000000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Text"
           },
           "url": {
-            "description": "Address of an HLS playlist.",
-            "maxLength": 4096,
-            "minLength": 1,
-            "title": "Url",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "urls": {
+            "description": "Download each.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Urls",
+            "type": "array"
           }
         },
-        "required": [
-          "url"
-        ],
         "title": "InspectRequest",
         "type": "object"
       },
@@ -264,6 +329,24 @@
               }
             ]
           },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The quality that was asked for.",
+            "title": "Quality"
+          },
+          "retryable": {
+            "default": false,
+            "description": "Can be started again with retry.",
+            "title": "Retryable",
+            "type": "boolean"
+          },
           "state": {
             "title": "State",
             "type": "string"
@@ -304,9 +387,136 @@
         "title": "JobList",
         "type": "object"
       },
-      "Network": {
-        "description": "Optional request settings applied when fetching the playlist.",
+      "Limits": {
+        "description": "What the engine accepts, so a client can offer only valid choices.",
         "properties": {
+          "max_concurrency": {
+            "description": "Most parallel segments.",
+            "title": "Max Concurrency",
+            "type": "integer"
+          },
+          "min_concurrency": {
+            "description": "Fewest parallel segments.",
+            "title": "Min Concurrency",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "min_concurrency",
+          "max_concurrency"
+        ],
+        "title": "Limits",
+        "type": "object"
+      },
+      "Network": {
+        "description": "How requests are made. Every field is optional; unset ones use the engine's defaults.",
+        "properties": {
+          "backoff": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backoff"
+          },
+          "ca_bundle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needs local paths enabled.",
+            "title": "Ca Bundle"
+          },
+          "client_cert": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needs local paths enabled.",
+            "title": "Client Cert"
+          },
+          "client_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needs local paths enabled.",
+            "title": "Client Key"
+          },
+          "client_key_password": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Key Password"
+          },
+          "connect_timeout": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connect Timeout"
+          },
+          "cookie_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Netscape cookies.txt on the server. Needs local paths enabled.",
+            "title": "Cookie File"
+          },
+          "cookies": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 64,
+            "title": "Cookies",
+            "type": "object"
+          },
+          "credential_hosts": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Credential Hosts",
+            "type": "array"
+          },
+          "env_proxy": {
+            "default": false,
+            "title": "Env Proxy",
+            "type": "boolean"
+          },
           "headers": {
             "additionalProperties": {
               "type": "string"
@@ -314,9 +524,185 @@
             "maxProperties": 32,
             "title": "Headers",
             "type": "object"
+          },
+          "insecure": {
+            "default": false,
+            "title": "Insecure",
+            "type": "boolean"
+          },
+          "max_redirects": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Redirects"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
+          "proxy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Proxy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rate_limit": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bytes per second, all workers.",
+            "title": "Rate Limit"
+          },
+          "read_timeout": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read Timeout"
+          },
+          "referer": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referer"
+          },
+          "retries": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retries"
+          },
+          "timeout": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total time allowed.",
+            "title": "Timeout"
+          },
+          "user_agent": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
           }
         },
         "title": "Network",
+        "type": "object"
+      },
+      "Output": {
+        "properties": {
+          "directory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sub-folder of the download folder.",
+            "title": "Directory"
+          },
+          "ffmpeg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Needs local paths enabled.",
+            "title": "Ffmpeg"
+          },
+          "format": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "ts",
+              "mp4",
+              "segments"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "overwrite": {
+            "default": false,
+            "title": "Overwrite",
+            "type": "boolean"
+          },
+          "remux_backend": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "native",
+              "ffmpeg"
+            ],
+            "title": "Remux Backend",
+            "type": "string"
+          },
+          "validate": {
+            "default": true,
+            "title": "Validate",
+            "type": "boolean"
+          }
+        },
+        "title": "Output",
         "type": "object"
       },
       "Progress": {
@@ -406,6 +792,45 @@
         "title": "Progress",
         "type": "object"
       },
+      "Proxy": {
+        "properties": {
+          "password": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "url": {
+            "description": "http://, https://, socks5:// or socks5h:// address.",
+            "maxLength": 2048,
+            "title": "Url",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "Proxy",
+        "type": "object"
+      },
       "ReadyResponse": {
         "properties": {
           "status": {
@@ -424,6 +849,177 @@
           "version"
         ],
         "title": "ReadyResponse",
+        "type": "object"
+      },
+      "Selection": {
+        "description": "Which tracks to download. ``variant`` cannot be combined with the other stream filters.",
+        "properties": {
+          "audio": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Audio",
+            "type": "array"
+          },
+          "audio_names": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Audio Names",
+            "type": "array"
+          },
+          "bandwidth": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact bits per second.",
+            "title": "Bandwidth"
+          },
+          "codec": {
+            "anyOf": [
+              {
+                "enum": [
+                  "h264",
+                  "hevc",
+                  "vp9",
+                  "av1"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codec"
+          },
+          "max_bitrate": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bits per second.",
+            "title": "Max Bitrate"
+          },
+          "max_frame_rate": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Frame Rate"
+          },
+          "max_resolution": {
+            "anyOf": [
+              {
+                "pattern": "(?i)^\\d{3,4}p$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Resolution"
+          },
+          "quality": {
+            "default": "best",
+            "pattern": "(?i)^(best|worst|auto|\\d{3,4}p)$",
+            "title": "Quality",
+            "type": "string"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "pattern": "(?i)^\\d{2,5}x\\d{2,5}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
+          "subtitle_names": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Subtitle Names",
+            "type": "array"
+          },
+          "subtitles": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Subtitles",
+            "type": "array"
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stream number, from 1.",
+            "title": "Variant"
+          },
+          "variant_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variant Name"
+          },
+          "video_only": {
+            "default": false,
+            "title": "Video Only",
+            "type": "boolean"
+          },
+          "video_range": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sdr",
+                  "pq",
+                  "hlg",
+                  "hdr"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Range"
+          }
+        },
+        "title": "Selection",
         "type": "object"
       },
       "SettingsUpdate": {
@@ -470,6 +1066,10 @@
       },
       "SettingsView": {
         "properties": {
+          "allow_local_paths": {
+            "title": "Allow Local Paths",
+            "type": "boolean"
+          },
           "concurrency": {
             "maximum": 64.0,
             "minimum": 1.0,
@@ -479,6 +1079,9 @@
           "download_dir": {
             "title": "Download Dir",
             "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/Limits"
           },
           "max_active_downloads": {
             "title": "Max Active Downloads",
@@ -503,10 +1106,89 @@
         "required": [
           "download_dir",
           "max_active_downloads",
+          "allow_local_paths",
           "concurrency",
+          "limits",
           "version"
         ],
         "title": "SettingsView",
+        "type": "object"
+      },
+      "Storage": {
+        "properties": {
+          "buffer_bytes": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Bytes"
+          },
+          "keep_state": {
+            "default": true,
+            "title": "Keep State",
+            "type": "boolean"
+          },
+          "max_temp_bytes": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Temp Bytes"
+          },
+          "reserve_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reserve Bytes"
+          },
+          "space_check": {
+            "default": true,
+            "title": "Space Check",
+            "type": "boolean"
+          },
+          "strategy": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "direct",
+              "streaming",
+              "buffered",
+              "temporary",
+              "hybrid"
+            ],
+            "title": "Strategy",
+            "type": "string"
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sub-folder of the download folder.",
+            "title": "Workspace"
+          }
+        },
+        "title": "Storage",
         "type": "object"
       },
       "ValidationError": {
@@ -613,6 +1295,23 @@
       }
     },
     "/api/v1/downloads": {
+      "delete": {
+        "operationId": "clear_downloads_api_v1_downloads_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Clear the history of finished downloads",
+        "tags": [
+          "v1"
+        ]
+      },
       "get": {
         "operationId": "list_downloads_api_v1_downloads_get",
         "responses": {
@@ -654,7 +1353,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Job"
+                  "$ref": "#/components/schemas/JobList"
                 }
               }
             },
@@ -676,7 +1375,7 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Start a download",
+        "summary": "Start one download for each address",
         "tags": [
           "v1"
         ]
@@ -953,6 +1652,53 @@
         ]
       }
     },
+    "/api/v1/downloads/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_download_api_v1_downloads__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Start a failed or cancelled download again",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/inspect": {
       "post": {
         "operationId": "inspect_playlist_api_v1_inspect_post",
@@ -1063,7 +1809,7 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Change defaults for this run",
+        "summary": "Change defaults",
         "tags": [
           "v1"
         ]
