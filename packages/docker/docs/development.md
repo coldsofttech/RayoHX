@@ -14,21 +14,17 @@ docker run --rm rayohx --version
 docker run --rm rayohx info https://example.com/master.m3u8
 ```
 
-## Checks
+## Tests
 
-CI (`ci-docker.yml`) builds the image and runs the same checks you can run by hand:
+The image has its own pytest suite in `packages/docker/tests`. It drives the `docker` command, so Docker must be running; without it the tests skip. It checks that the command runs, the image runs as a non-root user, `/output` and `/workspace` are writable, `RAYOHX_WORKSPACE` is set, a failure is a short `Error:` message without a traceback, FFmpeg and pip are absent, and the labels, entrypoint and volumes are right.
 
 ```bash
-docker run --rm rayohx --version
-docker run --rm rayohx download --help > /dev/null
-docker run --rm --entrypoint id rayohx -u                                 # must not be 0
-docker run --rm --entrypoint sh rayohx -c 'touch /output/x /workspace/x'  # folders are writable
-docker run --rm --entrypoint printenv rayohx RAYOHX_WORKSPACE             # /workspace
-docker run --rm rayohx info http://127.0.0.1:1/none.m3u8 --retries 0      # exit 1, "Error:", no traceback
-docker image ls rayohx --format '{{.Size}}'                               # keep an eye on the size
+uv run --with pytest pytest -c packages/docker/pytest.ini packages/docker/tests      # builds rayohx:test first
+RAYOHX_IMAGE=rayohx pytest -c packages/docker/pytest.ini packages/docker/tests       # test an image you already built
+docker image ls rayohx --format '{{.Size}}'                                          # keep an eye on the size
 ```
 
-There is no unit test suite for this package: the image runs the command line, which is tested in [packages/cli](../../cli/docs/development.md). Behaviour changes belong there, not here.
+CI (`ci-docker.yml`) builds the image and runs the same suite against it. The `-c` option keeps the repository's coverage settings from applying. Behaviour changes to the command itself belong in [packages/cli](../../cli/docs/development.md), not here.
 
 ## Rules to keep
 
