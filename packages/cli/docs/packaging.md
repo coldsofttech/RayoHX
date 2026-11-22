@@ -56,6 +56,8 @@ There is no installer. Install the PyPI package: `uv tool install rayohx-cli` or
 
 Everything is built and tested before the approval, so the reviewer approves a release that already works. Release notes are written on the GitHub release by hand (or with its "Generate release notes" button).
 
+After the publish, the `update-latest` action moves the `cli-latest` tag and pre-release to the new version. The newest installers are under `installer-latest`, which the installer release moves in the same way.
+
 To check a download: `sha256sum --check SHA256SUMS.txt`.
 
 ### PyPI trusted publishing

@@ -35,6 +35,8 @@ pipx install rayohx-ui
 
 Then start it with `rayohxu`.
 
+Prefer the Windows setup? The newest one is under [`installer-latest`](https://github.com/coldsofttech/RayoHX/releases/tag/installer-latest) on the releases page.
+
 ## Learn more
 
 - [Changelog](CHANGELOG.md)

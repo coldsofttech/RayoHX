@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest release of each package (core, command line, API, UI and the Docker image) receives security fixes.
+Only the latest release of each package (core, command line, API, UI and the Docker image) receives security fixes. The newest release of each package is also available as a stable entry on the releases page: `core-latest`, `cli-latest`, `installer-latest` and `docker-latest`. The repository's "Latest" badge always shows the newest core release.
 
 ## What is covered
 

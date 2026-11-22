@@ -52,6 +52,8 @@ docker run --rm \
 The image runs as a normal user (uid `10001`), supports `linux/amd64` and `linux/arm64`, and
 carries no FFmpeg, compilers or pip.
 
+The newest image release is always listed under [`docker-latest`](https://github.com/coldsofttech/RayoHX/releases/tag/docker-latest) on the releases page.
+
 ## Learn more
 
 - [Docker guide](docs/docker.md): folders, settings, exit codes, building and publishing

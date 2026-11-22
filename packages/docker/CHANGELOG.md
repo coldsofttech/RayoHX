@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-21
+
 ### Added
 
 - A Docker image that runs the `rayohx` command for `linux/amd64` and `linux/arm64`. It is small, runs as a normal user, and keeps the output and the resume state in two folders you can mount.

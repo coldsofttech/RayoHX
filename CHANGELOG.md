@@ -6,11 +6,13 @@ This file covers the repository as a whole. Each package keeps its own changelog
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-21
+
 ### Added
 
 - The repository is now a set of five packages (library, command line, API, desktop window and Docker image) that are built, tested, versioned and released separately.
 - Continuous integration for each package: linting, type checks, tests on Linux, Windows and macOS, and builds of the installers and the Docker image.
-- Release workflows that publish each package and attach its installers.
+- Release workflows that publish each package and attach its installers. After each full release, the `core-latest`, `cli-latest`, `installer-latest` and `docker-latest` tags and pre-releases move to the new version, so every package has its own latest, and the repository's Latest badge stays on the newest core release.
 - Documentation for the whole project and for each package, with guides, architecture notes and a development guide.
 - Issue forms, a pull request template, contributing, support and code of conduct pages, and automatic dependency updates.
 - Logo and icon artwork in light and dark variants.

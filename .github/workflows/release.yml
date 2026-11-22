@@ -10,6 +10,11 @@ name: Release
 #                           the GitHub release                               environment: installer
 #   docker-vX.Y.Z   docker  the image to GHCR                                environment: docker
 #
+# After a release is published, the update-latest action keeps the repository's Latest badge on the newest
+# core release (core owns it) and moves a <package>-latest tag and pre-release (core-latest, cli-latest,
+# installer-latest, docker-latest) to the new version, so every package has its own stable "latest".
+# Pre-releases change nothing.
+#
 # The tag must match the version in the package's pyproject.toml (installer/build.toml for the installer). Release core before cli, because
 # rayohx-cli depends on the rayohx package on PyPI. SIGN_COMMAND (repository variable) optionally
 # signs the installers; {file} marks where the path of one file goes. Homebrew, Scoop and winget
@@ -55,6 +60,10 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
       - name: Attach the files to the release
         uses: ./.github/actions/attach-release-files
+      - name: Update the latest markers
+        uses: ./.github/actions/update-latest
+        with:
+          package: core
 
   cli:
     if: startsWith(github.event.release.tag_name, 'cli-v')
@@ -83,6 +92,10 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
       - name: Attach the files to the release
         uses: ./.github/actions/attach-release-files
+      - name: Update the latest markers
+        uses: ./.github/actions/update-latest
+        with:
+          package: cli
 
   installer:
     if: startsWith(github.event.release.tag_name, 'installer-v')
@@ -94,5 +107,5 @@ jobs:
     if: startsWith(github.event.release.tag_name, 'docker-v')
     uses: ./.github/workflows/release-docker.yml
     permissions:
-      contents: read
+      contents: write # move the docker-latest pointer
       packages: write
