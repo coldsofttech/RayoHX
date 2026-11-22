@@ -42,8 +42,18 @@ class Job(BaseModel):
     output_path: str | None = None
     output_size_bytes: int | None = None
     error: str | None = None
+    error_code: str | None = Field(
+        default=None,
+        description="A stable name for a failure a client can act on, such as output_exists.",
+    )
     quality: str | None = Field(default=None, description="The quality that was asked for.")
     retryable: bool = Field(default=False, description="Can be started again with retry.")
+
+
+class RetryRequest(BaseModel):
+    overwrite: bool = Field(
+        default=False, description="Replace an existing output file for this run only."
+    )
 
 
 class JobList(BaseModel):

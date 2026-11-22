@@ -15,6 +15,7 @@ def test_read_defaults(client: TestClient, tmp_path: Path) -> None:
         "concurrency": 4,
         "quality": "best",
         "overwrite": False,
+        "theme": None,
         "limits": {"min_concurrency": 1, "max_concurrency": MAX_CONCURRENCY},
         "version": __version__,
     }
@@ -61,3 +62,42 @@ def test_limits_follow_the_engine(client: TestClient) -> None:
     assert too_many.status_code == 422
     top = client.patch("/api/v1/settings", json={"concurrency": limits["max_concurrency"]})
     assert top.json()["concurrency"] == limits["max_concurrency"]
+
+
+def test_download_dir_needs_local_paths(client: TestClient, tmp_path: Path) -> None:
+    response = client.patch("/api/v1/settings", json={"download_dir": str(tmp_path / "new")})
+    assert response.status_code == 403
+    assert not (tmp_path / "new").exists()
+
+
+def test_download_dir_is_saved(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from rayohx_api.config import get_settings
+
+    monkeypatch.setenv("RAYOHX_API_ALLOW_LOCAL_PATHS", "true")
+    get_settings.cache_clear()
+    folder = tmp_path / "chosen"
+    assert client.patch("/api/v1/settings", json={"download_dir": str(folder)}).status_code == 200
+    assert folder.is_dir()
+    assert client.get("/api/v1/settings").json()["download_dir"] == str(folder)
+    relative = client.patch("/api/v1/settings", json={"download_dir": "rel"})
+    assert relative.status_code == 422
+
+
+def test_new_downloads_use_the_chosen_folder(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from rayohx_api.config import get_settings
+    from rayohx_api.routers.v1.deps import manager
+
+    monkeypatch.setenv("RAYOHX_API_ALLOW_LOCAL_PATHS", "true")
+    get_settings.cache_clear()
+    folder = tmp_path / "chosen"
+    client.patch("/api/v1/settings", json={"download_dir": str(folder)})
+    assert manager().directory == folder
+
+
+def test_theme_is_saved_and_checked(client: TestClient) -> None:
+    assert client.patch("/api/v1/settings", json={"theme": "dark"}).json()["theme"] == "dark"
+    assert client.patch("/api/v1/settings", json={"theme": "pink"}).status_code == 422

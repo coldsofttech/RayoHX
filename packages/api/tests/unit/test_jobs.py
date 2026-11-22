@@ -210,3 +210,35 @@ def test_create_passes_playlist_text_to_the_engine(
     assert seen["url"] == "https://a.test/m.m3u8"
     assert seen["playlist_text"] == "#EXTM3U"
     assert seen["output"] is None
+
+
+@pytest.mark.parametrize("request_saved", [False, True])
+def test_retry_overwrite_applies_to_that_run_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request_saved: bool
+) -> None:
+    seen: list[bool] = []
+
+    def attach(
+        self: JobManager,
+        record: JobRecord,
+        source: str,
+        output: object,
+        config: object,
+        text: object,
+    ) -> None:
+        seen.append(config.output.overwrite)  # type: ignore[attr-defined]
+
+    monkeypatch.setattr(JobManager, "_attach", attach)
+    monkeypatch.setattr(JobManager, "_run", lambda self, record: None)
+    manager = JobManager(tmp_path, max_active=1)
+    saved = (
+        {"url": "https://a.test/m.m3u8", "output": {"directory": "x"}} if request_saved else None
+    )
+    record = JobRecord(
+        id="a", url="https://a.test/m.m3u8", state=DownloadState.FAILED, request=saved
+    )
+    manager._jobs["a"] = record
+    assert manager.retry(record, concurrency=1, local_paths=True, overwrite=True)
+    record.state = DownloadState.FAILED
+    assert manager.retry(record, concurrency=1, local_paths=True)
+    assert seen == [True, False]

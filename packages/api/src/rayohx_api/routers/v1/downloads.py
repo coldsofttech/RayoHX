@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 
 from rayohx_api.config import Settings, get_settings
 from rayohx_api.routers.v1.deps import Jobs
-from rayohx_api.schemas.v1.downloads import DownloadCreate, Job, JobList
+from rayohx_api.schemas.v1.downloads import DownloadCreate, Job, JobList, RetryRequest
 
 router = APIRouter()
 
@@ -78,7 +78,10 @@ async def resume_download(job_id: str, jobs: Jobs) -> Job:
 
 @router.post("/downloads/{job_id}/retry", summary="Start a failed or cancelled download again")
 async def retry_download(
-    job_id: str, jobs: Jobs, settings: Annotated[Settings, Depends(get_settings)]
+    job_id: str,
+    jobs: Jobs,
+    settings: Annotated[Settings, Depends(get_settings)],
+    body: RetryRequest | None = None,
 ) -> Job:
     from fastapi import HTTPException
     from rayohx.errors import RayoHXError
@@ -89,7 +92,10 @@ async def retry_download(
     record = find_job(jobs, job_id)
     try:
         started = jobs.retry(
-            record, concurrency=prefs().concurrency, local_paths=settings.allow_local_paths
+            record,
+            concurrency=prefs().concurrency,
+            local_paths=settings.allow_local_paths,
+            overwrite=bool(body and body.overwrite),
         )
     except (UnsafeFilenameError, RayoHXError) as exc:
         raise problem(status.HTTP_422_UNPROCESSABLE_CONTENT, exc) from exc

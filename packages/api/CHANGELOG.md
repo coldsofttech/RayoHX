@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- A failed download reports an `error_code` (such as `output_exists`), and retry can replace an existing file for that run with `overwrite`.
+- The download folder, quality and replace-existing defaults are now saved between restarts, and the folder can be changed from the window.
 - The download list and the concurrency default are now saved between restarts, and a new call clears finished downloads. Downloads cut short by a restart show as failed.
 - `/api/v1` routes to inspect a playlist, run, pause, resume, cancel and follow downloads (with server-sent events), read and change defaults, and clean leftover working folders.
 - The `rayohx-api` web service, with health and readiness checks and API-key authentication (or none, for local development).

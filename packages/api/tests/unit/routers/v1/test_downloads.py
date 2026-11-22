@@ -331,3 +331,33 @@ def test_local_paths_are_accepted_when_enabled(
     assert response.status_code == 202
     assert fake.instances[-1].config.network.cookies == {"sid": "abc"}
     local.post(f"{BASE}/{response.json()['items'][0]['id']}/cancel")
+
+
+def test_retry_can_overwrite_an_existing_file_for_that_run(
+    client: TestClient, fake: type[FakeDownloader]
+) -> None:
+    job = _start(client)
+    client.post(f"{BASE}/{job['id']}/cancel")
+    _wait_for(client, job["id"], "cancelled")
+    assert client.post(f"{BASE}/{job['id']}/retry", json={"overwrite": True}).status_code == 200
+    assert fake.instances[-1].config.output.overwrite is True
+    client.post(f"{BASE}/{job['id']}/cancel")
+    _wait_for(client, job["id"], "cancelled")
+    assert client.post(f"{BASE}/{job['id']}/retry").status_code == 200
+    assert fake.instances[-1].config.output.overwrite is False
+
+
+def test_an_existing_output_file_is_reported_with_a_code(
+    client: TestClient, fake: type[FakeDownloader], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from rayohx_api.routers.v1.deps import manager, to_job
+
+    job = _start(client)
+    client.post(f"{BASE}/{job['id']}/cancel")
+    _wait_for(client, job["id"], "cancelled")
+    record = manager().get(job["id"])
+    assert record is not None
+    record.error = "The output file already exists: x.ts"
+    assert to_job(record).error_code == "output_exists"
+    record.error = "boom"
+    assert to_job(record).error_code is None

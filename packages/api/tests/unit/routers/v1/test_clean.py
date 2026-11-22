@@ -76,5 +76,23 @@ def test_only_looks_in_download_folder(client: TestClient, tmp_path: Path) -> No
         shutil.rmtree(elsewhere, ignore_errors=True)
 
 
+def test_looks_in_the_chosen_download_folder(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from rayohx_api.config import get_settings
+
+    monkeypatch.setenv("RAYOHX_API_ALLOW_LOCAL_PATHS", "true")
+    get_settings.cache_clear()
+    chosen = tmp_path / "chosen"
+    chosen.mkdir()
+    _leftover(tmp_path, ".rayohx-old", 1)
+    leftover = _leftover(chosen, ".rayohx-new", 2)
+    assert client.patch("/api/v1/settings", json={"download_dir": str(chosen)}).status_code == 200
+    body = client.post("/api/v1/clean", json={"dry_run": False}).json()
+    assert [f["name"] for f in body["folders"]] == [".rayohx-new"]
+    assert not leftover.exists()
+    assert (tmp_path / ".rayohx-old").exists()
+
+
 def test_negative_age_is_422(client: TestClient) -> None:
     assert client.post("/api/v1/clean", json={"older_than_days": -1}).status_code == 422

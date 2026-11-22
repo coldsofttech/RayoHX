@@ -33,7 +33,11 @@ def test_view_rejects_concurrency_out_of_range(concurrency: int) -> None:
 def test_update_is_all_optional() -> None:
     assert SettingsUpdate().model_dump(exclude_unset=True) == {}
     update = SettingsUpdate(concurrency=64, quality="720p", overwrite=True)
-    assert update.model_dump() == {"concurrency": 64, "quality": "720p", "overwrite": True}
+    assert update.model_dump(exclude_none=True) == {
+        "concurrency": 64,
+        "quality": "720p",
+        "overwrite": True,
+    }
 
 
 @pytest.mark.parametrize("overrides", [{"concurrency": 0}, {"concurrency": 65}, {"quality": "x"}])

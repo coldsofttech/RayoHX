@@ -177,8 +177,13 @@ class JobManager:
         )
         record.downloader.events.subscribe(partial(self._on_event, record))
 
-    def retry(self, record: JobRecord, *, concurrency: int, local_paths: bool) -> bool:
-        """Run a failed or cancelled job again from its saved request; partial files resume."""
+    def retry(
+        self, record: JobRecord, *, concurrency: int, local_paths: bool, overwrite: bool = False
+    ) -> bool:
+        """Run a failed or cancelled job again from its saved request; partial files resume.
+
+        `overwrite` replaces an existing output file for this run only.
+        """
         import threading
 
         from rayohx_api.build import download_config, sources
@@ -192,6 +197,8 @@ class JobManager:
                 "url": record.url,
                 "selection": {"quality": record.quality or "best"},
             }
+            if overwrite:
+                saved = {**saved, "output": {**(saved.get("output") or {}), "overwrite": True}}
             request = DownloadCreate.model_validate(saved)
             config = download_config(
                 request, base=self.directory, local=local_paths, concurrency=concurrency

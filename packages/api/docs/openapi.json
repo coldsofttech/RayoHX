@@ -293,6 +293,18 @@
             ],
             "title": "Error"
           },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A stable name for a failure a client can act on, such as output_exists.",
+            "title": "Error Code"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -851,6 +863,18 @@
         "title": "ReadyResponse",
         "type": "object"
       },
+      "RetryRequest": {
+        "properties": {
+          "overwrite": {
+            "default": false,
+            "description": "Replace an existing output file for this run only.",
+            "title": "Overwrite",
+            "type": "boolean"
+          }
+        },
+        "title": "RetryRequest",
+        "type": "object"
+      },
       "Selection": {
         "description": "Which tracks to download. ``variant`` cannot be combined with the other stream filters.",
         "properties": {
@@ -1037,6 +1061,20 @@
             ],
             "title": "Concurrency"
           },
+          "download_dir": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Folder new downloads are saved in.",
+            "title": "Download Dir"
+          },
           "overwrite": {
             "anyOf": [
               {
@@ -1059,6 +1097,21 @@
               }
             ],
             "title": "Quality"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "light",
+                  "dark"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
           }
         },
         "title": "SettingsUpdate",
@@ -1097,6 +1150,22 @@
             "pattern": "(?i)^(best|worst|auto|\\d{3,4}p)$",
             "title": "Quality",
             "type": "string"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "light",
+                  "dark"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Chosen theme; none until one is chosen.",
+            "title": "Theme"
           },
           "version": {
             "title": "Version",
@@ -1666,6 +1735,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RetryRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

@@ -9,9 +9,50 @@ from rayohx_api.jobs import JobManager, JobRecord
 from rayohx_api.routers.v1 import deps
 
 
-def test_preferences_defaults() -> None:
-    prefs = deps.Preferences()
+def test_preferences_defaults(tmp_path: Path) -> None:
+    prefs = deps.Preferences(tmp_path)
     assert (prefs.concurrency, prefs.quality, prefs.overwrite) == (4, "best", False)
+    assert (prefs.download_dir, prefs.theme) == (tmp_path, None)
+
+
+def test_preferences_are_restored_from_the_store(tmp_path: Path) -> None:
+    from rayohx_api.store import Store
+
+    folder = tmp_path / "chosen"
+    store = Store(tmp_path / "p.db")
+    first = deps.Preferences(tmp_path, store)
+    first.update(
+        {
+            "download_dir": folder,
+            "concurrency": 7,
+            "quality": "720p",
+            "overwrite": True,
+            "theme": "dark",
+        }
+    )
+    again = deps.Preferences(tmp_path, store)
+    assert again.download_dir == folder
+    assert (again.concurrency, again.quality, again.overwrite, again.theme) == (
+        7,
+        "720p",
+        True,
+        "dark",
+    )
+    first.update({"overwrite": False})
+    assert deps.Preferences(tmp_path, store).overwrite is False
+    store.close()
+
+
+def test_preferences_ignore_bad_saved_values(tmp_path: Path) -> None:
+    from rayohx_api.store import Store
+
+    store = Store(tmp_path / "p.db")
+    store.set_pref("download_dir", "relative/folder")
+    store.set_pref("theme", "pink")
+    store.set_pref("concurrency", "many")
+    prefs = deps.Preferences(tmp_path, store)
+    assert (prefs.download_dir, prefs.theme, prefs.concurrency) == (tmp_path, None, 4)
+    store.close()
 
 
 def test_state_is_shared_until_reset(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

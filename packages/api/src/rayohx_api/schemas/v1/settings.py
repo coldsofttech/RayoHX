@@ -1,5 +1,7 @@
 """Models for reading and changing the defaults."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from rayohx.config.download import MAX_CONCURRENCY
 
@@ -20,6 +22,9 @@ class SettingsView(BaseModel):
     concurrency: int = Field(ge=MIN_CONCURRENCY, le=MAX_CONCURRENCY)
     quality: str = Field(default="best", pattern=QUALITY)
     overwrite: bool = False
+    theme: Literal["light", "dark"] | None = Field(
+        default=None, description="Chosen theme; none until one is chosen."
+    )
     limits: Limits
     version: str
 
@@ -28,3 +33,10 @@ class SettingsUpdate(BaseModel):
     concurrency: int | None = Field(default=None, ge=MIN_CONCURRENCY, le=MAX_CONCURRENCY)
     quality: str | None = Field(default=None, pattern=QUALITY)
     overwrite: bool | None = None
+    theme: Literal["light", "dark"] | None = None
+    download_dir: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=1024,
+        description="Folder new downloads are saved in.",
+    )

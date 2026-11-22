@@ -56,6 +56,6 @@ def test_concurrency_default_is_saved(tmp_path: Path) -> None:
     from rayohx_api.routers.v1.deps import Preferences
 
     db = tmp_path / "h.db"
-    Preferences(Store(db)).update({"concurrency": 8})
+    Preferences(tmp_path, Store(db)).update({"concurrency": 8})
 
-    assert Preferences(Store(db)).concurrency == 8
+    assert Preferences(tmp_path, Store(db)).concurrency == 8

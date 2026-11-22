@@ -1,10 +1,7 @@
 """Remove working folders left by interrupted downloads."""
 
-from typing import Annotated
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends
-
-from rayohx_api.config import Settings, get_settings
 from rayohx_api.schemas.v1.clean import CleanRequest, CleanResponse
 
 router = APIRouter()
@@ -12,16 +9,17 @@ router = APIRouter()
 
 @router.post("/clean", summary="Remove working folders left by interrupted downloads")
 async def clean(
-    body: CleanRequest, settings: Annotated[Settings, Depends(get_settings)]
+    body: CleanRequest,
 ) -> CleanResponse:
     """Only looks inside the download folder. Folders of running downloads are never removed."""
     import asyncio
 
     from rayohx.workspaces import find_workspaces, remove_workspaces
 
+    from rayohx_api.routers.v1.deps import prefs
     from rayohx_api.schemas.v1.clean import CleanedFolder
 
-    found = await asyncio.to_thread(find_workspaces, [settings.download_dir], body.older_than_days)
+    found = await asyncio.to_thread(find_workspaces, [prefs().download_dir], body.older_than_days)
     idle = [w for w in found if not w.in_use]
     if not body.dry_run:
         await asyncio.to_thread(remove_workspaces, idle)
