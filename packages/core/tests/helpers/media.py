@@ -8,6 +8,7 @@ from collections.abc import Iterator
 import httpx
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from rayohx_testing.media import ts_payload
 
 from rayohx import CancellationToken, MediaPlaylist
 from rayohx._http import HttpClient
@@ -27,13 +28,6 @@ def payload(index: int, size: int = 500) -> bytes:
 def box(kind: bytes, body: bytes = b"") -> bytes:
     """An MP4 box: a 4-byte size, a 4-byte type, then the body."""
     return struct.pack(">I4s", 8 + len(body), kind) + body
-
-
-def ts_payload(index: int, packets: int = 3) -> bytes:
-    """MPEG-TS packets (188 bytes each, starting with the 0x47 sync byte)."""
-    return b"".join(
-        b"\x47" + bytes([(index + number) % 256]) + bytes(186) for number in range(packets)
-    )
 
 
 def fmp4_init() -> bytes:

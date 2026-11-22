@@ -4,13 +4,13 @@ import json
 from pathlib import Path
 
 import pytest
+from rayohx_testing.media import ts_payload
+from rayohx_testing.servers import LocalServer, Reply, Route
 
 from rayohx import Downloader, OutputFormat, inspect
 from rayohx._http import HttpClient
 from rayohx.config import DownloadConfig, NetworkConfig, OutputConfig
 from rayohx.errors import NetworkError
-from tests.helpers.media import ts_payload
-from tests.helpers.servers import LocalServer, Reply, Route
 
 pytestmark = pytest.mark.integration
 

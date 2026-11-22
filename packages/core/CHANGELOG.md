@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- Core tests and the benchmark script now use the test fixtures and helpers shared across the project.
+
 ## [0.1.0] - 2026-11-21
 
 ### Added

@@ -1,10 +1,11 @@
 import pytest
+from rayohx_testing.media import ts_payload
 
 from rayohx import ContainerFormat
 from rayohx._download._containers import (
     check_segment,
 )
-from tests.helpers.media import box, fmp4_fragment, fmp4_init, ts_payload
+from tests.helpers.media import box, fmp4_fragment, fmp4_init
 
 TS = ContainerFormat.MPEG_TS
 

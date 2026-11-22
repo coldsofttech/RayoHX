@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 import pytest
+from rayohx_testing.media import ts_payload
 
 from rayohx import ContainerFormat
 from rayohx._http._response import HttpResponse
@@ -17,7 +18,7 @@ from rayohx.errors import InvalidPlaylistError, OutputFormatError, UnsupportedPl
 from rayohx.models import AudioTrack, MasterPlaylist, MediaPlaylist, SubtitleTrack
 from rayohx.playlist import parse_playlist
 from rayohx.stream import StreamSelection
-from tests.helpers.media import BASE, fmp4_init, ts_payload
+from tests.helpers.media import BASE, fmp4_init
 from tests.helpers.mux import media
 
 MASTER_TEXT = """#EXTM3U
