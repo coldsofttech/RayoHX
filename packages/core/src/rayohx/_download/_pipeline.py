@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     )
     from rayohx.cancellation import CancellationToken
     from rayohx.config import StorageConfig
-    from rayohx.enums import EventType, StorageStrategy
+    from rayohx.enums import DownloadState, EventType, StorageStrategy
     from rayohx.events import EventBus
     from rayohx.models import Segment
 
@@ -266,14 +266,13 @@ class SegmentPipeline:
     ) -> None:
         if self._bus is None:
             return
-        from rayohx.enums import DownloadState
         from rayohx.events import DownloadEvent
 
         self._bus.emit(
             DownloadEvent(
                 type=kind,
                 download_id=self._download_id,
-                state=DownloadState.DOWNLOADING,
+                state=self._state(),
                 segment_index=index,
                 message=message,
                 data=data or {},
@@ -283,7 +282,7 @@ class SegmentPipeline:
     def _emit_progress(self, *, force: bool = False) -> None:
         if self._bus is None:
             return
-        from rayohx.enums import DownloadState, EventType
+        from rayohx.enums import EventType
         from rayohx.events import DownloadEvent
 
         now = self._clock()
@@ -292,11 +291,19 @@ class SegmentPipeline:
         self._last_progress = now
         with self._active_lock:
             active = self._active
+        state = self._state()
         self._bus.emit(
             DownloadEvent(
                 type=EventType.DOWNLOAD_PROGRESS,
                 download_id=self._download_id,
-                state=DownloadState.DOWNLOADING,
-                progress=self._progress.snapshot(DownloadState.DOWNLOADING, active),
+                state=state,
+                progress=self._progress.snapshot(state, active),
             )
         )
+
+    def _state(self) -> DownloadState:
+        """What the download is doing now. Segments still running during a pause keep reporting."""
+        from rayohx.enums import DownloadState
+
+        paused = self._cancel is not None and self._cancel.is_paused
+        return DownloadState.PAUSED if paused else DownloadState.DOWNLOADING

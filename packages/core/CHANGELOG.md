@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- A paused download no longer reports itself as downloading again while the segments already in progress finish.
+
 ### Changed
 
 - Core tests and the benchmark script now use the test fixtures and helpers shared across the project.
