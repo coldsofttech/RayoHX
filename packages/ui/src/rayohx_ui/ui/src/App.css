@@ -6,6 +6,12 @@ body,
   min-height: 100%;
 }
 
+/* The header stays put; only the content below it scrolls. */
+html,
+body {
+  overflow: hidden;
+}
+
 body {
   font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
 }

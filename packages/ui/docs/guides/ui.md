@@ -26,8 +26,17 @@ rayohxu --no-window    # serve the interface for a browser instead of a window
 
 ## Download a stream
 
-*Placeholder:* paste an address, look at what the stream offers, choose quality, audio and subtitles,
-and start the download.
+Choose how to add a stream: **One address**, **Several addresses** (one per line; lines starting with
+`#` are ignored) or **Playlist text** (paste the contents of an `.m3u8` file and give the base address
+its relative links are resolved against). Look at what the stream offers, then choose
+**Quick** (pick a quality) or **Advanced** (pick a stream, or narrow by size, bitrate, codec and range,
+and choose audio and subtitle tracks the stream has). Only the open one is used, and one **Download**
+button starts it. Picking a stream turns off the filters that no longer apply. For several addresses, **Download all** starts each one, and
+**Inspect** looks at the first.
+
+Open **Options** to set anything else: network (headers, cookies, proxy, retries and
+speed limit), output, storage and engine. Fields left empty use the defaults. Fields that point to
+files on this computer appear only when local files are allowed in the settings.
 
 ## Progress and results
 
@@ -36,7 +45,11 @@ errors look like.
 
 ## Settings
 
-*Placeholder:* output folder, headers, cookies, proxy and certificates, and where the settings are kept.
+The download folder starts as `Downloads\RayoHX`. **Change** opens the system folder picker; the choice,
+with theme, parallel segments, quality and replace-existing, is saved in the same SQLite database as the
+download list. New downloads use it; existing ones stay where they are.
+
+*Placeholder:* headers, cookies, proxy and certificates, and where the settings are kept.
 
 ## Keeping secrets safe
 

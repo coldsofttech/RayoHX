@@ -134,41 +134,54 @@ describe('Settings', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Not allowed.');
   });
 
-  it('previews what a clean up would remove', async () => {
-    const sweep = route({
-      dry_run: true,
-      folders: ['a', 'b'],
-      freed_bytes: 2048,
-      skipped_in_use: 1,
-    });
-    mockApi({ 'GET /api/v1/settings': () => json(SETTINGS), 'POST /api/v1/clean': sweep });
-    const user = userEvent.setup();
+  it('shows the clean up and about cards under the settings', async () => {
+    mockApi({ 'GET /api/v1/settings': () => json(SETTINGS) });
     renderSettings();
-    await user.click(await screen.findByRole('button', { name: 'Preview' }));
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Would remove 2 folder(s), 2.0 KB. 1 in use were skipped.',
-    );
-    expect(sentBody(sweep)).toEqual({ dry_run: true });
+    await screen.findByText('Parallel segments: 4');
+    expect(screen.getByRole('region', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Clean up' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'About' })).toBeInTheDocument();
   });
 
-  it('removes leftovers and reports when there is nothing to clean', async () => {
-    const sweep = route({ dry_run: false, folders: [], freed_bytes: 0, skipped_in_use: 0 });
-    mockApi({ 'GET /api/v1/settings': () => json(SETTINGS), 'POST /api/v1/clean': sweep });
-    const user = userEvent.setup();
-    renderSettings();
-    await user.click(await screen.findByRole('button', { name: 'Remove leftovers' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Nothing to clean.');
-    expect(sentBody(sweep)).toEqual({ dry_run: false });
-  });
-
-  it('shows an error when the clean up fails', async () => {
+  it('saves the folder picked in the window', async () => {
+    const patch = route({ ...SETTINGS, download_dir: '/new' });
+    const pick = route({ result: '/new' });
     mockApi({
       'GET /api/v1/settings': () => json(SETTINGS),
-      'POST /api/v1/clean': () => json({ detail: 'Clean up failed.' }, 500),
+      'POST /api/bridge/choose_folder': pick,
+      'PATCH /api/v1/settings': patch,
     });
     const user = userEvent.setup();
     renderSettings();
-    await user.click(await screen.findByRole('button', { name: 'Preview' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Clean up failed.');
+    await user.click(await screen.findByRole('button', { name: 'Change' }));
+    expect(await screen.findByText('/new')).toBeInTheDocument();
+    expect(sentBody(pick)).toEqual({ directory: '/d' });
+    expect(sentBody(patch)).toEqual({ download_dir: '/new' });
+  });
+
+  it('keeps the folder when the dialog is closed', async () => {
+    const patch = route(SETTINGS);
+    mockApi({
+      'GET /api/v1/settings': () => json(SETTINGS),
+      'POST /api/bridge/choose_folder': () => json({ result: null }),
+      'PATCH /api/v1/settings': patch,
+    });
+    const user = userEvent.setup();
+    renderSettings();
+    await user.click(await screen.findByRole('button', { name: 'Change' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change' })).toBeEnabled());
+    expect(patch).not.toHaveBeenCalled();
+    expect(screen.getByText('/d')).toBeInTheDocument();
+  });
+
+  it('shows an error when the folder picker is not available', async () => {
+    mockApi({
+      'GET /api/v1/settings': () => json(SETTINGS),
+      'POST /api/bridge/choose_folder': () => json({ available: false, reason: 'No window.' }),
+    });
+    const user = userEvent.setup();
+    renderSettings();
+    await user.click(await screen.findByRole('button', { name: 'Change' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No window.');
   });
 });

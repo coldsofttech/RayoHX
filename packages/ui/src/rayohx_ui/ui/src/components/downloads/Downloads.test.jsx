@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Downloads, { StateBadge } from './Downloads.jsx';
+import Downloads from './Downloads.jsx';
 
 const RUNNING = {
   id: 'j1',
@@ -80,30 +80,20 @@ describe('Downloads', () => {
     await waitFor(() => expect(onCount).toHaveBeenCalledWith(2));
   });
 
-  it('shows the output file, its size and a failure message', async () => {
-    mockApi({ 'GET /api/v1/downloads': () => json({ items: [DONE, FAILED] }) });
-    renderDownloads();
-    expect(await screen.findByText('/d/video.mp4')).toBeInTheDocument();
-    expect(screen.getByText('2.0 KB')).toBeInTheDocument();
-    expect(screen.getByText('Segment missing.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Remove j3' })).toBeInTheDocument();
-  });
-
-  it.each([
-    ['Pause j1', 'POST /api/v1/downloads/j1/pause'],
-    ['Resume j2', 'POST /api/v1/downloads/j2/resume'],
-    ['Cancel j1', 'POST /api/v1/downloads/j1/cancel'],
-    ['Remove j3', 'DELETE /api/v1/downloads/j3'],
-  ])('%s sends the matching request', async (label, request) => {
-    const action = vi.fn(() => json(null, 204));
+  it('opens the download folder from the window', async () => {
     mockApi({
-      'GET /api/v1/downloads': () => json({ items: [RUNNING, PAUSED, DONE] }),
-      [request]: action,
+      'GET /api/v1/downloads': () => json({ items: [] }),
+      'POST /api/bridge/open_downloads': () => json({ result: { opened: true } }),
     });
     const user = userEvent.setup();
     renderDownloads();
-    await user.click(await screen.findByRole('button', { name: label }));
-    await waitFor(() => expect(action).toHaveBeenCalled());
+    await user.click(await screen.findByRole('button', { name: 'Open folder' }));
+    await waitFor(() =>
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        '/api/bridge/open_downloads',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
   });
 
   it('shows an error when a control fails', async () => {
@@ -122,11 +112,74 @@ describe('Downloads', () => {
     renderDownloads();
     expect(await screen.findByRole('alert')).toHaveTextContent('Server down.');
   });
-});
 
-describe('StateBadge', () => {
-  it('shows the state', () => {
-    render(<StateBadge state="queued" />);
-    expect(screen.getByText('queued')).toBeInTheDocument();
+  it('sends a control from a card and refreshes the list', async () => {
+    const pause = vi.fn(() => json(null, 204));
+    const list = vi.fn(() => json({ items: [RUNNING] }));
+    mockApi({ 'GET /api/v1/downloads': list, 'POST /api/v1/downloads/j1/pause': pause });
+    const user = userEvent.setup();
+    renderDownloads();
+    await user.click(await screen.findByRole('button', { name: 'Pause j1' }));
+    await waitFor(() => expect(pause).toHaveBeenCalled());
+    const before = list.mock.calls.length;
+    await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(before));
+  });
+
+  it('keeps a failed control visible while the list refreshes', async () => {
+    mockApi({
+      'GET /api/v1/downloads': () => json({ items: [RUNNING] }),
+      'POST /api/v1/downloads/j1/pause': () => json({ detail: 'Cannot pause.' }, 409),
+    });
+    const user = userEvent.setup();
+    renderDownloads();
+    await user.click(await screen.findByRole('button', { name: 'Pause j1' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Cannot pause.');
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(screen.getByRole('alert')).toHaveTextContent('Cannot pause.');
+  });
+
+  it('offers to clear the history only when something has finished', async () => {
+    mockApi({ 'GET /api/v1/downloads': () => json({ items: [RUNNING, PAUSED] }) });
+    renderDownloads();
+    await screen.findByText('50%');
+    expect(screen.queryByRole('button', { name: 'Clear history' })).not.toBeInTheDocument();
+  });
+
+  it('clears the history', async () => {
+    const clear = vi.fn(() => json(null, 204));
+    mockApi({
+      'GET /api/v1/downloads': () => json({ items: [RUNNING, DONE, FAILED] }),
+      'DELETE /api/v1/downloads': clear,
+    });
+    const user = userEvent.setup();
+    renderDownloads();
+    await user.click(await screen.findByRole('button', { name: 'Clear history' }));
+    await waitFor(() => expect(clear).toHaveBeenCalled());
+  });
+
+  it('picks up new downloads as the list refreshes', async () => {
+    let items = [RUNNING];
+    mockApi({ 'GET /api/v1/downloads': () => json({ items }) });
+    renderDownloads();
+    await screen.findByText('https://x/m.m3u8');
+    items = [RUNNING, DONE];
+    expect(await screen.findByText('/d/video.mp4', {}, { timeout: 3000 })).toBeInTheDocument();
+  });
+
+  it('shows one card for each download', async () => {
+    mockApi({ 'GET /api/v1/downloads': () => json({ items: [RUNNING, PAUSED, DONE, FAILED] }) });
+    renderDownloads();
+    expect(await screen.findAllByRole('listitem')).toHaveLength(4);
+  });
+
+  it('stops refreshing once it is removed', async () => {
+    const list = vi.fn(() => json({ items: [] }));
+    mockApi({ 'GET /api/v1/downloads': list });
+    const { unmount } = renderDownloads();
+    await screen.findByText(/Nothing here yet/);
+    unmount();
+    const calls = list.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(list.mock.calls.length).toBe(calls);
   });
 });

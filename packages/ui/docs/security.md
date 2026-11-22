@@ -17,7 +17,7 @@ Cornea's `SecurityMiddleware` guards every mounted route, so the API adds no tok
 
 - Inline scripts and styles are forbidden by the content security policy, so all code and styles are in files.
 - `--dev` relaxes the policy for Vite; use it only while developing.
-- Python is reached only through `src/api.js` and the registered bridge actions.
+- Python is reached only through `src/api/` and the registered bridge actions.
 
 *Placeholder:* handling of user-supplied values in the interface (secrets in forms, display of addresses and errors) is to be documented once those screens exist.
 

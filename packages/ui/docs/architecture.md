@@ -32,7 +32,7 @@ Cornea hosts the page and the API on one address, behind a start-up token, a hos
 
 ## Frontend
 
-Plain JavaScript with JSX, built by Vite. Python is called only through `src/api.js`. Cornea's policy forbids inline scripts and styles, so styles live in CSS files.
+Plain JavaScript with JSX, built by Vite. Python is called only through `src/api/`. Cornea's policy forbids inline scripts and styles, so styles live in CSS files.
 
 *Placeholder:* screens, navigation, state handling and the component structure are to be described once the interface is designed.
 

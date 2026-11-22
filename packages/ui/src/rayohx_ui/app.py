@@ -75,6 +75,21 @@ def app_info() -> dict[str, str]:
     return {"name": TITLE, "version": VERSION}
 
 
+def open_downloads() -> dict[str, bool]:
+    """Native action ``open_downloads``: show the download folder in Explorer.
+
+    The page names no path, so it can only ever open the folder downloads are saved in.
+    """
+    import subprocess
+
+    from rayohx_api.routers.v1.deps import manager
+
+    folder = manager().directory
+    folder.mkdir(parents=True, exist_ok=True)
+    subprocess.Popen(["explorer", str(folder)])  # noqa: S603, S607 - a fixed program, our own folder
+    return {"opened": True}
+
+
 def build_shell(*, dev: bool = False, window: bool = True) -> Shell:
     """Build the Cornea shell.
 
@@ -125,6 +140,7 @@ def build_shell(*, dev: bool = False, window: bool = True) -> Shell:
         identity=App(id=APP_ID),
     )
     shell.action("app_info")(app_info)
+    shell.action("open_downloads")(open_downloads)
     return shell
 
 

@@ -128,6 +128,26 @@ def test_native_action_is_registered(shell_on_windows: type[FakeShell]) -> None:
     assert action() == ui_app.app_info() == {"name": ui_app.TITLE, "version": ui_app.VERSION}
 
 
+def test_open_downloads_shows_the_download_folder(
+    shell_on_windows: type[FakeShell], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import subprocess
+    from types import SimpleNamespace
+
+    opened: list[list[str]] = []
+    monkeypatch.setattr(subprocess, "Popen", lambda args: opened.append(args))
+    folder = tmp_path / "RayoHX"
+    monkeypatch.setattr(
+        "rayohx_api.routers.v1.deps.manager", lambda: SimpleNamespace(directory=folder)
+    )
+    ui_app.build_shell()
+
+    action = shell_on_windows.instances[0].actions["open_downloads"]
+    assert action() == {"opened": True}
+    assert opened == [["explorer", str(folder)]]
+    assert folder.is_dir()
+
+
 def test_api_router_is_mounted_under_cornea_prefix() -> None:
     router = ui_app.api_router()
     router.add_api_route("/ping", lambda: {"ok": True})

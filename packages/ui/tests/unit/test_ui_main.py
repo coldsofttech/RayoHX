@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from rayohx_ui import __main__ as ui_main
@@ -61,6 +63,7 @@ def test_running_the_module_exits_with_the_main_status(
     import runpy
 
     monkeypatch.setattr("sys.argv", ["rayohxu", "--version"])
+    monkeypatch.delitem(sys.modules, "rayohx_ui.__main__", raising=False)
 
     with pytest.raises(SystemExit) as exit_info:
         runpy.run_module("rayohx_ui.__main__", run_name="__main__")
