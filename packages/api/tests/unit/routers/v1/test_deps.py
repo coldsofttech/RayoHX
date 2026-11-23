@@ -11,7 +11,7 @@ from rayohx_api.routers.v1 import deps
 
 def test_preferences_defaults(tmp_path: Path) -> None:
     prefs = deps.Preferences(tmp_path)
-    assert (prefs.concurrency, prefs.quality, prefs.overwrite) == (4, "best", False)
+    assert prefs.defaults == {}
     assert (prefs.download_dir, prefs.theme) == (tmp_path, None)
 
 
@@ -24,22 +24,27 @@ def test_preferences_are_restored_from_the_store(tmp_path: Path) -> None:
     first.update(
         {
             "download_dir": folder,
-            "concurrency": 7,
-            "quality": "720p",
-            "overwrite": True,
             "theme": "dark",
         }
     )
     again = deps.Preferences(tmp_path, store)
-    assert again.download_dir == folder
-    assert (again.concurrency, again.quality, again.overwrite, again.theme) == (
-        7,
-        "720p",
-        True,
-        "dark",
+    assert (again.download_dir, again.theme) == (folder, "dark")
+    store.close()
+
+
+def test_default_options_are_saved_without_secrets(tmp_path: Path) -> None:
+    from rayohx_api.store import Store
+
+    store = Store(tmp_path / "p.db")
+    proxy = {"url": "http://p", "password": "x"}
+    deps.Preferences(tmp_path, store).save_defaults(
+        {"selection": {"quality": "720p"}, "network": {"proxy": proxy}}
     )
-    first.update({"overwrite": False})
-    assert deps.Preferences(tmp_path, store).overwrite is False
+    again = deps.Preferences(tmp_path, store)
+    assert again.defaults == {
+        "selection": {"quality": "720p"},
+        "network": {"proxy": {"url": "http://p"}},
+    }
     store.close()
 
 
@@ -49,9 +54,11 @@ def test_preferences_ignore_bad_saved_values(tmp_path: Path) -> None:
     store = Store(tmp_path / "p.db")
     store.set_pref("download_dir", "relative/folder")
     store.set_pref("theme", "pink")
-    store.set_pref("concurrency", "many")
+    store.set_pref("defaults", "not json")
     prefs = deps.Preferences(tmp_path, store)
-    assert (prefs.download_dir, prefs.theme, prefs.concurrency) == (tmp_path, None, 4)
+    assert (prefs.download_dir, prefs.theme, prefs.defaults) == (tmp_path, None, {})
+    store.set_pref("defaults", "[1]")
+    assert deps.Preferences(tmp_path, store).defaults == {}
     store.close()
 
 
@@ -122,3 +129,16 @@ def test_find_job(tmp_path: Path) -> None:
         deps.find_job(manager, "b")
     assert caught.value.status_code == 404
     assert caught.value.detail == "No such download."
+
+
+def test_closing_preferences_closes_the_store_and_is_safe_without_one(tmp_path: Path) -> None:
+    from sqlite3 import ProgrammingError
+
+    from rayohx_api.store import Store
+
+    deps.Preferences(tmp_path).close()
+
+    store = Store(tmp_path / "p.db")
+    deps.Preferences(tmp_path, store).close()
+    with pytest.raises(ProgrammingError):
+        store.get_pref("theme")

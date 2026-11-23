@@ -5,6 +5,7 @@ import pytest
 from rayohx.errors import ConfigurationError
 
 from rayohx_api.build import (
+    DEFAULT_CONCURRENCY,
     download_config,
     local_path,
     network_config,
@@ -144,9 +145,8 @@ def test_download_config_maps_every_group(tmp_path: Path) -> None:
         ),
         base=tmp_path,
         local=False,
-        concurrency=5,
     )
-    assert config.concurrency == 5
+    assert config.concurrency == DEFAULT_CONCURRENCY
     assert config.resume is False
     assert config.selection.codec == "hevc"
     assert config.selection.subtitle_languages == ("fr",)
@@ -159,28 +159,23 @@ def test_download_config_maps_every_group(tmp_path: Path) -> None:
 
 
 def test_download_config_defaults_to_the_download_folder(tmp_path: Path) -> None:
-    config = download_config(_request(), base=tmp_path, local=False, concurrency=4)
+    config = download_config(_request(), base=tmp_path, local=False)
     assert config.output.directory == tmp_path
     assert config.storage.workspace_dir is None
 
 
 def test_a_request_concurrency_beats_the_default(tmp_path: Path) -> None:
-    config = download_config(
-        _request(engine={"concurrency": 9}), base=tmp_path, local=False, concurrency=4
-    )
+    config = download_config(_request(engine={"concurrency": 9}), base=tmp_path, local=False)
     assert config.concurrency == 9
 
 
 def test_file_keys_and_ffmpeg_need_permission(tmp_path: Path) -> None:
     with pytest.raises(ConfigurationError, match="key files"):
-        download_config(
-            _request(engine={"allow_file_keys": True}), base=tmp_path, local=False, concurrency=1
-        )
+        download_config(_request(engine={"allow_file_keys": True}), base=tmp_path, local=False)
     allowed = download_config(
         _request(engine={"allow_file_keys": True}, output={"ffmpeg": "/bin/ffmpeg"}),
         base=tmp_path,
         local=True,
-        concurrency=1,
     )
     assert allowed.allow_file_keys is True
     assert allowed.output.ffmpeg_path == Path("/bin/ffmpeg")

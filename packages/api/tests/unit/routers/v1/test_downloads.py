@@ -131,8 +131,8 @@ def test_cancel_before_start_is_immediate(
     client.post(f"{BASE}/{running['id']}/cancel")
 
 
-def test_create_uses_current_concurrency(client: TestClient, fake: type[FakeDownloader]) -> None:
-    client.patch("/api/v1/settings", json={"concurrency": 7})
+def test_create_uses_saved_defaults(client: TestClient, fake: type[FakeDownloader]) -> None:
+    client.put("/api/v1/settings/defaults", json={"engine": {"concurrency": 7}})
     job = _start(
         client,
         selection={"quality": "720p", "audio": ["en"], "video_only": True},
@@ -145,6 +145,44 @@ def test_create_uses_current_concurrency(client: TestClient, fake: type[FakeDown
     assert config.selection.video_only is True
     assert config.output.format.value == "mp4"
     client.post(f"{BASE}/{job['id']}/cancel")
+
+
+def test_request_options_win_over_saved_defaults(
+    client: TestClient, fake: type[FakeDownloader]
+) -> None:
+    saved = {"selection": {"quality": "720p", "video_only": True}, "engine": {"concurrency": 7}}
+    client.put("/api/v1/settings/defaults", json=saved)
+    job = _start(client, selection={"quality": "480p"})
+    config = fake.instances[-1].config
+    assert (config.selection.quality, config.selection.video_only) == ("480p", True)
+    assert config.concurrency == 7
+    client.post(f"{BASE}/{job['id']}/cancel")
+
+
+def test_log_lists_what_the_engine_reported(client: TestClient, fake: type[FakeDownloader]) -> None:
+    from rayohx.enums import DownloadState, EventType
+    from rayohx.events import DownloadEvent
+
+    job = _start(client)
+    assert client.get(f"{BASE}/{job['id']}/log").json() == []
+    engine = fake.instances[-1]
+    engine.events.emit(
+        DownloadEvent(
+            type=EventType.DOWNLOAD_STARTED,
+            download_id=job["id"],
+            state=DownloadState.DOWNLOADING,
+            message="Started",
+        )
+    )
+    log = client.get(f"{BASE}/{job['id']}/log").json()
+    assert [(e["type"], e["state"], e["message"]) for e in log] == [
+        ("download_started", "downloading", "Started")
+    ]
+    client.post(f"{BASE}/{job['id']}/cancel")
+
+
+def test_log_of_an_unknown_download_is_404(client: TestClient) -> None:
+    assert client.get(f"{BASE}/nope/log").status_code == 404
 
 
 def test_create_saves_inside_download_folder(

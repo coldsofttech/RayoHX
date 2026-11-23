@@ -72,6 +72,28 @@
         "title": "CleanedFolder",
         "type": "object"
       },
+      "Defaults": {
+        "description": "Options used for every download unless the request sets its own. Passwords are not kept.",
+        "properties": {
+          "engine": {
+            "$ref": "#/components/schemas/Engine"
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "output": {
+            "$ref": "#/components/schemas/Output"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/Storage"
+          }
+        },
+        "title": "Defaults",
+        "type": "object"
+      },
       "DownloadCreate": {
         "properties": {
           "base_url": {
@@ -180,6 +202,51 @@
           }
         },
         "title": "Engine",
+        "type": "object"
+      },
+      "EngineEvent": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "segment": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "time": {
+            "title": "Time",
+            "type": "number"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "type",
+          "state"
+        ],
+        "title": "EngineEvent",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -304,6 +371,12 @@
             ],
             "description": "A stable name for a failure a client can act on, such as output_exists.",
             "title": "Error Code"
+          },
+          "has_log": {
+            "default": false,
+            "description": "The engine has reported something to show.",
+            "title": "Has Log",
+            "type": "boolean"
           },
           "id": {
             "title": "Id",
@@ -1048,19 +1121,6 @@
       },
       "SettingsUpdate": {
         "properties": {
-          "concurrency": {
-            "anyOf": [
-              {
-                "maximum": 64.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Concurrency"
-          },
           "download_dir": {
             "anyOf": [
               {
@@ -1074,29 +1134,6 @@
             ],
             "description": "Folder new downloads are saved in.",
             "title": "Download Dir"
-          },
-          "overwrite": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Overwrite"
-          },
-          "quality": {
-            "anyOf": [
-              {
-                "pattern": "(?i)^(best|worst|auto|\\d{3,4}p)$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Quality"
           },
           "theme": {
             "anyOf": [
@@ -1123,11 +1160,11 @@
             "title": "Allow Local Paths",
             "type": "boolean"
           },
-          "concurrency": {
-            "maximum": 64.0,
-            "minimum": 1.0,
-            "title": "Concurrency",
-            "type": "integer"
+          "defaults": {
+            "additionalProperties": true,
+            "description": "Only the default options that were set.",
+            "title": "Defaults",
+            "type": "object"
           },
           "download_dir": {
             "title": "Download Dir",
@@ -1139,17 +1176,6 @@
           "max_active_downloads": {
             "title": "Max Active Downloads",
             "type": "integer"
-          },
-          "overwrite": {
-            "default": false,
-            "title": "Overwrite",
-            "type": "boolean"
-          },
-          "quality": {
-            "default": "best",
-            "pattern": "(?i)^(best|worst|auto|\\d{3,4}p)$",
-            "title": "Quality",
-            "type": "string"
           },
           "theme": {
             "anyOf": [
@@ -1176,9 +1202,9 @@
           "download_dir",
           "max_active_downloads",
           "allow_local_paths",
-          "concurrency",
           "limits",
-          "version"
+          "version",
+          "defaults"
         ],
         "title": "SettingsView",
         "type": "object"
@@ -1310,7 +1336,7 @@
     }
   },
   "info": {
-    "description": "Example HTTP API built on **rayohx**.",
+    "description": "HTTP API for inspecting and downloading HLS streams with **rayohx**.",
     "title": "rayohx-api",
     "version": "0.1.0"
   },
@@ -1627,6 +1653,57 @@
         ]
       }
     },
+    "/api/v1/downloads/{job_id}/log": {
+      "get": {
+        "operationId": "download_log_api_v1_downloads__job_id__log_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EngineEvent"
+                  },
+                  "title": "Response Download Log Api V1 Downloads  Job Id  Log Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "What the engine reported, most recent last",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/downloads/{job_id}/pause": {
       "post": {
         "operationId": "pause_download_api_v1_downloads__job_id__pause_post",
@@ -1851,7 +1928,7 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Current defaults",
+        "summary": "Server settings and saved default options",
         "tags": [
           "v1"
         ]
@@ -1895,7 +1972,54 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Change defaults",
+        "summary": "Change the theme or the download folder",
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/settings/defaults": {
+      "put": {
+        "description": "Only options that are set are saved. Proxy logins and passwords are never saved.",
+        "operationId": "save_defaults_api_v1_settings_defaults_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Defaults"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Replace the saved default options",
         "tags": [
           "v1"
         ]

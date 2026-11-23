@@ -20,6 +20,8 @@ The service listens on `http://127.0.0.1:8000`. Its interactive documentation is
 
 - Protect the service with API keys, or turn authentication off for local development
 - Inspect a playlist, or start one or many downloads with every engine option (network, selection, storage and output settings)
+- Keep downloads, their logs and default options between restarts
+- Save default options once and use them for every download, and read what the engine reported for each one
 - Check that the service is running with the health and readiness endpoints
 - Get JSON logs and consistent error responses
 - Configure everything with `RAYOHX_API_` environment variables or a `.env` file

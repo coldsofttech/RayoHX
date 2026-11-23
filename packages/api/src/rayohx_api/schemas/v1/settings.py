@@ -1,11 +1,16 @@
 """Models for reading and changing the defaults."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-from rayohx.config.download import MAX_CONCURRENCY
 
-from rayohx_api.schemas.v1.common import MIN_CONCURRENCY, QUALITY
+from rayohx_api.schemas.v1.common import (
+    Engine,
+    Network,
+    Output,
+    Selection,
+    Storage,
+)
 
 
 class Limits(BaseModel):
@@ -19,20 +24,15 @@ class SettingsView(BaseModel):
     download_dir: str
     max_active_downloads: int
     allow_local_paths: bool
-    concurrency: int = Field(ge=MIN_CONCURRENCY, le=MAX_CONCURRENCY)
-    quality: str = Field(default="best", pattern=QUALITY)
-    overwrite: bool = False
     theme: Literal["light", "dark"] | None = Field(
         default=None, description="Chosen theme; none until one is chosen."
     )
     limits: Limits
     version: str
+    defaults: dict[str, Any] = Field(description="Only the default options that were set.")
 
 
 class SettingsUpdate(BaseModel):
-    concurrency: int | None = Field(default=None, ge=MIN_CONCURRENCY, le=MAX_CONCURRENCY)
-    quality: str | None = Field(default=None, pattern=QUALITY)
-    overwrite: bool | None = None
     theme: Literal["light", "dark"] | None = None
     download_dir: str | None = Field(
         default=None,
@@ -40,3 +40,13 @@ class SettingsUpdate(BaseModel):
         max_length=1024,
         description="Folder new downloads are saved in.",
     )
+
+
+class Defaults(BaseModel):
+    """Options used for every download unless the request sets its own. Passwords are not kept."""
+
+    network: Network = Field(default_factory=Network)
+    selection: Selection = Field(default_factory=Selection)
+    storage: Storage = Field(default_factory=Storage)
+    output: Output = Field(default_factory=Output)
+    engine: Engine = Field(default_factory=Engine)

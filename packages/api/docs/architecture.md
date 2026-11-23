@@ -18,7 +18,9 @@ packages/api/src/rayohx_api/
   logs.py          JSON logging and the request ID middleware
   security.py      security headers and the request size limit
   build.py         turns a request into engine settings and holds the rules for what a client may ask
-  jobs.py          runs downloads in background threads and keeps their state in memory
+  jobs.py          runs downloads in background threads and keeps their state and engine log, saving them to the store
+  store.py         a small SQLite file that keeps the download list, engine logs and saved defaults between restarts
+  defaults.py      merges saved default options under a request and strips secrets before they are saved
   schemas/
     health.py      models for /health and /ready
     v1/            /api/v1 models, one file per route group (inspect, downloads, settings, clean) and common.py for what they share

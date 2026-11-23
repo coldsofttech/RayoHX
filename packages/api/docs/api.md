@@ -28,6 +28,7 @@ Read from `RAYOHX_API_*` environment variables or a `.env` file. List values are
 | `RAYOHX_API_DOWNLOAD_DIR` | `~/Downloads/RayoHX` | Folder downloads are saved in (clients choose file names only) |
 | `RAYOHX_API_ALLOW_LOCAL_PATHS` | `false` | Let requests name files on the server (cookie files, certificates, FFmpeg, file keys); the desktop window turns it on |
 | `RAYOHX_API_MAX_ACTIVE_DOWNLOADS` | `2` | Downloads that run at once; the rest queue |
+| `RAYOHX_API_DB_PATH` | per-user app data folder | SQLite file that keeps the download list, logs and saved defaults between restarts |
 
 ## Endpoints
 
@@ -39,7 +40,9 @@ Read from `RAYOHX_API_*` environment variables or a `.env` file. List values are
 | `GET`/`DELETE /api/v1/downloads/{id}` | One job, or forget a finished one |
 | `POST /api/v1/downloads/{id}/pause`, `/resume`, `/cancel` | Control a job |
 | `GET /api/v1/downloads/{id}/events` | Server-sent `job` events until the job ends |
-| `GET`/`PATCH /api/v1/settings` | Defaults (parallel segments, quality, overwrite) for this run, and the `limits` the engine accepts for parallel segments |
+| `GET /api/v1/downloads/{id}/log` | What the engine reported for a job (the CLI's `--events` stream, without per-segment noise); the last 200 events, kept between restarts |
+| `GET`/`PATCH /api/v1/settings` | Server settings, the saved default options and the `limits` the engine accepts; `PATCH` changes the theme or the download folder |
+| `PUT /api/v1/settings/defaults` | Replace the default options (saved between restarts; logins and passwords are never saved) |
 | `POST /api/v1/clean` | Remove leftover working folders in the download folder (`dry_run` by default) |
 
 ## Starting downloads
@@ -60,7 +63,9 @@ Read from `RAYOHX_API_*` environment variables or a `.env` file. List values are
 
 Folders (`output.directory` and `storage.workspace`) must be relative and stay inside the download folder. Settings that point at files on the server (`network.cookie_file`, `ca_bundle`, `client_cert`, `client_key`, `output.ffmpeg` and `engine.allow_file_keys`) are refused unless `RAYOHX_API_ALLOW_LOCAL_PATHS=true`, so a client cannot make the server read its own files. Proxy passwords and key passwords are never returned or logged.
 
-Jobs live in memory and are lost when the process stops; the engine resumes partial files. Signed-URL tokens are removed from every address returned. Errors use the problem-details format (`application/problem+json`).
+Options left out of a download request use the saved defaults, then the engine's own. A default is checked when it is saved, so a bad combination is refused there and not on every download.
+
+Jobs are saved between restarts, and any cut short by a restart show as failed; the engine resumes partial files. Signed-URL tokens are removed from every address returned. Errors use the problem-details format (`application/problem+json`).
 
 ## The contract
 

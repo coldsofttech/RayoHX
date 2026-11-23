@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 LOCAL_PATHS_HINT = "Set RAYOHX_API_ALLOW_LOCAL_PATHS=true if you trust every client."
 
+DEFAULT_CONCURRENCY = 4
+
 
 def subfolder(base: Path, name: str | None, what: str) -> Path | None:
     """A folder inside ``base`` named by a client. It can never lead outside ``base``."""
@@ -129,9 +131,7 @@ def network_config(net: Network, *, local: bool) -> NetworkConfig:
     return NetworkConfig(**options)  # type: ignore[arg-type]
 
 
-def download_config(
-    request: DownloadCreate, *, base: Path, local: bool, concurrency: int
-) -> DownloadConfig:
+def download_config(request: DownloadCreate, *, base: Path, local: bool) -> DownloadConfig:
     """Build and validate the settings. Raises ``ConfigurationError`` with a fix-it message."""
     from rayohx.config import DownloadConfig, OutputConfig, SelectionConfig, StorageConfig
     from rayohx.enums import OutputFormat, RemuxBackend, StorageStrategy
@@ -151,7 +151,7 @@ def download_config(
         if value is not None:
             storage[key] = value
     return DownloadConfig(
-        concurrency=eng.concurrency or concurrency,
+        concurrency=eng.concurrency or DEFAULT_CONCURRENCY,
         resume=eng.resume,
         allow_file_keys=_file_keys(eng.allow_file_keys, local),
         network=network_config(request.network, local=local),

@@ -2,7 +2,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from rayohx.enums import DownloadState
+from rayohx.enums import DownloadState, EventType
 
 from rayohx_api import jobs
 from rayohx_api.jobs import JobManager, JobRecord, UnsafeFilenameError, safe_filename
@@ -128,7 +128,14 @@ def test_on_event_updates_state_and_progress(tmp_path: Path) -> None:
     from rayohx.models import DownloadProgress
 
     record = JobRecord(id="a", url="u")
-    event = SimpleNamespace(state=DownloadState.DOWNLOADING, progress=DownloadProgress())
+    event = SimpleNamespace(
+        type=EventType.DOWNLOAD_PAUSED,
+        state=DownloadState.DOWNLOADING,
+        progress=DownloadProgress(),
+        timestamp=1.0,
+        message=None,
+        segment_index=None,
+    )
     JobManager(tmp_path, max_active=1)._on_event(record, event)  # type: ignore[arg-type]
     assert record.state is DownloadState.DOWNLOADING
     assert record.progress is not None
@@ -136,16 +143,65 @@ def test_on_event_updates_state_and_progress(tmp_path: Path) -> None:
 
 def test_on_event_without_progress_keeps_previous(tmp_path: Path) -> None:
     record = JobRecord(id="a", url="u", progress={"x": 1})
-    event = SimpleNamespace(state=DownloadState.PAUSED, progress=None)
+    event = SimpleNamespace(
+        type=EventType.DOWNLOAD_PAUSED,
+        state=DownloadState.PAUSED,
+        progress=None,
+        timestamp=1.0,
+        message=None,
+        segment_index=None,
+    )
     JobManager(tmp_path, max_active=1)._on_event(record, event)  # type: ignore[arg-type]
     assert record.progress == {"x": 1}
+
+
+def _event(kind: EventType, **extra: object) -> SimpleNamespace:
+    values = {
+        "type": kind,
+        "state": DownloadState.DOWNLOADING,
+        "progress": None,
+        "timestamp": 2.5,
+        "message": None,
+        "segment_index": None,
+    }
+    return SimpleNamespace(**{**values, **extra})
+
+
+def test_on_event_keeps_a_log_without_per_segment_noise(tmp_path: Path) -> None:
+    record = JobRecord(id="a", url="u")
+    manager = JobManager(tmp_path, max_active=1)
+    manager._on_event(record, _event(EventType.DOWNLOAD_STARTED, message="go"))  # type: ignore[arg-type]
+    for noisy in (
+        EventType.SEGMENT_STARTED,
+        EventType.SEGMENT_COMPLETED,
+        EventType.DOWNLOAD_PROGRESS,
+    ):
+        manager._on_event(record, _event(noisy, segment_index=3))  # type: ignore[arg-type]
+    assert list(record.events) == [
+        {
+            "time": 2.5,
+            "type": "download_started",
+            "state": "downloading",
+            "message": "go",
+            "segment": None,
+        }
+    ]
+
+
+def test_the_log_keeps_only_the_latest_events(tmp_path: Path) -> None:
+    record = JobRecord(id="a", url="u")
+    manager = JobManager(tmp_path, max_active=1)
+    for number in range(250):
+        manager._on_event(record, _event(EventType.DOWNLOAD_STARTED, message=str(number)))  # type: ignore[arg-type]
+    assert len(record.events) == 200
+    assert record.events[-1]["message"] == "249"
 
 
 def test_create_rejects_unsafe_filename_before_starting(tmp_path: Path) -> None:
     manager = JobManager(tmp_path / "dl", max_active=1)
     request = DownloadCreate(url="https://a.test/m.m3u8", filename="../evil.mp4")
     with pytest.raises(UnsafeFilenameError):
-        manager.create(request, concurrency=1, local_paths=False)
+        manager.create(request, local_paths=False)
     assert manager.all() == []
     assert not (tmp_path / "dl").exists()
 
@@ -156,7 +212,7 @@ def test_create_rejects_a_file_name_for_a_batch(tmp_path: Path) -> None:
     manager = JobManager(tmp_path, max_active=1)
     request = DownloadCreate(urls=["https://a.test/1.m3u8", "https://a.test/2.m3u8"], filename="x")
     with pytest.raises(ConfigurationError, match="single download"):
-        manager.create(request, concurrency=1, local_paths=False)
+        manager.create(request, local_paths=False)
     assert manager.all() == []
 
 
@@ -180,7 +236,7 @@ def test_create_starts_one_job_per_address(tmp_path: Path, monkeypatch: pytest.M
         urls=["https://a.test/1.m3u8?token=hunter2", "https://b.test/2.m3u8"],
         output={"directory": "shows"},  # type: ignore[arg-type]
     )
-    records = manager.create(request, concurrency=3, local_paths=False)
+    records = manager.create(request, local_paths=False)
     assert [r.id for r in manager.all()] == [r.id for r in reversed(records)]
     assert all("hunter2" not in r.url for r in records)
     assert [c["url"] for c in created] == [
@@ -206,7 +262,7 @@ def test_create_passes_playlist_text_to_the_engine(
     monkeypatch.setattr("rayohx.downloader.Downloader", Stub)
     monkeypatch.setattr(JobManager, "_run", lambda self, record: None)
     request = DownloadCreate(playlist_text="#EXTM3U", base_url="https://a.test/m.m3u8")
-    JobManager(tmp_path, max_active=1).create(request, concurrency=1, local_paths=False)
+    JobManager(tmp_path, max_active=1).create(request, local_paths=False)
     assert seen["url"] == "https://a.test/m.m3u8"
     assert seen["playlist_text"] == "#EXTM3U"
     assert seen["output"] is None
@@ -238,7 +294,7 @@ def test_retry_overwrite_applies_to_that_run_only(
         id="a", url="https://a.test/m.m3u8", state=DownloadState.FAILED, request=saved
     )
     manager._jobs["a"] = record
-    assert manager.retry(record, concurrency=1, local_paths=True, overwrite=True)
+    assert manager.retry(record, local_paths=True, overwrite=True)
     record.state = DownloadState.FAILED
-    assert manager.retry(record, concurrency=1, local_paths=True)
+    assert manager.retry(record, local_paths=True)
     assert seen == [True, False]

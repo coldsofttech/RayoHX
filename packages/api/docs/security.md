@@ -11,8 +11,9 @@ When run alone (`python -m rayohx_api`), Cornea is absent, so the API protects i
 - **Body limit:** requests declaring more than `RAYOHX_API_MAX_BODY_BYTES` get `413`. Also set a limit at your reverse proxy, since chunked bodies have no declared size.
 - **Server files:** requests may not name files on the server (cookie files, certificates, FFmpeg, key files) unless `RAYOHX_API_ALLOW_LOCAL_PATHS=true`, which suits only a client you fully trust. Output and working folders must stay inside the download folder, and symbolic links that leave it are refused.
 - **Docs hidden:** `/docs`, `/redoc` and `/openapi.json` are off unless `RAYOHX_API_DOCS_ENABLED=true`.
+- **Saved data:** the download list, engine logs and default options are kept in a small SQLite file (`RAYOHX_API_DB_PATH`). Proxy user names and passwords and key passwords are never saved, and saved defaults follow the same rules as a request, so they cannot name server files unless `RAYOHX_API_ALLOW_LOCAL_PATHS=true`. Keep the file private to the account that runs the API.
 - **Errors:** a `500` never shows details; they go to the log with the request ID.
-- **Not included:** HTTPS, rate limiting, JWT and multi-user authentication, a database. Add them, or put the API behind a proxy, before exposing it publicly.
+- **Not included:** HTTPS, rate limiting, JWT and multi-user authentication, a shared or networked database. Add them, or put the API behind a proxy, before exposing it publicly.
 
 ## Under the UI window
 

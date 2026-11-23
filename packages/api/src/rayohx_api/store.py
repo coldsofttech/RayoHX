@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from rayohx_api.jobs import JobRecord
 
+MAX_EVENTS = 200
+#: Trim a download's log once this many lines were added since the last trim.
+PRUNE_EVERY = 20
 INTERRUPTED = "Interrupted: the app was closed before this download finished."
 
 
@@ -36,7 +39,9 @@ class Store:
 
         path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        self._unpruned: dict[str, int] = {}
         self._db = sqlite3.connect(path, check_same_thread=False)
+        self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute(
             "CREATE TABLE IF NOT EXISTS jobs ("
             "id TEXT PRIMARY KEY, url TEXT NOT NULL, state TEXT NOT NULL,"
@@ -48,6 +53,11 @@ class Store:
             if column not in have:
                 self._db.execute(f"ALTER TABLE jobs ADD COLUMN {column} TEXT")
         self._db.execute("CREATE TABLE IF NOT EXISTS prefs (key TEXT PRIMARY KEY, value TEXT)")
+        self._db.execute(
+            "CREATE TABLE IF NOT EXISTS events ("
+            "seq INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL, event TEXT NOT NULL)"
+        )
+        self._db.execute("CREATE INDEX IF NOT EXISTS events_job ON events (job_id)")
         self._db.commit()
 
     def close(self) -> None:
@@ -93,6 +103,7 @@ class Store:
                 quality=quality,
                 request=json.loads(saved) if saved else None,
             )
+            record.events.extend(self.events(id_))
             if not record.state.is_terminal:
                 record.state = DownloadState.FAILED
                 record.error = INTERRUPTED
@@ -124,7 +135,42 @@ class Store:
             )
             self._db.commit()
 
-    def delete(self, job_ids: list[str]) -> None:
+    def add_event(self, job_id: str, event: dict[str, Any]) -> None:
+        """Save one log line, keeping only the last ``MAX_EVENTS`` for the download."""
+        import json
+
         with self._lock:
-            self._db.executemany("DELETE FROM jobs WHERE id = ?", [(i,) for i in job_ids])
+            self._db.execute(
+                "INSERT INTO events (job_id, event) VALUES (?, ?)",
+                (job_id, json.dumps(event, default=str)),
+            )
+            self._unpruned[job_id] = self._unpruned.get(job_id, 0) + 1
+            if self._unpruned[job_id] >= PRUNE_EVERY:
+                self._unpruned[job_id] = 0
+                self._db.execute(
+                    "DELETE FROM events WHERE job_id = ? AND seq <= ("
+                    "SELECT seq FROM events WHERE job_id = ? ORDER BY seq DESC LIMIT 1 OFFSET ?)",
+                    (job_id, job_id, MAX_EVENTS),
+                )
+            self._db.commit()
+
+    def events(self, job_id: str) -> list[dict[str, Any]]:
+        """The last ``MAX_EVENTS`` saved log lines of one download, oldest first."""
+        import json
+
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT event FROM (SELECT seq, event FROM events WHERE job_id = ?"
+                " ORDER BY seq DESC LIMIT ?) ORDER BY seq",
+                (job_id, MAX_EVENTS),
+            ).fetchall()
+        return [json.loads(r[0]) for r in rows]
+
+    def delete(self, job_ids: list[str]) -> None:
+        ids = [(i,) for i in job_ids]
+        with self._lock:
+            for (job_id,) in ids:
+                self._unpruned.pop(job_id, None)
+            self._db.executemany("DELETE FROM jobs WHERE id = ?", ids)
+            self._db.executemany("DELETE FROM events WHERE job_id = ?", ids)
             self._db.commit()

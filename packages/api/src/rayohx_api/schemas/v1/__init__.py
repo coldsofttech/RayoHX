@@ -11,17 +11,19 @@ from rayohx_api.schemas.v1.common import (
     Source,
     Storage,
 )
-from rayohx_api.schemas.v1.downloads import DownloadCreate, Job, JobList, Progress
+from rayohx_api.schemas.v1.downloads import DownloadCreate, EngineEvent, Job, JobList, Progress
 from rayohx_api.schemas.v1.inspect import InspectRequest, InspectResponse
-from rayohx_api.schemas.v1.settings import Limits, SettingsUpdate, SettingsView
+from rayohx_api.schemas.v1.settings import Defaults, Limits, SettingsUpdate, SettingsView
 
 __all__ = [
     "QUALITY",
     "CleanRequest",
     "CleanResponse",
     "CleanedFolder",
+    "Defaults",
     "DownloadCreate",
     "Engine",
+    "EngineEvent",
     "InspectRequest",
     "InspectResponse",
     "Job",

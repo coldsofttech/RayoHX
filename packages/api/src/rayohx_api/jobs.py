@@ -1,4 +1,4 @@
-"""Runs downloads in background threads and keeps their state in memory.
+"""Runs downloads in background threads and keeps their state and engine log.
 
 Routes call this; the work itself is done by ``rayohx``. When given a store, the list is
 saved and restored across restarts (unfinished jobs come back as failed); partial downloads still
@@ -8,11 +8,14 @@ resume because the engine keeps its own state on disk.
 from __future__ import annotations
 
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from rayohx import CancellationToken
 from rayohx.enums import DownloadState
+
+from rayohx_api.store import MAX_EVENTS
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,6 +28,8 @@ if TYPE_CHECKING:
     from rayohx_api.store import Store
 
 MAX_JOBS = 200
+#: Event names that fire for every segment; progress already covers them.
+_QUIET = frozenset({"download_progress", "segment_started", "segment_completed"})
 _BAD_NAME = r'[\\/:*?"<>|\x00-\x1f]'
 
 
@@ -68,6 +73,8 @@ class JobRecord:
     quality: str | None = None
     #: What it takes to run this job again, secrets included. Kept in the local database only.
     request: dict[str, Any] | None = None
+    #: What the engine reported, most recent last. Also saved in the store when there is one.
+    events: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=MAX_EVENTS))
     downloader: Downloader | None = None
     token: CancellationToken = field(default_factory=CancellationToken)
 
@@ -102,9 +109,7 @@ class JobManager:
         with self._lock:
             return self._jobs.get(job_id)
 
-    def create(
-        self, request: DownloadCreate, *, concurrency: int, local_paths: bool
-    ) -> list[JobRecord]:
+    def create(self, request: DownloadCreate, *, local_paths: bool) -> list[JobRecord]:
         """Start one job for each address in the request."""
         import threading
         import uuid
@@ -120,9 +125,7 @@ class JobManager:
             raise ConfigurationError("A file name can only be given for a single download.")
         filename = safe_filename(request.filename) if request.filename else None
         self.directory.mkdir(parents=True, exist_ok=True)
-        config = download_config(
-            request, base=self.directory, local=local_paths, concurrency=concurrency
-        )
+        config = download_config(request, base=self.directory, local=local_paths)
         folder = config.output.directory or self.directory
         folder.mkdir(parents=True, exist_ok=True)
         if filename:
@@ -177,9 +180,7 @@ class JobManager:
         )
         record.downloader.events.subscribe(partial(self._on_event, record))
 
-    def retry(
-        self, record: JobRecord, *, concurrency: int, local_paths: bool, overwrite: bool = False
-    ) -> bool:
+    def retry(self, record: JobRecord, *, local_paths: bool, overwrite: bool = False) -> bool:
         """Run a failed or cancelled job again from its saved request; partial files resume.
 
         `overwrite` replaces an existing output file for this run only.
@@ -200,9 +201,7 @@ class JobManager:
             if overwrite:
                 saved = {**saved, "output": {**(saved.get("output") or {}), "overwrite": True}}
             request = DownloadCreate.model_validate(saved)
-            config = download_config(
-                request, base=self.directory, local=local_paths, concurrency=concurrency
-            )
+            config = download_config(request, base=self.directory, local=local_paths)
             folder = config.output.directory or self.directory
             folder.mkdir(parents=True, exist_ok=True)
             filename = safe_filename(request.filename) if request.filename else None
@@ -228,11 +227,23 @@ class JobManager:
     def _on_event(self, record: JobRecord, event: DownloadEvent) -> None:
         from rayohx.serialization import progress_to_dict
 
-        changed = record.state is not event.state
-        record.state = event.state
-        record.updated_at = time.time()
-        if event.progress is not None:
-            record.progress = progress_to_dict(event.progress)
+        with self._lock:
+            changed = record.state is not event.state
+            record.state = event.state
+            record.updated_at = time.time()
+            if event.progress is not None:
+                record.progress = progress_to_dict(event.progress)
+        if event.type.value not in _QUIET:
+            line = {
+                "time": event.timestamp,
+                "type": event.type.value,
+                "state": event.state.value,
+                "message": event.message,
+                "segment": event.segment_index,
+            }
+            record.events.append(line)
+            if self._store:
+                self._store.add_event(record.id, line)
         if changed:
             self._save(record)
 
@@ -242,19 +253,21 @@ class JobManager:
         assert record.downloader is not None  # noqa: S101
         with self._slots:
             if record.token.is_cancelled:
-                record.state = DownloadState.CANCELLED
-                record.updated_at = time.time()
-                self._save(record)
+                with self._lock:
+                    record.state = DownloadState.CANCELLED
+                    record.updated_at = time.time()
+                    self._save(record)
                 return
             result = record.downloader.run()
-        record.state = result.state
-        record.progress = progress_to_dict(result.progress)
-        record.error = result.error
-        if result.output:
-            record.output_path = result.output.path.name
-            record.output_size = result.output.size_bytes
-        record.updated_at = time.time()
-        self._save(record)
+        with self._lock:
+            record.state = result.state
+            record.progress = progress_to_dict(result.progress)
+            record.error = result.error
+            if result.output:
+                record.output_path = result.output.path.name
+                record.output_size = result.output.size_bytes
+            record.updated_at = time.time()
+            self._save(record)
 
     def pause(self, record: JobRecord) -> None:
         if record.downloader:
@@ -266,10 +279,11 @@ class JobManager:
 
     def cancel(self, record: JobRecord) -> None:
         record.token.cancel()
-        if record.state is DownloadState.QUEUED:
-            record.state = DownloadState.CANCELLED
-            record.updated_at = time.time()
-            self._save(record)
+        with self._lock:
+            if record.state is DownloadState.QUEUED:
+                record.state = DownloadState.CANCELLED
+                record.updated_at = time.time()
+                self._save(record)
 
     def remove(self, record: JobRecord) -> bool:
         """Forget a finished job. Running ones must be cancelled first."""

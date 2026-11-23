@@ -12,56 +12,65 @@ def test_read_defaults(client: TestClient, tmp_path: Path) -> None:
         "download_dir": str(tmp_path),
         "max_active_downloads": 2,
         "allow_local_paths": False,
-        "concurrency": 4,
-        "quality": "best",
-        "overwrite": False,
         "theme": None,
         "limits": {"min_concurrency": 1, "max_concurrency": MAX_CONCURRENCY},
         "version": __version__,
+        "defaults": {},
     }
-
-
-def test_settings_roundtrip(client: TestClient) -> None:
-    assert client.get("/api/v1/settings").json()["concurrency"] == 4
-    updated = client.patch("/api/v1/settings", json={"concurrency": 8, "quality": "720p"}).json()
-    assert (updated["concurrency"], updated["quality"]) == (8, "720p")
-    assert client.get("/api/v1/settings").json() == updated
-
-
-def test_patch_changes_only_given_fields(client: TestClient) -> None:
-    client.patch("/api/v1/settings", json={"concurrency": 8})
-    after = client.patch("/api/v1/settings", json={"overwrite": True}).json()
-    assert (after["concurrency"], after["overwrite"], after["quality"]) == (8, True, "best")
 
 
 def test_empty_and_null_patches_change_nothing(client: TestClient) -> None:
     before = client.get("/api/v1/settings").json()
     assert client.patch("/api/v1/settings", json={}).json() == before
-    nulls = {"concurrency": None, "quality": None, "overwrite": None}
-    assert client.patch("/api/v1/settings", json=nulls).json() == before
+    assert client.patch("/api/v1/settings", json={"theme": None}).json() == before
 
 
-def test_changes_do_not_touch_server_settings(client: TestClient, tmp_path: Path) -> None:
-    after = client.patch("/api/v1/settings", json={"concurrency": 1}).json()
-    assert after["download_dir"] == str(tmp_path)
-    assert after["max_active_downloads"] == 2
-
-
-@pytest.mark.parametrize(
-    "body", [{"concurrency": 0}, {"concurrency": 65}, {"concurrency": 999}, {"quality": "fast"}]
-)
-def test_invalid_patch_is_422_and_changes_nothing(client: TestClient, body: dict[str, Any]) -> None:
+def test_invalid_patch_is_422_and_changes_nothing(client: TestClient) -> None:
     before = client.get("/api/v1/settings").json()
-    assert client.patch("/api/v1/settings", json=body).status_code == 422
+    assert client.patch("/api/v1/settings", json={"theme": "pink"}).status_code == 422
     assert client.get("/api/v1/settings").json() == before
 
 
-def test_limits_follow_the_engine(client: TestClient) -> None:
-    limits = client.get("/api/v1/settings").json()["limits"]
-    too_many = client.patch("/api/v1/settings", json={"concurrency": limits["max_concurrency"] + 1})
-    assert too_many.status_code == 422
-    top = client.patch("/api/v1/settings", json={"concurrency": limits["max_concurrency"]})
-    assert top.json()["concurrency"] == limits["max_concurrency"]
+def test_default_options_are_saved_and_read_back(client: TestClient) -> None:
+    body = {"selection": {"quality": "720p"}, "output": {"overwrite": True}}
+    saved = client.put("/api/v1/settings/defaults", json=body)
+    assert saved.status_code == 200
+    assert saved.json()["defaults"] == body
+    assert client.get("/api/v1/settings").json()["defaults"] == body
+
+
+def test_saving_defaults_replaces_the_old_ones(client: TestClient) -> None:
+    client.put("/api/v1/settings/defaults", json={"selection": {"quality": "720p"}})
+    after = client.put("/api/v1/settings/defaults", json={"engine": {"concurrency": 8}}).json()
+    assert after["defaults"] == {"engine": {"concurrency": 8}}
+
+
+def test_passwords_are_not_saved(client: TestClient) -> None:
+    proxy = {"url": "http://proxy.example:8080", "username": "me", "password": "secret"}
+    saved = client.put("/api/v1/settings/defaults", json={"network": {"proxy": proxy}}).json()
+    assert saved["defaults"] == {"network": {"proxy": {"url": "http://proxy.example:8080"}}}
+    assert "secret" not in client.get("/api/v1/settings").text
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"engine": {"concurrency": 0}},
+        {"engine": {"concurrency": 999}},
+        {"selection": {"quality": "fast"}},
+    ],
+)
+def test_invalid_defaults_are_422_and_nothing_is_saved(
+    client: TestClient, body: dict[str, Any]
+) -> None:
+    assert client.put("/api/v1/settings/defaults", json=body).status_code == 422
+    assert client.get("/api/v1/settings").json()["defaults"] == {}
+
+
+def test_a_bad_combination_is_refused_when_saved(client: TestClient) -> None:
+    body = {"network": {"cookie_file": "cookies.txt"}}
+    assert client.put("/api/v1/settings/defaults", json=body).status_code == 422
+    assert client.get("/api/v1/settings").json()["defaults"] == {}
 
 
 def test_download_dir_needs_local_paths(client: TestClient, tmp_path: Path) -> None:

@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from rayohx_api.schemas.v1 import Limits, SettingsUpdate, SettingsView
+from rayohx_api.schemas.v1 import Defaults, Limits, SettingsUpdate, SettingsView
 
 
 def _view(**overrides: Any) -> SettingsView:
@@ -11,39 +11,28 @@ def _view(**overrides: Any) -> SettingsView:
         "download_dir": "d",
         "max_active_downloads": 2,
         "allow_local_paths": False,
-        "concurrency": 8,
         "limits": {"min_concurrency": 1, "max_concurrency": 64},
         "version": "1",
+        "defaults": {},
     }
     return SettingsView(**{**data, **overrides})
 
 
 def test_view_defaults() -> None:
     view = _view()
-    assert view.quality == "best"
-    assert view.overwrite is False
-
-
-@pytest.mark.parametrize("concurrency", [0, 65])
-def test_view_rejects_concurrency_out_of_range(concurrency: int) -> None:
-    with pytest.raises(ValidationError):
-        _view(concurrency=concurrency)
+    assert view.theme is None
+    assert view.defaults == {}
 
 
 def test_update_is_all_optional() -> None:
     assert SettingsUpdate().model_dump(exclude_unset=True) == {}
-    update = SettingsUpdate(concurrency=64, quality="720p", overwrite=True)
-    assert update.model_dump(exclude_none=True) == {
-        "concurrency": 64,
-        "quality": "720p",
-        "overwrite": True,
-    }
+    update = SettingsUpdate(theme="dark", download_dir="/downloads")
+    assert update.model_dump(exclude_none=True) == {"theme": "dark", "download_dir": "/downloads"}
 
 
-@pytest.mark.parametrize("overrides", [{"concurrency": 0}, {"concurrency": 65}, {"quality": "x"}])
-def test_update_rejects_invalid(overrides: dict[str, Any]) -> None:
+def test_update_rejects_invalid() -> None:
     with pytest.raises(ValidationError):
-        SettingsUpdate(**overrides)
+        SettingsUpdate(theme="pink")  # type: ignore[arg-type]
 
 
 def test_limits_are_required_on_the_view() -> None:
@@ -52,15 +41,18 @@ def test_limits_are_required_on_the_view() -> None:
             download_dir="d",
             max_active_downloads=2,
             allow_local_paths=False,
-            concurrency=4,
             version="1",
+            defaults={},
         )  # type: ignore[call-arg]
     assert Limits(min_concurrency=1, max_concurrency=64).max_concurrency == 64
 
 
-def test_concurrency_range_comes_from_the_engine() -> None:
-    from rayohx.config.download import MAX_CONCURRENCY
+def test_defaults_keep_only_what_was_set() -> None:
+    chosen = Defaults(selection={"quality": "720p"})  # type: ignore[arg-type]
+    assert chosen.model_dump(exclude_unset=True) == {"selection": {"quality": "720p"}}
+    assert Defaults().model_dump(exclude_unset=True) == {}
 
-    assert SettingsUpdate(concurrency=MAX_CONCURRENCY).concurrency == MAX_CONCURRENCY
+
+def test_defaults_reject_invalid_options() -> None:
     with pytest.raises(ValidationError):
-        SettingsUpdate(concurrency=MAX_CONCURRENCY + 1)
+        Defaults(engine={"concurrency": 0})  # type: ignore[arg-type]

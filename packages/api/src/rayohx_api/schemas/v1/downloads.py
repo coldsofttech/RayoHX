@@ -48,6 +48,15 @@ class Job(BaseModel):
     )
     quality: str | None = Field(default=None, description="The quality that was asked for.")
     retryable: bool = Field(default=False, description="Can be started again with retry.")
+    has_log: bool = Field(default=False, description="The engine has reported something to show.")
+
+
+class EngineEvent(BaseModel):
+    time: float
+    type: str
+    state: str
+    message: str | None = None
+    segment: int | None = None
 
 
 class RetryRequest(BaseModel):

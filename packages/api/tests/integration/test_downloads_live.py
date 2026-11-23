@@ -75,7 +75,7 @@ def test_a_client_that_drops_the_stream_does_not_stop_the_download(tmp_path: Pat
 
 def test_pause_stops_new_segments_and_resume_finishes(tmp_path: Path) -> None:
     with HlsServer(count=12, delay=0.3) as site, ApiProcess(tmp_path) as api:
-        api.client.patch("/api/v1/settings", json={"concurrency": 1})
+        api.client.put("/api/v1/settings/defaults", json={"engine": {"concurrency": 1}})
         job = api.start_download(site.playlist_url, filename="clip.ts", format="ts")
         while len(site.segment_requests) < 2:
             time.sleep(0.05)
@@ -94,7 +94,7 @@ def test_pause_stops_new_segments_and_resume_finishes(tmp_path: Path) -> None:
 
 def test_cancel_stops_the_download_and_leaves_no_output(tmp_path: Path) -> None:
     with HlsServer(count=10, delay=0.3) as site, ApiProcess(tmp_path) as api:
-        api.client.patch("/api/v1/settings", json={"concurrency": 1})
+        api.client.put("/api/v1/settings/defaults", json={"engine": {"concurrency": 1}})
         job = api.start_download(site.playlist_url, filename="clip.ts", format="ts")
         while not site.segment_requests:
             time.sleep(0.05)
@@ -141,7 +141,7 @@ def test_a_killed_server_resumes_instead_of_starting_over(tmp_path: Path) -> Non
     count = 20
     with HlsServer(count=count, delay=0.25) as site:
         with ApiProcess(tmp_path) as first:
-            first.client.patch("/api/v1/settings", json={"concurrency": 1})
+            first.client.put("/api/v1/settings/defaults", json={"engine": {"concurrency": 1}})
             job = first.start_download(site.playlist_url, filename="clip.ts", format="ts")
             # The engine saves its place every 2 seconds or 16 segments; die after the first save.
             while len(set(site.segment_requests)) < 12:
@@ -149,7 +149,7 @@ def test_a_killed_server_resumes_instead_of_starting_over(tmp_path: Path) -> Non
             first.stop(kill=True)
         site.requests.clear()
         with ApiProcess(tmp_path) as second:
-            second.client.patch("/api/v1/settings", json={"concurrency": 1})
+            second.client.put("/api/v1/settings/defaults", json={"engine": {"concurrency": 1}})
             again = second.start_download(site.playlist_url, filename="clip.ts", format="ts")
             assert second.wait_for(again["id"], *TERMINAL)["state"] == "completed"
         assert job["id"] != again["id"]
@@ -160,7 +160,7 @@ def test_a_killed_server_resumes_instead_of_starting_over(tmp_path: Path) -> Non
 def test_clean_leaves_running_downloads_alone_and_removes_leftovers(tmp_path: Path) -> None:
     with HlsServer(count=8, delay=0.3) as site:
         with ApiProcess(tmp_path) as api:
-            api.client.patch("/api/v1/settings", json={"concurrency": 1})
+            api.client.put("/api/v1/settings/defaults", json={"engine": {"concurrency": 1}})
             job = api.start_download(site.playlist_url, filename="clip.ts", format="ts")
             while len(set(site.segment_requests)) < 3:
                 time.sleep(0.05)
