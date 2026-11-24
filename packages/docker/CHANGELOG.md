@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Security
+
+- The image now includes the patched zlib library, fixing a high-severity heap buffer overflow (CVE-2026-85091).
+
 ## [0.1.0] - 2026-11-21
 
 ### Added

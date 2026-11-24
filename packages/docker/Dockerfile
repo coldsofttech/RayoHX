@@ -35,6 +35,12 @@ LABEL org.opencontainers.image.title="RayoHX" \
       org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.version="${VERSION}"
 
+# Take the patched zlib (CVE-2026-85091) even when the base image is older than the fix; this is the
+# only package upgraded, and the package lists are removed again to keep the image small.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends --only-upgrade zlib1g \
+    && rm -rf /var/lib/apt/lists/*
+
 # A fixed, unprivileged user, so files written to a mounted folder have a predictable owner.
 RUN groupadd --system --gid 10001 rayohx \
     && useradd --system --uid 10001 --gid rayohx --no-create-home --shell /usr/sbin/nologin rayohx \
