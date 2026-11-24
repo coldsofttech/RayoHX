@@ -42,7 +42,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # The base image's own pip bundles an older msgpack (CVE-2026-114613); a current pip carries the fix.
-RUN python -m pip install --no-cache-dir --disable-pip-version-check --upgrade pip
+# setuptools and wheel are build tools the command never uses, so they are removed (CVE-2025-47273).
+RUN python -m pip install --no-cache-dir --disable-pip-version-check --upgrade pip \
+    && python -m pip uninstall --yes setuptools wheel
 
 # A fixed, unprivileged user, so files written to a mounted folder have a predictable owner.
 RUN groupadd --system --gid 10001 rayohx \
