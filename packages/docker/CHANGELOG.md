@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Security
 
 - The image now includes the patched zlib library, fixing a high-severity heap buffer overflow (CVE-2026-85091).
-- The image now includes a current pip, which carries the fixes for three high-severity flaws in the libraries it bundles: a memory leak (CVE-2026-114613) and an out-of-bounds read (GHSA-6v7p-g79w-8964) in msgpack, and traffic interception through an HTTPS proxy in urllib3 (CVE-2026-97687).
+- The image now includes a current pip, which carries the fixes for three high-severity flaws in the libraries it bundles: a memory leak (CVE-2026-114613) and an out-of-bounds read (GHSA-6v7p-g79w-8964) in msgpack, and traffic interception through an HTTPS proxy (CVE-2026-97687) and unbounded memory use (CVE-2026-97689) in urllib3.
 - The image no longer contains setuptools, which had a high-severity path traversal flaw (CVE-2025-47273).
 
 ## [0.1.0] - 2026-11-21
