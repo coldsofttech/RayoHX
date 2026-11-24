@@ -9,7 +9,9 @@ export default function SectionFields({ section, values, onChange, allowLocalPat
   const found = SECTIONS.find((item) => item.id === section);
   return (
     <Fields
-      fields={(found?.fields ?? []).filter((field) => !field.local || allowLocalPaths)}
+      fields={(found?.fields ?? []).filter(
+        (field) => !field.defaultsOnly && (!field.local || allowLocalPaths),
+      )}
       prefix={section}
       values={values}
       onChange={onChange}

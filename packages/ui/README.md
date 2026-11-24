@@ -19,7 +19,7 @@ rayohxu
 - Download one stream, a list of streams, or a playlist you paste in as text, with every download option available in the window
 - Nothing else to run: the HTTP API is built in and starts with the window
 - Open links and pick files and folders with the usual system dialogs
-- Choose where downloads are saved; your folder and defaults are remembered between runs
+- Choose where downloads are saved; your folder and default options are remembered between runs, and each download has a log you can read
 
 ## Install
 

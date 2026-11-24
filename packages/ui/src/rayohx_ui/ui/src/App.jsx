@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Badge,
   Button,
@@ -13,6 +13,7 @@ import {
 import { WeatherMoon24Regular, WeatherSunny24Regular } from '@fluentui/react-icons';
 import { darkTheme, lightTheme } from './theme.js';
 import { settings } from './api/index.js';
+import { toValues } from './options.js';
 import AddStream from './components/new/AddStream.jsx';
 import Downloads from './components/downloads/Downloads.jsx';
 import Settings from './components/settings/Settings.jsx';
@@ -55,13 +56,13 @@ export default function App() {
   const [dark, setDark] = useState(initialDark);
   const [tab, setTab] = useState('new');
   const [active, setActive] = useState(0);
-  const [quality, setQuality] = useState('best');
+  const [defaults, setDefaults] = useState(/** @type {Record<string, any>} */ ({}));
   const [local, setLocal] = useState(false);
 
   useEffect(() => {
     settings.get().then(
       (s) => {
-        setQuality(s.quality);
+        setDefaults(s.defaults ?? {});
         if (s.theme) setDark(s.theme === 'dark');
         setLocal(s.allow_local_paths);
       },
@@ -81,8 +82,10 @@ export default function App() {
     settings.save({ theme: dark ? 'light' : 'dark' }).catch(() => {});
   }
 
-  /** @param {{ quality: string }} saved */
-  const onSettingsChanged = (saved) => setQuality(saved.quality);
+  const inherited = useMemo(() => toValues(defaults), [defaults]);
+
+  /** @param {{ defaults?: Record<string, any> }} saved */
+  const onSettingsChanged = (saved) => setDefaults(saved.defaults ?? {});
 
   return (
     <FluentProvider theme={dark ? darkTheme : lightTheme}>
@@ -125,7 +128,7 @@ export default function App() {
           <main className={styles.main}>
             {tab === 'new' && (
               <AddStream
-                defaultQuality={quality}
+                inherited={inherited}
                 allowLocalPaths={local}
                 onStarted={() => setTab('downloads')}
               />

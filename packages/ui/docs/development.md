@@ -2,8 +2,6 @@
 
 How to work on `packages/ui`. For how it is built, see [architecture](architecture.md). General set-up for the whole repository is in the [project development notes](../../../docs/development.md).
 
-> The interface is not built yet; the frontend is an example app and some sections below are placeholders.
-
 ## Set up and run
 
 ```bash
@@ -32,7 +30,10 @@ npm test          # Vitest, Testing Library and an accessibility check
 npm run format    # Prettier
 ```
 
-*Placeholder:* component conventions, folder structure and design guidelines.
+- One small component per file, with a test beside it (`Name.jsx`, `Name.test.jsx`). The folders are described in [architecture](architecture.md#frontend).
+- Lists and option definitions live as JSON in `src/data/`, not in components.
+- Name plain JavaScript modules in lower case (`inherited.js`) and components in PascalCase (`Card.jsx`).
+- The project type-checks JavaScript through `jsconfig.json`, so give props and callbacks JSDoc types.
 
 ## Checks
 
@@ -59,4 +60,4 @@ packages/ui/tests/
 
 Tests in `integration/` are marked `integration` automatically and are excluded from the default run.
 
-*Placeholder:* frontend test conventions and end-to-end tests.
+Frontend tests use Vitest and Testing Library with `fetch` mocked, query by role and label, and run an accessibility check on each component. A test that reads what the page sent should go through a small helper that types the mock's calls, as in `Card.test.jsx`.

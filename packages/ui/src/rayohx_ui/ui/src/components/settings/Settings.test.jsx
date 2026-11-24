@@ -9,9 +9,7 @@ const SETTINGS = {
   download_dir: '/d',
   max_active_downloads: 2,
   allow_local_paths: true,
-  concurrency: 4,
-  quality: 'best',
-  overwrite: false,
+  defaults: {},
   limits: { min_concurrency: 1, max_concurrency: 64 },
   version: '0.1.0',
 };
@@ -59,33 +57,18 @@ function renderSettings(props) {
 describe('Settings', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('shows the current settings', async () => {
+  it('shows the folder and the version', async () => {
     mockApi({ 'GET /api/v1/settings': () => json(SETTINGS) });
     renderSettings();
-    expect(await screen.findByText('Parallel segments: 4')).toBeInTheDocument();
-    expect(screen.getByText('/d')).toBeInTheDocument();
+    expect(await screen.findByText('/d')).toBeInTheDocument();
     expect(screen.getByText(/Version 0\.1\.0/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Default quality')).toHaveValue('best');
-    expect(
-      screen.getByRole('switch', { name: 'Replace files that already exist' }),
-    ).not.toBeChecked();
-  });
-
-  it('lets the slider span the range the API reports', async () => {
-    mockApi({
-      'GET /api/v1/settings': () =>
-        json({ ...SETTINGS, limits: { min_concurrency: 2, max_concurrency: 32 } }),
-    });
-    renderSettings();
-    const slider = await screen.findByRole('slider');
-    expect(slider).toHaveAttribute('min', '2');
-    expect(slider).toHaveAttribute('max', '32');
+    expect(screen.getByRole('region', { name: 'Default options' })).toBeInTheDocument();
   });
 
   it('has no accessibility violations', async () => {
     mockApi({ 'GET /api/v1/settings': () => json(SETTINGS) });
     const { container } = renderSettings();
-    await screen.findByText('Parallel segments: 4');
+    await screen.findByText('/d');
     expect(await axe(container)).toHaveNoViolations();
   });
 
@@ -96,48 +79,50 @@ describe('Settings', () => {
     expect(screen.queryByText('Defaults')).not.toBeInTheDocument();
   });
 
-  it('saves a changed setting and tells the parent', async () => {
-    const patch = route({ ...SETTINGS, overwrite: true });
-    mockApi({ 'GET /api/v1/settings': () => json(SETTINGS), 'PATCH /api/v1/settings': patch });
+  it('shows saved defaults without logins and saves edits', async () => {
+    const saved = { network: { retries: 2 }, selection: { quality: '720p' } };
+    const put = route({ ...SETTINGS, defaults: saved });
+    mockApi({
+      'GET /api/v1/settings': () =>
+        json({
+          ...SETTINGS,
+          defaults: { network: { retries: 7 }, selection: { quality: '720p' } },
+        }),
+      'PUT /api/v1/settings/defaults': put,
+    });
     const onChanged = vi.fn();
     const user = userEvent.setup();
     renderSettings({ onChanged });
-    await user.click(
-      await screen.findByRole('switch', { name: 'Replace files that already exist' }),
-    );
-    await waitFor(() => expect(onChanged).toHaveBeenCalledWith({ ...SETTINGS, overwrite: true }));
-    expect(sentBody(patch)).toEqual({ overwrite: true });
-    expect(screen.getByRole('switch', { name: 'Replace files that already exist' })).toBeChecked();
+    await user.click(await screen.findByRole('button', { name: /Network/ }));
+    await user.click(screen.getByRole('tab', { name: 'Connection' }));
+    const retries = screen.getByLabelText('Retries');
+    expect(retries).toHaveValue(7);
+    await user.clear(retries);
+    await user.type(retries, '2');
+    await user.click(screen.getByRole('tab', { name: 'Proxy' }));
+    expect(screen.queryByLabelText('Proxy password')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save defaults' }));
+    expect(await screen.findByText('Default options saved.')).toBeInTheDocument();
+    expect(sentBody(put)).toEqual(saved);
+    expect(onChanged).toHaveBeenCalledWith({ ...SETTINGS, defaults: saved });
   });
 
-  it('saves the default quality', async () => {
-    const patch = route({ ...SETTINGS, quality: '720p' });
-    mockApi({ 'GET /api/v1/settings': () => json(SETTINGS), 'PATCH /api/v1/settings': patch });
-    const user = userEvent.setup();
-    renderSettings();
-    await user.click(await screen.findByLabelText('Default quality'));
-    await user.click(await screen.findByRole('option', { name: '720p' }));
-    await waitFor(() => expect(patch).toHaveBeenCalled());
-    expect(sentBody(patch)).toEqual({ quality: '720p' });
-  });
-
-  it('shows an error when saving fails', async () => {
+  it('shows an error when saving the defaults fails', async () => {
     mockApi({
       'GET /api/v1/settings': () => json(SETTINGS),
-      'PATCH /api/v1/settings': () => json({ detail: 'Not allowed.' }, 403),
+      'PUT /api/v1/settings/defaults': () => json({ detail: 'Bad combination.' }, 422),
     });
     const user = userEvent.setup();
     renderSettings();
-    await user.click(
-      await screen.findByRole('switch', { name: 'Replace files that already exist' }),
-    );
-    expect(await screen.findByRole('alert')).toHaveTextContent('Not allowed.');
+    await user.click(await screen.findByRole('button', { name: 'Save defaults' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Bad combination.');
+    expect(screen.queryByText('Default options saved.')).not.toBeInTheDocument();
   });
 
   it('shows the clean up and about cards under the settings', async () => {
     mockApi({ 'GET /api/v1/settings': () => json(SETTINGS) });
     renderSettings();
-    await screen.findByText('Parallel segments: 4');
+    await screen.findByText('/d');
     expect(screen.getByRole('region', { name: 'Settings' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Clean up' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'About' })).toBeInTheDocument();

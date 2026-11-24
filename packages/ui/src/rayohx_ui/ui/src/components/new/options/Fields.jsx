@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { Tab, TabList } from '@fluentui/react-components';
 import Grid from './Grid.jsx';
 
-/** A section's fields, split under collapsible sub-sections when they name a group. */
+/**
+ * A section's fields, split under collapsible sub-sections when they name a group.
+ * @param {{ fields: any[], prefix: string, values?: Record<string, any>, onChange: (id: string, next: any) => void, choices?: Record<string, any> }} props
+ */
 export default function Fields({ fields, prefix, values, onChange, choices }) {
   const groups = [...new Set(fields.map((field) => field.group).filter(Boolean))];
   const [tab, setTab] = useState(groups[0]);

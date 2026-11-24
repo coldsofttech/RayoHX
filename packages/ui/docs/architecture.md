@@ -2,8 +2,6 @@
 
 How `rayohx_ui` (the `rayohxu` window) is put together. For working on it, see [development](development.md); for the installer, see [packaging](packaging.md).
 
-> The interface is not built yet. The window shows an example page, and the sections marked *Placeholder* describe what is planned.
-
 ## Layering
 
 The desktop window is hosted by [Cornea Shell](https://github.com/coldsofttech/CorneaShell) (`cornea-shell`), on Windows only. `rayohx_ui` only wires things together. The data comes from `rayohx_api` and the work from `rayohx`, and neither of them may import `rayohx_ui`.
@@ -25,8 +23,8 @@ packages/ui/src/rayohx_ui/
 Cornea serves the built files in `ui/dist`, but the page is a normal single-page app that talks to Python while it runs:
 
 - **Data:** `fetch('/api/v1/...')` calls the `rayohx_api` routes and gets JSON.
-- **Native actions:** `POST /api/bridge/<action>` runs a Python function registered in `app.py`. The example is `app_info`. Cornea also provides file and folder pickers, opening links and platform info.
-- **State:** lives in React in the page, and in Python behind the routes.
+- **Native actions:** `POST /api/bridge/<action>` runs a Python function registered in `app.py`: `app_info` and `open_downloads`. Cornea also provides file and folder pickers, opening links and platform info.
+- **State:** the page holds only what is on screen. The download list, its logs and the saved default options (including the download folder and theme) are kept by `rayohx_api` and survive a restart.
 
 Cornea hosts the page and the API on one address, behind a start-up token, a host and origin check and strict response headers. See [security](security.md).
 
@@ -34,11 +32,31 @@ Cornea hosts the page and the API on one address, behind a start-up token, a hos
 
 Plain JavaScript with JSX, built by Vite. Python is called only through `src/api/`. Cornea's policy forbids inline scripts and styles, so styles live in CSS files.
 
-*Placeholder:* screens, navigation, state handling and the component structure are to be described once the interface is designed.
+```text
+src/
+  api/          the only place that calls Python: client (fetch), bridge, downloads, settings, inspect, clean
+  components/
+    new/        add a stream: inspect, Quick or Advanced selection, several addresses, playlist text
+      options/  the option fields, drawn from data/options-sections.json
+    downloads/  the live list, each card, and its engine log
+    settings/   defaults, download folder, theme, clean-up, about
+  data/         option sections, qualities, codecs, formats and other lists as JSON
+  options.js    reads the option sections and looks up values by field id
+  theme.js      Fluent UI themes
+```
+
+Each folder holds small components with a test beside each one. The option list lives in `data/options-sections.json`; adding an option there adds its field to the form.
+
+**Default options.** Settings saves the default options for new downloads. The form shows them as hints through the `Inherited` context in `components/new/options/inherited.js`, and a download sends only the options the user changed, so everything else follows the saved defaults. Fields marked `defaultsOnly` (such as quality) appear only in Settings and, for quality, in Quick selection.
+
+**Download log.** A card shows a log button when the download reports `has_log`. The log is fetched when opened and lists what the engine reported.
 
 ## Window actions
 
-*Placeholder:* the list of registered bridge actions (beyond the `app_info` example), their inputs and results.
+| Action | Result |
+| --- | --- |
+| `app_info` | the app name and version |
+| `open_downloads` | shows the download folder in Explorer; the page names no path |
 
 ## Packaging
 

@@ -5,8 +5,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Control from './Control.jsx';
 
-/** @param {Partial<import('react').ComponentProps<typeof Control>>} props */
-function renderControl(props) {
+/** @param {Partial<import('react').ComponentProps<typeof Control>>} [props] */
+function renderControl(props = {}) {
   const onChange = vi.fn();
   const view = render(
     <StrictMode>
@@ -212,5 +212,38 @@ describe('Control', () => {
   it('has no accessibility violations', async () => {
     const { container } = renderControl({ value: 'x' });
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe('Control with a saved default', () => {
+  it('shows a saved text default as the placeholder', () => {
+    renderControl({ inherited: '7', field: { key: 'retries', label: 'Retries', type: 'number' } });
+    expect(screen.getByLabelText('Retries')).toHaveAttribute('placeholder', '7');
+    expect(screen.getByLabelText('Retries')).toHaveValue(null);
+  });
+
+  it('shows a saved tick box and choice until one is picked', () => {
+    renderControl({
+      inherited: true,
+      field: { key: 'overwrite', label: 'Replace', type: 'bool' },
+    });
+    expect(screen.getByRole('checkbox', { name: 'Replace' })).toBeChecked();
+  });
+
+  it('prefers what was typed over the saved default', () => {
+    renderControl({
+      inherited: true,
+      value: false,
+      field: { key: 'overwrite', label: 'Replace', type: 'bool' },
+    });
+    expect(screen.getByRole('checkbox', { name: 'Replace' })).not.toBeChecked();
+  });
+
+  it('shows a saved choice in a select', () => {
+    renderControl({
+      inherited: 'mp4',
+      field: { key: 'format', label: 'Format', type: 'select', options: ['auto', 'mp4'] },
+    });
+    expect(screen.getByRole('combobox', { name: 'Format' })).toHaveValue('mp4');
   });
 });

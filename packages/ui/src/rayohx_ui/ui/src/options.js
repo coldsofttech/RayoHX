@@ -6,17 +6,26 @@
 // scale: multiplies a number into the API's unit (for example MB to bytes).
 // types: file dialog filters for a local path, which also adds a Browse button.
 // local: refers to a file on this machine; only shown when the API allows it.
+// noDefault: never saved as a default (logins and passwords).
+// defaultsOnly: only in the defaults editor; the new-download form has its own control.
 // offWith: another field that, once ticked, switches this one off and leaves it out of the request.
 // group: a sub-section of its section; fields sharing one are drawn together under a collapsible heading.
 // filter: narrows the streams, so it is ignored once a single stream is picked.
 // tracks: only shown when the stream has such tracks (names the stream choices that show it).
 // presets: the name of a list in `PRESETS`, which becomes the dropdown's values.
+// options: the name of a list in `CHOICES`, which becomes the select's values.
 //
 // The list itself is in data/options-sections.json.
 
 import sections from './data/options-sections.json';
 import proxySchemes from './data/proxy-schemes.json';
+import codecs from './data/codecs.json';
+import outputFormats from './data/output-formats.json';
+import qualities from './data/qualities.json';
+import remuxBackends from './data/remux-backends.json';
+import storageStrategies from './data/storage-strategies.json';
 import USER_AGENTS from './data/user-agents.json';
+import videoRanges from './data/video-ranges.json';
 
 /**
  * @typedef {object} Field
@@ -34,9 +43,14 @@ import USER_AGENTS from './data/user-agents.json';
  * @property {string} [offWith]
  * @property {boolean} [local]
  * @property {boolean} [filter]
+ * @property {boolean} [noDefault]
+ * @property {boolean} [defaultsOnly]
  * @property {boolean} [fallback]
  */
 /** @typedef {{ id: string, title: string, fields: Field[] }} Section */
+
+/** The quality choices for a download, from best to worst. */
+export const QUALITIES = /** @type {string[]} */ (qualities);
 
 /** The address schemes a proxy can use, for the proxy field's dropdown. */
 export const PROXY_SCHEMES = /** @type {string[]} */ (proxySchemes);
@@ -44,15 +58,27 @@ export const PROXY_SCHEMES = /** @type {string[]} */ (proxySchemes);
 /** @type {Map<string, { label: string, value: string }[]>} */
 const PRESETS = new Map([['user-agents', USER_AGENTS]]);
 
-/** @type {{ id: string, title: string, fields: (Omit<Field, 'presets'> & { presets?: string })[] }[]} */
+/** @type {Map<string, string[]>} */
+const CHOICES = new Map([
+  ['qualities', qualities],
+  ['codecs', codecs],
+  ['video-ranges', videoRanges],
+  ['output-formats', outputFormats],
+  ['remux-backends', remuxBackends],
+  ['storage-strategies', storageStrategies],
+]);
+
+/** @type {{ id: string, title: string, fields: (Omit<Field, 'presets' | 'options'> & { presets?: string, options?: string })[] }[]} */
 const listed = /** @type {any} */ (sections);
 
 /** @type {Section[]} */
 export const SECTIONS = listed.map((section) => ({
   ...section,
-  fields: section.fields.map(({ presets, ...field }) =>
-    presets ? { ...field, presets: PRESETS.get(presets) } : field,
-  ),
+  fields: section.fields.map(({ presets, options, ...field }) => ({
+    ...field,
+    ...(presets && { presets: PRESETS.get(presets) }),
+    ...(options && { options: CHOICES.get(options) }),
+  })),
 }));
 
 /**
@@ -121,13 +147,8 @@ export function convert(field, raw) {
       return Object.keys(pairs).length ? pairs : undefined;
     }
     case 'bool':
-      return field.fallback === undefined
-        ? raw
-          ? true
-          : undefined
-        : raw === field.fallback
-          ? undefined
-          : raw;
+      // Sent as it is, so a box can switch off something a saved default switched on.
+      return Boolean(raw);
     default:
       return raw;
   }
@@ -214,4 +235,55 @@ export function streamChoices(playlist) {
     'selection.subtitle_names': plain((playlist.subtitle_tracks ?? []).map((t) => t.name)),
   };
   return Object.fromEntries(Object.entries(choices).filter(([, list]) => list.length > 0));
+}
+
+/**
+ * What the form holds for a saved value.
+ * @param {Field} field
+ * @param {any} raw
+ */
+function shown(field, raw) {
+  switch (field.type) {
+    case 'bool':
+      return Boolean(raw);
+    case 'list':
+      return raw.join(', ');
+    case 'lines':
+      return Object.entries(raw)
+        .map(([name, value]) => `${name}${field.pairs ?? ':'} ${value}`)
+        .join('\n');
+    case 'number':
+      return String(raw / (field.scale ?? 1));
+    default:
+      return String(raw);
+  }
+}
+
+/**
+ * @param {Record<string, any> | undefined} source
+ * @param {string} path
+ */
+function getPath(source, path) {
+  return path
+    .split('.')
+    .reduce((node, part) => (node == null ? undefined : Reflect.get(node, part)), source);
+}
+
+/**
+ * The reverse of buildOptions: turns saved defaults into the form's flat values.
+ * @param {Record<string, any>} [nested]
+ * @returns {Record<string, any>}
+ */
+export function toValues(nested = {}) {
+  /** @type {Record<string, any>} */
+  const values = {};
+  for (const section of SECTIONS) {
+    for (const field of section.fields) {
+      const raw = getPath(lookup(nested, section.id), field.key);
+      if (raw === undefined || raw === null) continue;
+      const id = `${section.id}.${field.key}`;
+      Reflect.set(values, id, shown(field, raw));
+    }
+  }
+  return values;
 }

@@ -37,8 +37,13 @@ export const bridge = {
    * @returns {Promise<string | null>}
    */
   chooseFile: async (fileTypes = []) =>
-    (await invoke('choose_file', { file_types: fileTypes }, 'The file picker is not available here.'))?.[0] ??
-    null,
+    (
+      await invoke(
+        'choose_file',
+        { file_types: fileTypes },
+        'The file picker is not available here.',
+      )
+    )?.[0] ?? null,
 
   /** Ask the window to show the download folder in Explorer. */
   openDownloadsFolder: async () => {

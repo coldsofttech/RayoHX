@@ -42,7 +42,16 @@ function mockApi(routes) {
   );
 }
 
-/** @param {{ onStarted?: () => void, defaultQuality?: string, allowLocalPaths?: boolean }} [props] */
+/**
+ * What the form sent: the JSON body of the first request a mocked handler received.
+ * @param {import('vitest').Mock} handler
+ */
+function sentJson(handler) {
+  const body = /** @type {[RequestInit?][]} */ (handler.mock.calls)[0]?.[0]?.body;
+  return JSON.parse(String(body));
+}
+
+/** @param {Partial<import('react').ComponentProps<typeof AddStream>>} [props] */
 function renderForm(props) {
   return render(
     <StrictMode>
@@ -133,14 +142,14 @@ describe('AddStream', () => {
     });
     const onStarted = vi.fn();
     const user = userEvent.setup();
-    renderForm({ onStarted, defaultQuality: '720p' });
+    renderForm({ onStarted, inherited: { 'selection.quality': '720p' } });
     await inspectStream(user);
     await user.click(await screen.findByRole('button', { name: 'Advanced' }));
     await user.click(screen.getByRole('combobox', { name: 'Audio track names' }));
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'English' }));
     await user.click(screen.getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(onStarted).toHaveBeenCalled());
-    expect(JSON.parse(String(start.mock.calls[0][0].body))).toEqual({
+    expect(sentJson(start)).toEqual({
       url: 'https://x/m.m3u8',
       selection: { audio_names: ['English'] },
     });
@@ -155,16 +164,35 @@ describe('AddStream', () => {
       'POST /api/v1/downloads': start,
     });
     const user = userEvent.setup();
-    renderForm({ defaultQuality: '720p' });
+    renderForm();
     await inspectStream(user);
     await user.click(await screen.findByRole('button', { name: 'Advanced' }));
     await user.click(screen.getByRole('combobox', { name: 'Audio track names' }));
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'English' }));
     await user.click(screen.getByRole('button', { name: 'Quick' }));
+    await user.click(screen.getByLabelText('Quality'));
+    await user.click(await screen.findByRole('option', { name: '720p' }));
     await user.click(screen.getByRole('button', { name: 'Download' }));
     await waitFor(() => expect(start).toHaveBeenCalled());
-    expect(JSON.parse(String(start.mock.calls[0][0].body)).selection).toEqual({
+    expect(sentJson(start).selection).toEqual({
       quality: '720p',
+      video_only: true,
+    });
+  });
+
+  it('shows the saved quality and leaves it to the defaults until one is picked', async () => {
+    const start = vi.fn(() => json({ id: 'abc' }, 202));
+    mockApi({
+      'POST /api/v1/inspect': () => json({ playlist: MASTER }),
+      'POST /api/v1/downloads': start,
+    });
+    const user = userEvent.setup();
+    renderForm({ inherited: { 'selection.quality': '480p' } });
+    await inspectStream(user);
+    expect(await screen.findByLabelText('Quality')).toHaveValue('480p');
+    await user.click(screen.getByRole('button', { name: 'Download' }));
+    await waitFor(() => expect(start).toHaveBeenCalled());
+    expect(sentJson(start).selection).toEqual({
       video_only: true,
     });
   });
@@ -324,7 +352,7 @@ describe('AddStream', () => {
     });
     const onStarted = vi.fn();
     const user = userEvent.setup();
-    renderForm({ onStarted, defaultQuality: '1080p' });
+    renderForm({ onStarted, inherited: { 'selection.quality': '1080p' } });
     await user.click(screen.getByRole('tab', { name: 'Several addresses' }));
     await user.type(screen.getByLabelText('Playlist addresses'), 'https://a/1.m3u8');
     await user.click(screen.getByLabelText('Quality'));

@@ -64,3 +64,15 @@ describe('downloads', () => {
     expect(init.method).toBe('DELETE');
   });
 });
+
+describe('downloads.log', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reads what the engine reported', async () => {
+    const fetch = stubFetch();
+    await downloads.log('abc');
+    const [path, init] = fetch.mock.calls[0];
+    expect(path).toBe('/api/v1/downloads/abc/log');
+    expect(init.method).toBe('GET');
+  });
+});

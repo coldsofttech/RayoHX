@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PROXY_SCHEMES,
+  QUALITIES,
+  SECTIONS,
   buildOptions,
   buildSource,
   convert,
   lookup,
   streamChoices,
+  toValues,
 } from './options';
 
 describe('convert', () => {
@@ -27,11 +30,11 @@ describe('convert', () => {
     expect(convert({ type: 'lines', pairs: ':' }, 'bad')).toBeUndefined();
   });
 
-  it('only reports a choice that differs from its default', () => {
-    expect(convert({ type: 'bool', fallback: true }, true)).toBeUndefined();
+  it('reports a ticked or unticked box as it is, and nothing for an untouched one', () => {
+    expect(convert({ type: 'bool', fallback: true }, true)).toBe(true);
     expect(convert({ type: 'bool', fallback: true }, false)).toBe(false);
-    expect(convert({ type: 'bool' }, true)).toBe(true);
-    expect(convert({ type: 'bool' }, false)).toBeUndefined();
+    expect(convert({ type: 'bool' }, false)).toBe(false);
+    expect(convert({ type: 'bool' }, undefined)).toBeUndefined();
   });
 });
 
@@ -116,6 +119,23 @@ describe('PROXY_SCHEMES', () => {
   });
 });
 
+describe('SECTIONS', () => {
+  it('fills every select from its named list of values', () => {
+    const fields = SECTIONS.flatMap((section) => section.fields);
+    const codec = fields.find((field) => field.key === 'codec');
+    expect(codec?.options).toEqual(['h264', 'hevc', 'vp9', 'av1']);
+    for (const field of fields.filter((f) => f.type === 'select')) {
+      expect(Array.isArray(field.options), field.key).toBe(true);
+    }
+  });
+});
+
+describe('QUALITIES', () => {
+  it('lists the quality choices from best to worst', () => {
+    expect(QUALITIES).toEqual(['best', '1080p', '720p', '480p', '360p', 'worst']);
+  });
+});
+
 describe('lookup', () => {
   it('reads the entry stored under an id', () => {
     expect(lookup({ 'network.retries': '5' }, 'network.retries')).toBe('5');
@@ -131,5 +151,46 @@ describe('lookup', () => {
     expect(lookup({}, 'constructor')).toBeUndefined();
     expect(lookup({}, '__proto__')).toBeUndefined();
     expect(lookup({}, 'toString')).toBeUndefined();
+  });
+});
+
+describe('toValues', () => {
+  it('turns saved defaults into the form values buildOptions reads', () => {
+    const saved = {
+      selection: { quality: '720p', audio_names: ['en', 'fr'] },
+      network: { retries: 7, headers: { A: '1' }, proxy: { url: 'http://p:1' } },
+      output: { overwrite: true },
+    };
+    const values = toValues(saved);
+    expect(values['selection.quality']).toBe('720p');
+    expect(values['selection.audio_names']).toBe('en, fr');
+    expect(values['network.retries']).toBe('7');
+    expect(values['network.proxy.url']).toBe('http://p:1');
+    expect(values['output.overwrite']).toBe(true);
+    expect(buildOptions(values)).toEqual(saved);
+  });
+
+  it('is empty for no defaults', () => {
+    expect(toValues()).toEqual({});
+    expect(toValues({ network: { retries: null } })).toEqual({});
+  });
+
+  it('shows a scaled number in the unit the form uses', () => {
+    const field = SECTIONS.flatMap((s) => s.fields).find((f) => f.scale);
+    const section = SECTIONS.find((s) => s.fields.includes(field));
+    const values = toValues({ [section.id]: { [field.key]: 5 * field.scale } });
+    expect(values[`${section.id}.${field.key}`]).toBe('5');
+  });
+});
+
+describe('defaults-only fields', () => {
+  it('keeps logins and passwords out of the defaults and quality in', () => {
+    const fields = SECTIONS.flatMap((s) => s.fields);
+    expect(fields.filter((f) => f.noDefault).map((f) => f.key)).toEqual([
+      'proxy.username',
+      'proxy.password',
+      'client_key_password',
+    ]);
+    expect(fields.filter((f) => f.defaultsOnly).map((f) => f.key)).toEqual(['quality']);
   });
 });

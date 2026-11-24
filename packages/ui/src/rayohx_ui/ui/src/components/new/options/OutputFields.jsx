@@ -1,5 +1,6 @@
 import { mergeClasses } from '@fluentui/react-components';
 import Control from './Control.jsx';
+import { useInherited } from './inherited.js';
 import { SECTIONS, lookup } from '../../../options.js';
 import { useOptionStyles } from './styles.js';
 
@@ -10,13 +11,14 @@ import { useOptionStyles } from './styles.js';
  */
 export default function OutputFields({ values, onChange, allowLocalPaths = false }) {
   const styles = useOptionStyles();
+  const inherited = useInherited();
   const section = SECTIONS.find((item) => item.id === 'output');
   const fields = (section?.fields ?? []).filter(
     (field) =>
       (!field.local || allowLocalPaths) &&
       (field.key !== 'ffmpeg' || values['output.remux_backend'] === 'ffmpeg'),
   );
-  const render = (field) => {
+  const render = (/** @type {(typeof fields)[number]} */ field) => {
     const id = `output.${field.key}`;
     return (
       <Control
@@ -24,6 +26,7 @@ export default function OutputFields({ values, onChange, allowLocalPaths = false
         field={field}
         value={lookup(values, id)}
         onChange={(next) => onChange(id, next)}
+        inherited={lookup(inherited, id)}
       />
     );
   };

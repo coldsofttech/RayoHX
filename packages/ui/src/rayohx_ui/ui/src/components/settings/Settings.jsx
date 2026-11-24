@@ -1,17 +1,8 @@
 import { useEffect, useState } from 'react';
-import {
-  Button,
-  Dropdown,
-  Field,
-  MessageBar,
-  MessageBarBody,
-  Option,
-  Slider,
-  Switch,
-  Text,
-  Title3,
-} from '@fluentui/react-components';
+import { Button, MessageBar, MessageBarBody, Text, Title3 } from '@fluentui/react-components';
 import { bridge, errorMessage, settings as settingsApi } from '../../api/index.js';
+import { buildOptions, toValues } from '../../options.js';
+import Options from '../new/options/Options.jsx';
 import About from './About.jsx';
 import CleanUp from './CleanUp.jsx';
 import { useCardStyles } from './styles.js';
@@ -24,23 +15,28 @@ import { useCardStyles } from './styles.js';
 /**
  * @typedef {object} AppSettings
  * @property {string} download_dir
- * @property {number} concurrency
- * @property {string} quality
- * @property {boolean} overwrite
+ * @property {boolean} allow_local_paths
+ * @property {Record<string, any>} defaults
  * @property {Limits} limits
  * @property {string} version
  */
-
-const QUALITIES = ['best', '1080p', '720p', '480p', '360p', 'worst'];
 
 /** @param {{ onChanged?: (settings: AppSettings) => void }} props */
 export default function Settings({ onChanged }) {
   const styles = useCardStyles();
   const [settings, setSettings] = useState(/** @type {AppSettings | null} */ (null));
+  const [values, setValues] = useState(/** @type {Record<string, any>} */ ({}));
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    settingsApi.get().then(setSettings, (problem) => setError(errorMessage(problem)));
+    settingsApi.get().then(
+      (loaded) => {
+        setSettings(loaded);
+        setValues(toValues(loaded.defaults));
+      },
+      (problem) => setError(errorMessage(problem)),
+    );
   }, []);
 
   /** @param {Record<string, unknown>} changes */
@@ -50,6 +46,20 @@ export default function Settings({ onChanged }) {
       setSettings(next);
       onChanged?.(next);
     } catch (problem) {
+      setError(errorMessage(problem));
+    }
+  }
+
+  async function saveDefaults() {
+    try {
+      const next = await settingsApi.saveDefaults(buildOptions(values));
+      setSettings(next);
+      setValues(toValues(next.defaults));
+      onChanged?.(next);
+      setSaved(true);
+      setError('');
+    } catch (problem) {
+      setSaved(false);
       setError(errorMessage(problem));
     }
   }
@@ -88,33 +98,35 @@ export default function Settings({ onChanged }) {
           </Text>
           <Button onClick={pickFolder}>Change</Button>
         </div>
-        <Field label={`Parallel segments: ${settings.concurrency}`}>
-          <Slider
-            min={settings.limits.min_concurrency}
-            max={settings.limits.max_concurrency}
-            value={settings.concurrency}
-            onChange={(_, data) => change({ concurrency: data.value })}
-          />
-        </Field>
-        <Field label="Default quality">
-          <Dropdown
-            value={settings.quality}
-            selectedOptions={[settings.quality]}
-            onOptionSelect={(_, data) => data.optionValue && change({ quality: data.optionValue })}
-          >
-            {QUALITIES.map((q) => (
-              <Option key={q} value={q}>
-                {q}
-              </Option>
-            ))}
-          </Dropdown>
-        </Field>
-        <Switch
-          label="Replace files that already exist"
-          checked={settings.overwrite}
-          onChange={(_, data) => change({ overwrite: data.checked })}
-        />
         <Text size={200}>Your choices are remembered. New downloads use this folder.</Text>
+      </section>
+
+      <section className={styles.card} aria-label="Default options">
+        <Title3 as="h2" className={styles.heading}>
+          Default options
+        </Title3>
+        <Text>
+          Options you leave empty in a new download use these. Logins and passwords are never saved.
+        </Text>
+        <Options
+          forDefaults
+          values={values}
+          allowLocalPaths={settings.allow_local_paths}
+          onChange={(id, next) => {
+            setSaved(false);
+            setValues((current) => ({ ...current, [id]: next }));
+          }}
+        />
+        <div className={styles.row}>
+          <Button appearance="primary" onClick={saveDefaults}>
+            Save defaults
+          </Button>
+        </div>
+        {saved && (
+          <MessageBar intent="success" role="status">
+            <MessageBarBody>Default options saved.</MessageBarBody>
+          </MessageBar>
+        )}
       </section>
 
       <CleanUp />

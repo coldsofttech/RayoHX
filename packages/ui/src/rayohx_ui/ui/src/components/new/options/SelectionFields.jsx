@@ -1,4 +1,5 @@
 import Control from './Control.jsx';
+import { useInherited } from './inherited.js';
 import { SECTIONS, lookup } from '../../../options.js';
 import { useOptionStyles } from './styles.js';
 
@@ -9,11 +10,13 @@ import { useOptionStyles } from './styles.js';
  */
 export default function SelectionFields({ values, onChange, choices = {} }) {
   const styles = useOptionStyles();
+  const inherited = useInherited();
   const section = SECTIONS.find((item) => item.id === 'selection');
   const picked = Boolean(values['selection.variant']);
   return (
     <div className={styles.grid}>
       {section?.fields
+        .filter((field) => !field.defaultsOnly)
         .filter((field) => !field.tracks || field.tracks.some((t) => choices[`selection.${t}`]))
         .map((field) => {
           const id = `selection.${field.key}`;
@@ -24,6 +27,7 @@ export default function SelectionFields({ values, onChange, choices = {} }) {
               value={lookup(values, id)}
               onChange={(next) => onChange(id, next)}
               choices={lookup(choices, id)}
+              inherited={lookup(inherited, id)}
               disabled={
                 (picked && Boolean(field.filter)) ||
                 Boolean(field.offWith && values[`selection.${field.offWith}`])

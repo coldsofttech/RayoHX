@@ -19,7 +19,10 @@ Cornea's `SecurityMiddleware` guards every mounted route, so the API adds no tok
 - `--dev` relaxes the policy for Vite; use it only while developing.
 - Python is reached only through `src/api/` and the registered bridge actions.
 
-*Placeholder:* handling of user-supplied values in the interface (secrets in forms, display of addresses and errors) is to be documented once those screens exist.
+- **Secrets in forms.** Fields of type `secret` (such as passwords) are hidden while typed. The saved default options never keep logins or passwords; they are sent only with the download they were typed for.
+- **Output is escaped.** Addresses, errors and the engine log are shown as text by React. The page never builds HTML from them.
+- **Local paths.** Fields that point at files on this computer (cookie files, certificates, the download folder) appear only when the API allows local paths.
+- **Fixed native actions.** `open_downloads` takes no path, so the page can only open the folder downloads are saved in.
 
 ## The installer
 

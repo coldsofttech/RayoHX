@@ -51,6 +51,14 @@ function mockApi(request, handler) {
   );
 }
 
+/**
+ * The body of the first request a mocked handler received.
+ * @param {import('vitest').Mock} handler
+ */
+function sentBody(handler) {
+  return /** @type {[RequestInit?][]} */ (handler.mock.calls)[0]?.[0]?.body;
+}
+
 /** @param {import('./Card.jsx').Job} job */
 function renderCard(job) {
   const act = vi.fn((/** @type {() => Promise<unknown>} */ task) => task());
@@ -155,7 +163,7 @@ describe('Card', () => {
     renderCard({ ...FAILED, retryable: true });
     await user.click(screen.getByRole('button', { name: 'Retry j4' }));
     await waitFor(() => expect(handler).toHaveBeenCalled());
-    expect(handler.mock.calls[0][0].body).toBeUndefined();
+    expect(sentBody(handler)).toBeUndefined();
   });
 
   it('offers to overwrite only when the output file already exists', async () => {
@@ -165,7 +173,7 @@ describe('Card', () => {
     renderCard(EXISTS);
     await user.click(screen.getByRole('button', { name: 'Overwrite' }));
     await waitFor(() => expect(handler).toHaveBeenCalled());
-    expect(JSON.parse(String(handler.mock.calls[0][0].body))).toEqual({ overwrite: true });
+    expect(JSON.parse(String(sentBody(handler)))).toEqual({ overwrite: true });
   });
 
   it('does not offer to overwrite for other failures or when it cannot be retried', () => {
@@ -193,4 +201,28 @@ describe('StateBadge', () => {
       expect(screen.getByText(state)).toBeInTheDocument();
     },
   );
+});
+
+describe('Card log', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('shows and hides what the engine reported', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve([{ time: 1, type: 'download_started', state: 'x' }]),
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<Card job={{ ...DONE, has_log: true }} act={() => {}} />);
+    expect(screen.queryByRole('list', { name: 'Engine log' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show log' }));
+    expect(await screen.findByRole('list', { name: 'Engine log' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Hide log' }));
+    expect(screen.queryByRole('list', { name: 'Engine log' })).not.toBeInTheDocument();
+  });
 });

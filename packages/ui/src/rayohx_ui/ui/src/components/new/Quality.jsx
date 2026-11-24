@@ -1,6 +1,5 @@
 import { Dropdown, Field, Option } from '@fluentui/react-components';
-
-const QUALITIES = ['best', '1080p', '720p', '480p', '360p', 'worst'];
+import { QUALITIES } from '../../options.js';
 
 /** @param {{ value: string, onChange: (quality: string) => void }} props */
 export default function Quality({ value, onChange }) {

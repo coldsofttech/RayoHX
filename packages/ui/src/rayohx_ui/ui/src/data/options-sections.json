@@ -4,6 +4,13 @@
     "title": "Stream selection",
     "fields": [
       {
+        "key": "quality",
+        "label": "Quality",
+        "type": "select",
+        "options": "qualities",
+        "defaultsOnly": true
+      },
+      {
         "key": "variant",
         "label": "Stream",
         "type": "number",
@@ -41,14 +48,14 @@
         "key": "codec",
         "label": "Codec",
         "type": "select",
-        "options": ["h264", "hevc", "vp9", "av1"],
+        "options": "codecs",
         "filter": true
       },
       {
         "key": "video_range",
         "label": "Range",
         "type": "select",
-        "options": ["sdr", "pq", "hlg", "hdr"],
+        "options": "video-ranges",
         "filter": true
       },
       {
@@ -111,8 +118,20 @@
         "group": "Request"
       },
       { "key": "proxy.url", "label": "Proxy", "type": "proxy", "group": "Proxy" },
-      { "key": "proxy.username", "label": "Proxy user", "type": "text", "group": "Proxy" },
-      { "key": "proxy.password", "label": "Proxy password", "type": "secret", "group": "Proxy" },
+      {
+        "key": "proxy.username",
+        "label": "Proxy user",
+        "type": "text",
+        "noDefault": true,
+        "group": "Proxy"
+      },
+      {
+        "key": "proxy.password",
+        "label": "Proxy password",
+        "type": "secret",
+        "noDefault": true,
+        "group": "Proxy"
+      },
       {
         "key": "env_proxy",
         "label": "Use proxy settings from the environment",
@@ -178,6 +197,7 @@
       },
       {
         "key": "client_key_password",
+        "noDefault": true,
         "label": "Client key password",
         "type": "secret",
         "group": "Security"
@@ -204,14 +224,14 @@
         "key": "format",
         "label": "Format",
         "type": "select",
-        "options": ["auto", "mp4", "ts", "segments"]
+        "options": "output-formats"
       },
       { "key": "directory", "label": "Folder (inside the download folder)", "type": "text" },
       {
         "key": "remux_backend",
         "label": "Remux with",
         "type": "select",
-        "options": ["auto", "native", "ffmpeg"]
+        "options": "remux-backends"
       },
       { "key": "ffmpeg", "label": "FFmpeg path", "type": "text", "local": true },
       { "key": "overwrite", "label": "Replace files that already exist", "type": "bool" },
@@ -226,7 +246,7 @@
         "key": "strategy",
         "label": "Strategy",
         "type": "select",
-        "options": ["auto", "direct", "streaming", "buffered", "temporary", "hybrid"],
+        "options": "storage-strategies",
         "group": "Where files go"
       },
       {

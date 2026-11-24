@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Badge,
   Button,
@@ -12,12 +13,14 @@ import {
 import {
   ArrowClockwise24Regular,
   Delete24Regular,
+  DocumentText24Regular,
   Dismiss24Regular,
   Pause24Regular,
   Play24Regular,
 } from '@fluentui/react-icons';
 import { downloads } from '../../api/index.js';
 import { ACTIVE, bytes, duration, speed } from '../../format.js';
+import Log from './Log.jsx';
 
 const useStyles = makeStyles({
   item: {
@@ -73,6 +76,7 @@ export function StateBadge({ state }) {
  * @property {string} state
  * @property {string | null} [quality]
  * @property {boolean} [retryable]
+ * @property {boolean} [has_log]
  * @property {string} [output_path]
  * @property {number | null} [output_size_bytes]
  * @property {string | null} [error]
@@ -89,6 +93,7 @@ export default function Card({ job, act }) {
   const styles = useStyles();
   const p = job.progress;
   const running = ACTIVE.includes(job.state);
+  const [showLog, setShowLog] = useState(false);
 
   return (
     <li className={styles.item}>
@@ -127,6 +132,16 @@ export default function Card({ job, act }) {
               onClick={() => act(() => downloads.retry(job.id))}
             />
           )}
+          {job.has_log && (
+            <Button
+              icon={<DocumentText24Regular />}
+              appearance="subtle"
+              aria-label={showLog ? 'Hide log' : 'Show log'}
+              aria-pressed={showLog}
+              title={showLog ? 'Hide log' : 'Show log'}
+              onClick={() => setShowLog(!showLog)}
+            />
+          )}
           {running ? (
             <Button
               icon={<Dismiss24Regular />}
@@ -161,6 +176,7 @@ export default function Card({ job, act }) {
         )}
         {job.output_size_bytes != null && <span>{bytes(job.output_size_bytes)}</span>}
       </div>
+      {showLog && job.has_log && <Log id={job.id} />}
       {job.error && (
         <MessageBar intent="error">
           <MessageBarBody>{job.error}</MessageBarBody>

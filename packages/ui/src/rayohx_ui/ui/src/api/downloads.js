@@ -21,5 +21,10 @@ export const downloads = {
     }),
   /** @param {string} id */
   remove: (id) => call(`/downloads/${id}`, { method: 'DELETE' }),
+  /**
+   * What the engine reported for a download, most recent last.
+   * @param {string} id
+   */
+  log: (id) => call(`/downloads/${id}/log`),
   clear: () => call('/downloads', { method: 'DELETE' }),
 };

@@ -30,3 +30,16 @@ describe('settings', () => {
     expect(JSON.parse(init.body)).toEqual({ theme: 'light' });
   });
 });
+
+describe('saveDefaults', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('replaces the saved default options', async () => {
+    const fetch = stubFetch();
+    await settings.saveDefaults({ selection: { quality: '720p' } });
+    const [path, init] = fetch.mock.calls[0];
+    expect(path).toBe('/api/v1/settings/defaults');
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body)).toEqual({ selection: { quality: '720p' } });
+  });
+});

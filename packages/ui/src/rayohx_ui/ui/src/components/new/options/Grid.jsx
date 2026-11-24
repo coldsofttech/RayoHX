@@ -1,10 +1,15 @@
 import { lookup } from '../../../options.js';
 import Control from './Control.jsx';
+import { useInherited } from './inherited.js';
 import { useOptionStyles } from './styles.js';
 
-/** Fields in an aligned grid; tick boxes take a full row so they never push the inputs around. */
+/**
+ * Fields in an aligned grid; tick boxes take a full row so they never push the inputs around.
+ * @param {{ fields: any[], prefix: string, values?: Record<string, any>, onChange: (id: string, next: any) => void, choices?: Record<string, any> }} props
+ */
 export default function Grid({ fields, prefix, values, onChange, choices }) {
   const styles = useOptionStyles();
+  const inherited = useInherited();
   return (
     <div className={styles.grid}>
       {fields.map((field) => {
@@ -16,6 +21,7 @@ export default function Grid({ fields, prefix, values, onChange, choices }) {
             value={lookup(values, id)}
             onChange={(next) => onChange(id, next)}
             choices={lookup(choices, id)}
+            inherited={lookup(inherited, id)}
           />
         );
         return field.type === 'bool' || field.type === 'lines' ? (

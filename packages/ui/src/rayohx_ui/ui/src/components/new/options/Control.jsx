@@ -4,9 +4,10 @@ import PresetControl from './PresetControl.jsx';
 import ProxyControl from './ProxyControl.jsx';
 
 /**
- * @param {{ field: any, value: any, onChange: (next: any) => void, choices?: { value: string, label: string }[], disabled?: boolean }} props
+ * @param {{ field: any, value: any, onChange: (next: any) => void, choices?: { value: string, label: string }[], disabled?: boolean, inherited?: any }} props
  */
-export default function Control({ field, value, onChange, choices, disabled }) {
+export default function Control({ field, value, onChange, choices, disabled, inherited }) {
+  const shown = value ?? inherited;
   if (choices && field.type !== 'bool') {
     // A list field takes several choices, kept as the comma separated text the form already holds.
     const many = field.type === 'list';
@@ -49,7 +50,7 @@ export default function Control({ field, value, onChange, choices, disabled }) {
         <Checkbox
           label={field.label}
           disabled={disabled}
-          checked={value ?? field.fallback ?? false}
+          checked={shown ?? field.fallback ?? false}
           onChange={(_, data) => onChange(Boolean(data.checked))}
         />
       );
@@ -58,13 +59,13 @@ export default function Control({ field, value, onChange, choices, disabled }) {
         <Field label={field.label} hint={field.hint}>
           <Dropdown
             disabled={disabled}
-            value={value ?? ''}
-            selectedOptions={value ? [value] : []}
+            value={shown ?? ''}
+            selectedOptions={shown ? [shown] : []}
             placeholder="Default"
             clearable
             onOptionSelect={(_, data) => onChange(data.optionValue)}
           >
-            {field.options.map((choice) => (
+            {field.options.map((/** @type {string} */ choice) => (
               <Option key={choice} value={choice}>
                 {choice}
               </Option>
@@ -78,6 +79,7 @@ export default function Control({ field, value, onChange, choices, disabled }) {
           <Textarea
             disabled={disabled}
             value={value ?? ''}
+            placeholder={inherited}
             onChange={(_, data) => onChange(data.value)}
             rows={3}
           />
@@ -92,6 +94,7 @@ export default function Control({ field, value, onChange, choices, disabled }) {
           <Input
             disabled={disabled}
             value={value ?? ''}
+            placeholder={inherited}
             type={
               field.type === 'secret' ? 'password' : field.type === 'number' ? 'number' : 'text'
             }
