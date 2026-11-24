@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Security
 
 - The image now includes the patched zlib library, fixing a high-severity heap buffer overflow (CVE-2026-85091).
+- The image now includes a current pip, which carries the fix for a high-severity memory leak in its bundled msgpack (CVE-2026-114613).
 
 ## [0.1.0] - 2026-11-21
 

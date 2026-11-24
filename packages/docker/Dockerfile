@@ -41,6 +41,9 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends --only-upgrade zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
+# The base image's own pip bundles an older msgpack (CVE-2026-114613); a current pip carries the fix.
+RUN python -m pip install --no-cache-dir --disable-pip-version-check --upgrade pip
+
 # A fixed, unprivileged user, so files written to a mounted folder have a predictable owner.
 RUN groupadd --system --gid 10001 rayohx \
     && useradd --system --uid 10001 --gid rayohx --no-create-home --shell /usr/sbin/nologin rayohx \
