@@ -26,6 +26,23 @@ docker image ls rayohx --format '{{.Size}}'                                     
 
 CI (`ci-docker.yml`) builds the image and runs the same suite against it. The `-c` option keeps the repository's coverage settings from applying. Behaviour changes to the command itself belong in [packages/cli](../../cli/docs/development.md), not here.
 
+### Smoke test the image
+
+`scripts/smoke/` builds the image from the repository root and tries it. It is a manual check,
+separate from the pytest suite, and it needs Docker and network access. The scripts are
+PowerShell. The image installs the packages as plain Python on Linux, so there is no `.pyd` here.
+
+```powershell
+./scripts/smoke/setup_image.ps1   # builds rayohx:local-test
+./scripts/smoke/test_image.ps1    # shows the user the container runs as, then runs `rayohx info`
+```
+
+`test_image.ps1` prints the container's `id` output, so you can see by eye that it is not uid 0; it
+does not fail on it. It then runs `rayohx info` on the **first line** of `scripts/smoke/test_links.txt`
+and fails if the command exits with an error. To try another stream, put its URL on the first line
+of that file; any further lines are ignored. `test_links.txt` is kept in the repository, so use a
+stream you are allowed to share.
+
 ## Rules to keep
 
 - **One downloader.** Do not add a second implementation to the image. If the image needs something the command does not do, change the command.
