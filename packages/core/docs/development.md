@@ -41,6 +41,25 @@ packages/core/tests/
 - **Use the helpers** instead of mocking the network: they run real HTTP servers on the local machine, so retries, redirects, timeouts and damaged responses are exercised for real.
 - **Damaged media.** `unit/test_hardening.py` feeds corrupted input to the parsers and the muxer. For a longer run, set the number of seeds: `RAYOHX_FUZZ_SEEDS=1500 uv run pytest packages/core/tests/unit/test_hardening.py --no-cov`.
 
+### Smoke test the compiled build
+
+`scripts/smoke/` builds the compiled wheel (a single `.pyd` plus type stubs) and tries it in a
+fresh virtual environment. It is a manual check, separate from the pytest suites, and it needs
+network access and a C compiler. The scripts are PowerShell, so the check runs on Windows, and
+`setup_venv.ps1` expects Python 3.11 (`py -3.11`).
+
+```powershell
+./scripts/smoke/setup_venv.ps1   # builds the wheel and installs it into scripts/smoke/.venv
+./scripts/smoke/test_core.ps1    # runs test_core.py against the installed build
+```
+
+`test_core.py` imports `rayohx`, warns if the loaded module is not a compiled build, then calls
+`rayohx.inspect()` on the **first line** of `scripts/smoke/test_links.txt` and prints the playlist.
+To try another stream, put its URL on the first line of that file; any further lines are ignored.
+`test_links.txt` is kept in the repository, so use a stream you are allowed to share.
+
+The virtual environment, `wheels/`, `data/` and logs under `scripts/smoke/` are git-ignored.
+
 ## Media test files
 
 The muxer tests use small real MPEG-TS and fragmented MP4 files in `tests/fixtures/media` (about 860 KB), including two complete HLS sets with separate audio. They were made by FFmpeg so that RayoHX's output can be compared with something it did not write. To regenerate them, run `uv run python packages/core/scripts/make_media_fixtures.py` (needs `ffmpeg` with libx264 and libx265).
@@ -80,7 +99,10 @@ Tests and integration tests run on Linux (Python 3.11 to 3.15), and on Windows, 
 ## Building and releasing
 
 ```bash
-uv build --package rayohx          # the sdist and wheel
+uv build --package rayohx          # a plain-Python wheel and sdist, for a quick check
+PYD_BUILD=1 uv build --wheel --package rayohx   # the compiled wheel a release ships
 ```
+
+A release ships one Nuitka binary with `.pyi` stubs and no `.py` sources, so a platform without a wheel cannot install `rayohx`. Compiling is obfuscation, not encryption. Without `PYD_BUILD`, `uv sync`, tests and coverage run against the plain sources.
 
 The version is `__version__` in `src/rayohx/__init__.py`. Bump it and update `packages/core/CHANGELOG.md` in the same pull request; the release workflow (`release-core.yml`) fails if the tag and the version differ. The steps to publish are in [releasing](../../../docs/releasing.md).

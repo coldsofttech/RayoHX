@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- Releases ship as compiled wheels (a single `.pyd` on Windows, `.so` elsewhere) with type stubs and no source files, one per platform and Python version.
 - Core tests and the benchmark script now use the test fixtures and helpers shared across the project.
 
 ## [0.1.0] - 2026-11-21

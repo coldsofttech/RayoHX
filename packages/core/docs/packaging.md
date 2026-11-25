@@ -6,22 +6,22 @@ How the `rayohx` library is packaged and released to PyPI. How releases are rout
 
 | Where | What you get | Built with |
 | --- | --- | --- |
-| Any OS with Python 3.11 or newer | the `rayohx` package on PyPI (wheel and sdist) | `uv build --package rayohx` |
+| Windows, Linux or macOS with Python 3.11 or newer | the `rayohx` compiled wheels on PyPI (no sdist) | `PYD_BUILD=1 uv build --wheel --package rayohx` |
 
 The core has no installer. The command line and the window ship their own, and carry their own copy of the library.
 
 ## The PyPI package: `rayohx`
 
-The distribution is named `rayohx` and holds only the library (`rayohx`, with its `py.typed` marker). It has no command and no extras. Its dependencies are `httpx` and `cryptography`, and it supports Python 3.11 to 3.15.
+The distribution is named `rayohx` and holds only the library, compiled into one binary (`rayohx.<tag>.pyd` on Windows, `rayohx.<tag>.so` elsewhere) with a `rayohx/` folder of `.pyi` type stubs and a `py.typed` marker beside it. The stub folder has no `__init__.py`, so Python loads the binary. It has no command and no extras. Its dependencies are `httpx` and `cryptography`, and it supports Python 3.11 to 3.15.
 
 ```bash
-uv build --package rayohx            # dist/rayohx-<version>.tar.gz and .whl
+PYD_BUILD=1 uv build --wheel --package rayohx   # dist/rayohx-<version>-<tag>.whl
 uvx twine check --strict dist/*      # the metadata PyPI will show
 ```
 
-The build backend is Hatchling. The wheel is built from `src/rayohx`, the name and version come from `packages/core/pyproject.toml`, and the version is read from `__version__` in `packages/core/src/rayohx/__init__.py`. The description on PyPI is `packages/core/README.md`.
+The build backend is setuptools. With `PYD_BUILD=1`, `packages/core/setup.py` compiles `src/rayohx` with Nuitka (it needs a C compiler) and generates the stubs with mypy's `stubgen`; without it the package builds as plain Python. The name comes from `packages/core/pyproject.toml`, and the version is read from `__version__` in `packages/core/src/rayohx/__init__.py`. The description on PyPI is `packages/core/README.md`. Nuitka supports Python 3.15 only experimentally (as of 4.3.5).
 
-The `core-build` job in `ci-core.yml` runs these steps on every change, and also checks that the wheel holds the core library and not the command line, the API or the window, so a release never meets a metadata problem for the first time.
+The `core-build` job in `ci-core.yml` runs these steps on every change, and also checks that the wheel holds the binary and stubs but no `.py` sources, and not the command line, the API or the window, so a release never meets a metadata problem for the first time.
 
 Users install it with `pip install rayohx` or `uv add rayohx`.
 
@@ -32,7 +32,7 @@ The core is released by the tag `v<version>`, for example `v0.1.0`. Other packag
 1. Bump `__version__` in `packages/core/src/rayohx/__init__.py` and move the `[Unreleased]` entries in `packages/core/CHANGELOG.md` under the new version, in a pull request.
 2. After it is merged, publish a GitHub release tagged `v<version>`.
 3. `release.yml` sees the `v` prefix and calls `release-core.yml`, which has two jobs:
-   - **`core-build`** checks the tag equals the package version (it fails if they differ), builds the wheel and sdist, runs `twine check --strict`, and uploads the files.
+   - **`core-check`** checks the tag equals the package version (it fails if they differ). **`core-build`** then builds one wheel per OS, architecture and Python version with cibuildwheel, runs the unit tests against each, and uploads the files.
    - **`core-publish`** runs in the `core` environment, so it waits for a reviewer's approval. It publishes the files to PyPI, then attaches them and a `SHA256SUMS.txt` to the GitHub release.
 4. Check the new version on PyPI and install it in a clean environment: `uv run --with rayohx==<version> python -c "import rayohx; print(rayohx.__version__)"`.
 

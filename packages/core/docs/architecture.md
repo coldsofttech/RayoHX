@@ -103,7 +103,7 @@ The tests live in `packages/core/tests`: `unit/` runs by default, and `integrati
 
 ## Packaging
 
-The package is built with Hatchling. The version lives in one place, `__version__` in `rayohx/__init__.py`, and Hatchling reads it at build time. The release workflow compares it with the release tag. The wheel and sdist of this package go to PyPI; the command line ships in its own package. For the repository-wide checks and the release flow, see the [root architecture](../../../docs/architecture.md).
+The package is built with setuptools, and releases compile it with Nuitka into one binary per platform. The version lives in one place, `__version__` in `rayohx/__init__.py`, and setuptools reads it at build time. The release workflow compares it with the release tag. The compiled wheels of this package go to PyPI (no sdist); the command line ships in its own package. For the repository-wide checks and the release flow, see the [root architecture](../../../docs/architecture.md).
 
 ## Errors
 

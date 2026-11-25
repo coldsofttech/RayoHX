@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=77", "nuitka>=4.3", "mypy>=1.13"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "rayohx"
@@ -29,11 +29,21 @@ Homepage = "https://github.com/coldsofttech/RayoHX"
 Issues = "https://github.com/coldsofttech/RayoHX/issues"
 Changelog = "https://github.com/coldsofttech/RayoHX/blob/main/CHANGELOG.md"
 
-[tool.hatch.version]
-path = "src/rayohx/__init__.py"
+[tool.setuptools.dynamic]
+version = { attr = "rayohx.__version__" }
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/rayohx"]
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+# Compiled (.pyd/.so) wheels for a release. PYD_BUILD=1 makes setup.py compile the package with Nuitka.
+[tool.cibuildwheel]
+build = "cp311-* cp312-* cp313-* cp314-* cp315-*"
+environment = { PYD_BUILD = "1" }
+test-requires = "pytest"
+test-command = "pytest -o addopts= {project}/tests/unit"
 
 [dependency-groups]
 dev = [
