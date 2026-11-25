@@ -50,13 +50,15 @@ On Windows `--build-frontend` runs `npm ci` and `npm run build` (Node as in `.nv
 | You need | For |
 | --- | --- |
 | `uv sync --group installer` | PyInstaller and the build backend |
+| `uv` on `PATH` | `build.py` runs `uv build --wheel` for each package before PyInstaller |
+| A C compiler (MSVC, or `gcc` on Linux) | compiling the packages with Nuitka |
 | Node (see the window's `.nvmrc`) | the window's frontend (Windows) |
 | NSIS (version in `installer/tools.toml`) | the Windows setup; `makensis` on `PATH` or in `Program Files (x86)\NSIS` |
 | nfpm (version in `installer/tools.toml`) | the Linux packages; set `NFPM` to run it another way, for example `NFPM="uvx nfpm"` |
 
 ### PyInstaller
 
-`rayohx.spec` (which calls `Cli().program()` and `Ui().program()`) makes one one-folder build (no one-file build): `rayohx.exe`, `rayohxu.exe` (Windows only, no console) and one `lib/` folder. Each program carries its own Python modules; `lib/` holds the runtime and the native libraries and data. The entry scripts are generated from the `[project.scripts]` and `[project.gui-scripts]` targets, and the executables carry the icon and file properties taken from the projects. The window's built frontend is frozen into `lib/`.
+`rayohx.spec` (which calls `Cli().program()` and `Ui().program()`) makes one one-folder build (no one-file build): `rayohx.exe`, `rayohxu.exe` (Windows only, no console) and one `lib/` folder. Each program carries its own Python modules; `lib/` holds the runtime and the native libraries and data. The entry scripts are generated from the `[project.scripts]` and `[project.gui-scripts]` targets, and the executables carry the icon and file properties taken from the projects. The programs are frozen from compiled packages, not from source: before PyInstaller runs, `build.py` builds `rayohx`, `rayohx-cli` (and on Windows `rayohx-api` and `rayohx-ui`) as wheels with `PYD_BUILD=1`, so each is one `.pyd` (Windows) or `.so` (Linux) with no `.py` source, and unpacks them into `build/installer-work/compiled`, which PyInstaller searches first. PyInstaller cannot read the imports inside a compiled binary, so the libraries the packages need are taken from their `pyproject.toml` files and collected whole. The window's built frontend comes from its compiled wheel (`assets/`) and is frozen beside its binary in `lib/`. The build needs a C compiler (MSVC on Windows, `gcc` on Linux) and takes longer than a build from source; the compiled packages are not installed into your environment.
 
 The spec also writes `rayohx-components.json`, the files of `lib/` that only one program needs. The build script uses it to split the folder into `core` (needed by both), `cli` and `ui` before the setup is built. On Linux only the command line is built.
 
@@ -74,7 +76,7 @@ The `*.dist-info` folders of the libraries are left out of `lib/`, because nothi
   - `name` (also the folder the setup stages it in), `type` (`cli` or `ui`: a `Product` class in `build.py`) and `path` of its package.
   - `title` and `version`. Each is a literal, `"pyproject"` (the package's `[project]` version) or a `{ file, pattern }` table: a file of the package and a regex whose first group is the value. The version stays defined in the code (`__version__`, `version` in `pyproject.toml`) and `build.toml` only says where.
   - `excludes` (left out of its build), `collect` (packages collected whole), `compile-pyc` (folders under `lib/` whose `.py` files are shipped as compiled `.pyc`, empty by default) and `smoke` (the integration test, run from its `path`, that `--smoke` uses).
-  - Type-specific keys: `core-package` for `cli`; `api-package`, `frontend`, `frontend-build` and `frontend-dist` for `ui`. `--build-frontend` runs the `frontend-build` commands in the `frontend` folder; the `frontend-dist` folder (from there) must not be empty and is frozen at the same path under `src/`.
+  - Type-specific keys: `core-package` and `core-path` (the library's folder, built as a compiled wheel) for `cli`; `api-package`, `api-path` (the API's folder, built as a compiled wheel), `frontend`, `frontend-build` and `frontend-dist` for `ui`. `--build-frontend` runs the `frontend-build` commands in the `frontend` folder; the `frontend-dist` folder (from there) must not be empty. The window's compiled wheel carries it as `assets/`, and it is frozen at `<package>/assets` beside the binary.
 
 `compile-pyc` replaces each `.py` of the listed folders (for example `rich`) with a `.pyc` compiled by the build's Python, which is the frozen one, so the source is not shipped and the files are smaller. The `.pyc` sits where the source was and is imported without it. Only list a library that does not read its own source at run time (`inspect.getsource`, templates written as `.py`), and test the program after changing the list. Tracebacks show the file's place under `lib/` and no source lines for these files.
 

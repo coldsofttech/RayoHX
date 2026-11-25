@@ -10,7 +10,9 @@ their shared lib/ folder), a components.json that says which versions are inside
 command line's portable zip. On Linux it writes the command
 line's deb and rpm. Everything comes from the products' own metadata (the packages'
 pyproject.toml files and installer/build.toml), so renaming a product needs no edit here.
-Icon and setup art are named in installer/build.toml. Tool versions are pinned in
+The programs are frozen from the compiled packages (a .pyd on Windows, a .so on Linux), built
+here as wheels with PYD_BUILD=1, so no RayoHX source ships. Icon and setup art are named in
+installer/build.toml. Tool versions are pinned in
 installer/tools.toml. The installers are written to dist/installer/. See docs/packaging.md.
 
 Signing is off by default. Set SIGN_COMMAND to a command that signs one file, with {file} where
@@ -31,6 +33,7 @@ import stat
 import subprocess
 import sys
 import tomllib
+import zipfile
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -41,10 +44,12 @@ ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "installer"
 BUILD = ROOT / "build" / "installer"
 WORK = ROOT / "build" / "installer-work"
+COMPILED = WORK / "compiled"  # the compiled wheels, unpacked: PyInstaller searches it first
 OUT = ROOT / "dist" / "installer"
 WINDOWS = sys.platform == "win32"
 LINUX = sys.platform.startswith("linux")
 T = TypeVar("T")
+STDLIB = sys.stdlib_module_names
 
 
 # ---- the programs: names and versions from each pyproject.toml, and what PyInstaller freezes ---
@@ -141,6 +146,29 @@ class Product:
     def dependencies(self) -> Collected:
         """What the program needs frozen in."""
         raise NotImplementedError
+
+    def compile_paths(self) -> list[Path]:
+        """The package folders this program needs as compiled wheels, the library first."""
+        raise NotImplementedError
+
+    def compiled_dependencies(self, collected: Collected) -> None:
+        """Freeze what the compiled packages import.
+
+        PyInstaller cannot read the imports inside a compiled binary, so the standard library
+        modules the sources import are named, and the libraries they need (from their
+        pyproject.toml files, and what those need in turn) are collected whole.
+        """
+        from PyInstaller.utils.hooks import collect_submodules
+
+        directories = self.compile_paths()
+        collected.hiddenimports.extend(
+            module
+            for module in stdlib_modules(directories)
+            if module.split(".")[0] not in self.excludes
+        )
+        for module in third_party_modules(directories):
+            if module not in self.excludes:
+                collected.hiddenimports.extend(collect_submodules(module))
 
     def compile_sources(self, datas: list[Any]) -> list[Any]:
         """Ship the ``.py`` data files of the ``compile-pyc`` folders as compiled ``.pyc`` files.
@@ -256,7 +284,7 @@ class Product:
         collected = self.dependencies()
         analysis = Analysis(
             [self.entry_script()],
-            pathex=[str(self.directory / "src")],
+            pathex=[str(COMPILED)],
             binaries=collected.binaries,
             datas=collected.datas,
             hiddenimports=collected.hiddenimports,
@@ -303,6 +331,7 @@ class Cli(Product):
     def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
         self.core_package: str = self.require("core-package")
+        self.core_dir = ROOT / self.require("core-path")
 
     def values(self) -> dict[str, str]:
         return {
@@ -315,13 +344,14 @@ class Cli(Product):
             **names(self),
         }
 
-    def dependencies(self) -> Collected:
-        from PyInstaller.utils.hooks import collect_submodules
+    def compile_paths(self) -> list[Path]:
+        return [self.core_dir, self.directory]
 
+    def dependencies(self) -> Collected:
         collected = Collected()
         collected.metadata(self.project["name"])
-        collected.hiddenimports.extend(collect_submodules(self.core_package))
-        collected.hiddenimports.extend(collect_submodules(self.package))
+        collected.hiddenimports.extend([self.core_package, self.package])
+        self.compiled_dependencies(collected)
         for package in self.collect:
             collected.package(package)
         return collected
@@ -338,17 +368,21 @@ class Ui(Product):
     def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
         self.api_package: str = self.require("api-package")
+        self.api_dir = ROOT / self.require("api-path")
         if self.frontend is None:
             raise SystemExit(f"Product {self.name} in build.toml needs frontend.")
         self.dist = self.frontend / self.frontend_dist
 
     @staticmethod
-    def core_package() -> str:
-        """The library the window hosts: the command line product says which it is."""
+    def cli_product() -> Cli:
+        """The command line product, which says which library the window hosts."""
         for product in load_products(all_platforms=True):
             if isinstance(product, Cli):
-                return product.core_package
+                return product
         raise SystemExit("The window needs a product of type cli in installer/build.toml.")
+
+    def compile_paths(self) -> list[Path]:
+        return [self.cli_product().core_dir, self.api_dir, self.directory]
 
     def values(self) -> dict[str, str]:
         if self.frontend is None:
@@ -370,8 +404,6 @@ class Ui(Product):
         protocol and middleware modules by name; pywebview reaches WebView2 through pythonnet and
         clr_loader.
         """
-        from PyInstaller.utils.hooks import collect_submodules
-
         if not WINDOWS or importlib.util.find_spec("cornea") is None:
             raise SystemExit(
                 "The UI build needs Windows and cornea-shell (uv sync --group installer)."
@@ -385,13 +417,13 @@ class Ui(Product):
         )  # fmt: skip
         for package in self.collect:
             collected.package(package)
-        collected.hiddenimports.extend(collect_submodules(self.core_package()))
-        collected.hiddenimports.extend(collect_submodules(self.api_package))
-        collected.hiddenimports.extend(collect_submodules(self.package))
-        # The window finds the bundle through its package (Static(package=<ui package>, ...)), so it
-        # is frozen at the same path under src/.
-        src = self.directory / "src"
-        collected.datas.append((str(self.dist), self.dist.relative_to(src).as_posix()))
+        collected.hiddenimports.extend(
+            [self.cli_product().core_package, self.api_package, self.package]
+        )
+        self.compiled_dependencies(collected)
+        # The compiled window finds the bundle in assets/ beside its binary (the wheel puts the
+        # built frontend there), so it is frozen at that path.
+        collected.datas.append((str(COMPILED / self.package / "assets"), f"{self.package}/assets"))
         return collected
 
 
@@ -413,6 +445,105 @@ def load_products(*, all_platforms: bool = False) -> list[Product]:
             continue
         found.append(cls(config))
     return found
+
+
+def project_of(directory: Path) -> dict[str, Any]:
+    """The ``[project]`` table of the package in ``directory``."""
+    data = tomllib.loads((directory / "pyproject.toml").read_text(encoding="utf-8"))
+    project: dict[str, Any] = data["project"]
+    return project
+
+
+def top_levels(distribution: Any) -> set[str]:
+    """The names a distribution is imported as: its top_level.txt, else its top-level files."""
+    listed = distribution.read_text("top_level.txt")
+    if listed:
+        return {line.strip().replace("/", ".") for line in listed.splitlines() if line.strip()}
+    found: set[str] = set()
+    for file in distribution.files or []:
+        part = file.parts[0]
+        if part.startswith(("..", "__")) or part.endswith((".dist-info", ".data", ".pth")):
+            continue
+        name = part.split(".")[0] if part.endswith((".py", ".pyd", ".so")) else part
+        if name.isidentifier():
+            found.add(name)
+    return found
+
+
+def stdlib_modules(directories: list[Path]) -> list[str]:
+    """The standard library modules the sources in ``directories`` import, anywhere in the code.
+
+    A compiled binary hides its imports from PyInstaller, so a module only a lazy import inside a
+    function uses (``sqlite3`` in the API, say) would otherwise be left out of the build. Names that
+    are not modules on this OS (``Callable`` of ``collections.abc``, ``msvcrt`` on Linux) are left
+    out.
+    """
+    import ast
+
+    found: set[str] = set()
+    for directory in directories:
+        for source in sorted((directory / "src").rglob("*.py")):
+            tree = ast.parse(source.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    names = [alias.name for alias in node.names]
+                elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                    # ``from a import b`` may name a submodule, so ``a.b`` is listed too.
+                    names = [node.module, *(f"{node.module}.{a.name}" for a in node.names)]
+                else:
+                    continue
+                found.update(name for name in names if name.split(".")[0] in STDLIB)
+    return sorted(name for name in found if is_module(name))
+
+
+def is_module(name: str) -> bool:
+    """Whether ``name`` is a module here, not a class or function imported from one."""
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def third_party_modules(directories: list[Path]) -> list[str]:
+    """The libraries the packages in ``directories`` need to run, as the names they import as.
+
+    Read from each package's ``dependencies`` and then, in the installed metadata, from what those
+    need in turn (extras and platform markers followed), without the packages themselves.
+    """
+    from importlib import metadata
+
+    from packaging.requirements import Requirement
+    from packaging.utils import canonicalize_name
+
+    own = {canonicalize_name(project_of(directory)["name"]) for directory in directories}
+    pending = [
+        Requirement(text)
+        for directory in directories
+        for text in project_of(directory).get("dependencies", [])
+    ]
+    seen: set[tuple[str, frozenset[str]]] = set()
+    modules: set[str] = set()
+    while pending:
+        requirement = pending.pop()
+        name = canonicalize_name(requirement.name)
+        extras = frozenset(requirement.extras)
+        if name in own or (name, extras) in seen:
+            continue
+        if requirement.marker and not requirement.marker.evaluate({"extra": ""}):
+            continue
+        seen.add((name, extras))
+        try:
+            distribution = metadata.distribution(name)
+        except metadata.PackageNotFoundError:
+            continue
+        modules |= top_levels(distribution)
+        for text in distribution.requires or []:
+            needed = Requirement(text)
+            if needed.marker is None or any(
+                needed.marker.evaluate({"extra": extra}) for extra in ("", *extras)
+            ):
+                pending.append(needed)
+    return sorted(modules)
 
 
 def github_env() -> None:
@@ -495,6 +626,32 @@ def author(meta: Meta) -> dict[str, str]:
 
 
 # ---- PyInstaller -------------------------------------------------------------------------------
+def compile_packages(meta: Meta) -> Path:
+    """Build the packages the programs need as compiled wheels and unpack them into COMPILED.
+
+    Each is built with ``PYD_BUILD=1`` for the Python that runs this build, which is the one that
+    is frozen (a Nuitka binary and its type stubs, with the built frontend inside the window's), so
+    what PyInstaller freezes has no RayoHX source in it.
+    """
+    uv = shutil.which("uv")
+    if uv is None:
+        raise SystemExit("uv must be on PATH to build the compiled packages.")
+    wheels = WORK / "wheels"
+    for folder in (wheels, COMPILED):
+        shutil.rmtree(folder, ignore_errors=True)
+    directories = list(dict.fromkeys(d for item in meta.products for d in item.compile_paths()))
+    for directory in directories:
+        run(
+            [uv, "build", "--wheel", "--package", project_of(directory)["name"],
+             "--out-dir", str(wheels), "--python", sys.executable],
+            env={**os.environ, "PYD_BUILD": "1"},
+        )  # fmt: skip
+    for wheel in sorted(wheels.glob("*.whl")):
+        with zipfile.ZipFile(wheel) as archive:
+            archive.extractall(COMPILED)
+    return COMPILED
+
+
 def freeze(meta: Meta) -> Path:
     """Run PyInstaller on the one spec and return its output folder."""
     run(
@@ -850,6 +1007,7 @@ def main() -> None:
     meta = load_meta()
     if args.build_frontend:
         build_frontend(meta)
+    compile_packages(meta)
     folder = freeze(meta)
     if WINDOWS:
         brand_icon()  # fail early, before the setup is built

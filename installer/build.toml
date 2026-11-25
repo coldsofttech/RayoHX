@@ -59,17 +59,20 @@ title = "RayoHX CLI"                       # file properties of the executable
 # The version is kept in the code; a literal or "pyproject" (the [project] version) also work.
 version = { file = "src/rayohx_cli/__init__.py", pattern = '^__version__\s*=\s*"([^"]+)"' }
 core-package = "rayohx"                    # the library the command line is built on
+core-path = "packages/core"                # its folder, built as a compiled wheel for the programs
 smoke = "tests/integration/test_frozen_cli.py"  # run from path by --smoke: starts the built program
 # The command line imports neither the API nor the window, nor the libraries they need. typer
 # does need pydantic (and its own dependencies), so those are collected below.
 excludes = [
     "tkinter", "pytest", "rayohx_api", "rayohx_ui", "cornea", "webview", "fastapi", "uvicorn",
+    "mypy", "setuptools", "pkg_resources", "hypothesis", "requests", "charset_normalizer", "werkzeug",
+    "markupsafe",
 ]
 # rich lazily imports a Unicode-version-specific submodule that static analysis cannot see.
 collect = ["rich", "typer", "pydantic", "pydantic_core", "typing_inspection", "annotated_types"]
 # Folders under lib/ whose .py files are shipped as compiled .pyc instead (smaller, and the
 # source is not shipped). Only for libraries that do not read their own source at run time.
-compile-pyc = ["rich", "typer", "pydantic", "pydantic_core"]
+compile-pyc = ["rich", "typer", "pydantic", "pydantic_core", "typing_inspection", "annotated_types"]
 
 [[products]]
 name = "ui"
@@ -78,13 +81,18 @@ path = "packages/ui"
 title = { file = "src/rayohx_ui/app.py", pattern = '^TITLE\s*=\s*"([^"]+)"' }
 version = "pyproject"                      # the [project] version of the package
 api-package = "rayohx_api"                 # the API the window hosts
+api-path = "packages/api"                  # its folder, built as a compiled wheel for the window
 # The frontend: built by --build-frontend, frozen into the build at the same path under src/.
 frontend = "src/rayohx_ui/ui"              # from the product path
 frontend-build = ["npm ci", "npm run build"]  # run in the frontend folder, in order
 frontend-dist = "dist"                     # build output, from the frontend folder
 smoke = "tests/integration/test_frozen_ui.py"
 # setuptools is only a PyInstaller dependency; nothing in the window imports it at run time.
-excludes = ["tkinter", "pytest", "setuptools", "pkg_resources"]
+# mypy, hypothesis and the rest come in with libraries' optional plugins and dev tools; none runs.
+excludes = [
+    "tkinter", "pytest", "setuptools", "pkg_resources", "mypy", "hypothesis", "requests",
+    "charset_normalizer", "werkzeug", "markupsafe",
+]
 # Cornea serves the frontend and the API with uvicorn, FastAPI and Starlette, which load protocol
 # and middleware modules by name; pywebview reaches WebView2 through pythonnet and clr_loader.
 collect = [

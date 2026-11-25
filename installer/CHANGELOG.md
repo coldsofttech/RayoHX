@@ -6,6 +6,10 @@ The setup has its own version, separate from the command line and the desktop ap
 
 ## [Unreleased]
 
+### Changed
+
+- The installers ship the command line and the desktop app as compiled code, with no Python source files.
+
 ### Added
 
 - One Windows installer, `rayohx-<version>-full-setup.exe`, installs the command line, the desktop app or both.
