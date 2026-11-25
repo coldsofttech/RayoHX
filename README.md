@@ -57,6 +57,8 @@ subtitles you want, and puts everything together into a single file you can keep
 | [rayohx-ui](packages/ui) | Desktop window (Windows) | `rayohx-<version>-full-setup.exe` |
 | [rayohx-docker](packages/docker) | The `rayohx` command as a container image | `docker pull ghcr.io/coldsofttech/rayohx` |
 
+The Python packages are compiled for Windows, Linux and macOS.
+
 - **Python package**: use RayoHX inside your own programs and scripts.
 - **Command line**: run `rayohx info`, `rayohx download`, `rayohx clean` and `rayohx config` from a
   terminal or a script.

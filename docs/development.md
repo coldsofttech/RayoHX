@@ -24,7 +24,7 @@ Each package has its own `src/`, `tests/` (with `unit/` and `integration/`), `do
 
 | Purpose | Tool |
 | --- | --- |
-| Environment, dependencies, build | [uv](https://docs.astral.sh/uv/) with Hatchling |
+| Environment, dependencies, build | [uv](https://docs.astral.sh/uv/) with setuptools (compiled core, CLI and API) and Hatchling (window) |
 | Lint and format | Ruff |
 | Type checking | mypy (strict) |
 | Tests and coverage | pytest with pytest-cov (80% minimum) |
@@ -41,6 +41,8 @@ uv run mypy packages/<name>/src
 ```
 
 Run only what your change touches. Integration tests are marked `integration` automatically, excluded from the default run, and run as their own CI jobs.
+
+To try a compiled build by hand, each package has smoke scripts in `packages/<name>/scripts/smoke/` (see that package's development guide). Build in this order, because each one installs the compiled wheels before it: core, then API and CLI, then UI. The Docker image has its own script.
 
 ## Continuous integration
 

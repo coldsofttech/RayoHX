@@ -14,6 +14,7 @@ This file covers the repository as a whole. Each package keeps its own changelog
 ### Changed
 
 - The Docker image checks in continuous integration are now an automated test suite instead of a shell script.
+- The PyPI packages are now compiled wheels for Windows, Linux and macOS, with no source files.
 
 ## [0.1.0] - 2026-11-21
 

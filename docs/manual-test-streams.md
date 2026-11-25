@@ -8,3 +8,5 @@ Public HLS streams for trying RayoHX by hand (CLI, API, UI).
 | --- | --- | --- |
 | Multiple audio and subtitle tracks (Apple bipbop advanced) | `https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8` | Master playlist with several video bitrates, multiple audio languages, subtitle tracks and I-frame playlists. Use it to test variant, audio and subtitle selection. |
 | Multi-bitrate video (Mux test stream) | `https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8` | Master playlist with several video renditions. Use it to test quality selection and a plain download. Audio and subtitle tracks have not been verified, so check with an inspect first. |
+
+The smoke scripts in each package (`packages/<name>/scripts/smoke/test_links.txt`) use the Mux multi-bitrate stream above. If it changes or goes away, update those files too.
