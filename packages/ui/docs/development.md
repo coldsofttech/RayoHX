@@ -61,3 +61,27 @@ packages/ui/tests/
 Tests in `integration/` are marked `integration` automatically and are excluded from the default run.
 
 Frontend tests use Vitest and Testing Library with `fetch` mocked, query by role and label, and run an accessibility check on each component. A test that reads what the page sent should go through a small helper that types the mock's calls, as in `Card.test.jsx`.
+
+### Smoke test the compiled build
+
+`scripts/smoke/` builds the compiled wheel, with the built front end inside it, and tries it in
+a fresh virtual environment. It is a manual check, separate from the Vitest and pytest suites,
+and it needs network access and a C compiler. The scripts are PowerShell, so the check runs on
+Windows, and `setup_venv.ps1` expects Python 3.11 (`py -3.11`). It installs the compiled core and
+API wheels, so run core's smoke `setup_venv.ps1` and then the API's first. The front end is built with `npm`
+when `src/rayohx_ui/ui/dist` is missing.
+
+```powershell
+./scripts/smoke/setup_venv.ps1   # builds the wheel and installs it into scripts/smoke/.venv
+./scripts/smoke/test_ui.ps1      # starts the compiled window without a window and runs the checks below
+```
+
+`test_ui.ps1` starts `rayohxu --no-window` and waits up to about 30 seconds for it to print its
+address. It loads that address, which starts the session the API calls need, then POSTs the
+**first line** of `scripts/smoke/test_links.txt` to `/api/v1/inspect` and prints the result. It
+fails if the app exits or prints no address, and it stops the app when it finishes. To try
+another stream, put its URL on the first line of that file; any further lines are ignored.
+`test_links.txt` is kept in the repository, so use a stream you are allowed to share. The app's
+output goes to `ui.out.log` and `ui.err.log` in the same folder.
+
+The virtual environment, `wheels/` and logs under `scripts/smoke/` are git-ignored.

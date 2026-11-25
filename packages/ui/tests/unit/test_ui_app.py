@@ -46,6 +46,10 @@ def shell_on_windows(monkeypatch: pytest.MonkeyPatch) -> type[FakeShell]:
     return FakeShell
 
 
+@pytest.mark.skipif(
+    not Path(ui_app.__file__).exists(),
+    reason="the compiled build fixes sys.platform when it is built, so the test cannot swap it",
+)
 def test_other_systems_get_a_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "platform", "linux")
 

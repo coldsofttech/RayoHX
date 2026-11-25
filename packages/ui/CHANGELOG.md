@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- The window's Python package can be built as a compiled wheel (a single `.pyd` on Windows, `.so` elsewhere) with a type stub and no source files.
+
 ## [0.1.0] - 2026-11-24
 
 ### Added

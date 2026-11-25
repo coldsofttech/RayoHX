@@ -19,15 +19,20 @@ if TYPE_CHECKING:
     from cornea import Shell
     from fastapi import APIRouter
 
-UI_DIR = Path(__file__).parent / "ui"
+PACKAGE_DIR = Path(__file__).parent
+UI_DIR = PACKAGE_DIR / "ui"
+# The compiled build ships the built front end in assets/ beside the binary; a source checkout has
+# it in ui/dist.
+ASSETS_DIR = PACKAGE_DIR / "assets"
+ASSETS_PATH = "assets" if ASSETS_DIR.is_dir() else "ui/dist"
 DEV_HOST = "localhost"
 DEV_PORT = 5173
 APP_ID = "com.rayohx.app"
 TITLE = "RayoHX"
 VERSION = __version__
 # Window and taskbar icon: public/icon.png (from brand/light/png) is copied into dist by the build.
-ICON = UI_DIR / "dist" / "icon.png"
-LOADING_ICON = UI_DIR / "dist" / "loading.png"
+ICON = PACKAGE_DIR / ASSETS_PATH / "icon.png"
+LOADING_ICON = PACKAGE_DIR / ASSETS_PATH / "loading.png"
 TAGLINE = "Fast, private HLS downloads"
 LOADING_SECONDS = 5.0
 
@@ -121,7 +126,12 @@ def build_shell(*, dev: bool = False, window: bool = True) -> Shell:
         )
         security = Security(csp=DEV_CSP)
     else:
-        source = Static(package="rayohx_ui", package_path="ui/dist")
+        # Cornea cannot look inside a compiled package, so the compiled build gets the folder.
+        source = (
+            Static(ASSETS_DIR)
+            if ASSETS_DIR.is_dir()
+            else Static(package="rayohx_ui", package_path=ASSETS_PATH)
+        )
 
     shell = Shell(
         source,

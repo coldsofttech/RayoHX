@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -57,6 +58,9 @@ def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     assert capsys.readouterr().out.startswith("rayohxu ")
 
 
+@pytest.mark.skipif(
+    not Path(ui_main.__file__).exists(), reason="the compiled build has no __main__ to run"
+)
 def test_running_the_module_exits_with_the_main_status(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
