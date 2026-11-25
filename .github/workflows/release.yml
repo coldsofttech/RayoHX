@@ -3,8 +3,9 @@ name: Release
 # Runs when a GitHub release is published. The tag decides what is released, and each part waits for
 # the approval of its own environment (Settings > Environments) before it publishes anything:
 #
-#   vX.Y.Z          core    the rayohx package to PyPI                       environment: core
-#   cli-vX.Y.Z      cli     the rayohx-cli package to PyPI                   environment: cli
+#   vX.Y.Z          core    the rayohx compiled wheels to PyPI               environment: core
+#   cli-vX.Y.Z      cli     the rayohx-cli compiled wheels to PyPI             environment: cli
+#   api-vX.Y.Z      api     the rayohx-api compiled wheels to PyPI           environment: api
 #   installer-vX.Y.Z installer the full Windows setup (command line and window), the
 #                           portable zip, and the deb and rpm packages on
 #                           the GitHub release                               environment: installer
@@ -12,11 +13,11 @@ name: Release
 #
 # After a release is published, the update-latest action keeps the repository's Latest badge on the newest
 # core release (core owns it) and moves a <package>-latest tag and pre-release (core-latest, cli-latest,
-# installer-latest, docker-latest) to the new version, so every package has its own stable "latest".
+# api-latest, installer-latest, docker-latest) to the new version, so every package has its own stable "latest".
 # Pre-releases change nothing.
 #
-# The tag must match the version in the package's pyproject.toml (installer/build.toml for the installer). Release core before cli, because
-# rayohx-cli depends on the rayohx package on PyPI. SIGN_COMMAND (repository variable) optionally
+# The tag must match the version in the package's pyproject.toml (installer/build.toml for the installer). Release core before cli and api,
+# because rayohx-cli and rayohx-api depend on the rayohx package on PyPI. SIGN_COMMAND (repository variable) optionally
 # signs the installers; {file} marks where the path of one file goes. Homebrew, Scoop and winget
 # are not updated for now.
 on:
@@ -54,7 +55,8 @@ jobs:
       - name: Download the distribution files
         uses: actions/download-artifact@v8
         with:
-          name: dist
+          pattern: dist-*
+          merge-multiple: true
           path: dist/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -86,7 +88,8 @@ jobs:
       - name: Download the distribution files
         uses: actions/download-artifact@v8
         with:
-          name: dist
+          pattern: dist-*
+          merge-multiple: true
           path: dist/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -96,6 +99,39 @@ jobs:
         uses: ./.github/actions/update-latest
         with:
           package: cli
+
+  api:
+    if: startsWith(github.event.release.tag_name, 'api-v')
+    uses: ./.github/workflows/release-api.yml
+    permissions:
+      contents: read
+
+  api-publish:
+    name: api publish (PyPI, GitHub release)
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: api
+    permissions:
+      contents: write # attach files to the release
+      id-token: write # PyPI trusted publishing
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Download the distribution files
+        uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Attach the files to the release
+        uses: ./.github/actions/attach-release-files
+      - name: Update the latest markers
+        uses: ./.github/actions/update-latest
+        with:
+          package: api
 
   installer:
     if: startsWith(github.event.release.tag_name, 'installer-v')

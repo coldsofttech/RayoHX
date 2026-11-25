@@ -97,3 +97,29 @@ jobs:
           if grep -E " (${CORE_PACKAGE}|${CLI_PACKAGE}|${UI_PACKAGE})/" wheel.txt; then
             echo "the API wheel must hold the API only"; exit 1
           fi
+
+  api-build-compiled:
+    name: api build (compiled)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          sync: "false"
+      - name: Build the compiled wheel
+        env:
+          PYD_BUILD: "1"
+        run: uv build --wheel --package rayohx-api
+      - name: Check the wheel holds binaries and stubs, not sources
+        run: |
+          unzip -l dist/*.whl > wheel.txt
+          # The whole package is one binary beside its per-module stubs.
+          grep -qE " rayohx_api\..*\.(so|pyd)$" wheel.txt
+          grep -qE " rayohx_api/__init__\.pyi$" wheel.txt
+          if grep -E " rayohx_api.*\.py$" wheel.txt; then
+            echo "the compiled wheel must not hold .py sources"; exit 1
+          fi
+

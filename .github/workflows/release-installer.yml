@@ -31,7 +31,7 @@ jobs:
     name: installer (windows)
     needs: installer-check
     runs-on: windows-latest
-    timeout-minutes: 30 # target: under 10 minutes
+    timeout-minutes: 45 # compiles the packages first
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
@@ -67,7 +67,7 @@ jobs:
     name: installer (linux ${{ matrix.arch }})
     needs: installer-check
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 15 # target: under 5 minutes
+    timeout-minutes: 30 # compiles the packages first
     strategy:
       fail-fast: false
       matrix:

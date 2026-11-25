@@ -1,9 +1,10 @@
 name: Release core
 
-# Tag vX.Y.Z: builds the core library (rayohx) and uploads the distribution files. Publishing to PyPI
-# (trusted publishing, no stored tokens) and attaching the files to the GitHub release happen in
-# release.yml, because PyPI does not support trusted publishing from a reusable workflow. Called by
-# release.yml.
+# Tag vX.Y.Z: builds the core library (rayohx) as compiled wheels (one Nuitka .pyd on Windows, .so
+# elsewhere) with cibuildwheel, one per OS, architecture and Python version. No sdist is built, so no
+# .py sources are uploaded. Publishing to PyPI (trusted publishing, no stored tokens) and attaching
+# the files to the GitHub release happen in release.yml, because PyPI does not support trusted
+# publishing from a reusable workflow. Called by release.yml.
 on:
   workflow_call:
 
@@ -11,8 +12,8 @@ permissions:
   contents: read
 
 jobs:
-  core-build:
-    name: core build
+  core-check:
+    name: core check tag
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -23,12 +24,26 @@ jobs:
         with:
           package: rayohx
           prefix: v
-      - name: Build the package
-        run: uv build --package rayohx
-      - name: Check the package metadata
-        run: uvx twine check --strict dist/*
+
+  core-build:
+    name: core build (${{ matrix.os }})
+    needs: core-check
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15-intel, macos-latest]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Build the compiled wheels
+        uses: pypa/cibuildwheel@v4.3.5
+        with:
+          package-dir: packages/core
+          output-dir: dist
       - name: Upload the distribution files
         uses: actions/upload-artifact@v7
         with:
-          name: dist
-          path: dist/
+          name: dist-${{ matrix.os }}
+          path: dist/*.whl

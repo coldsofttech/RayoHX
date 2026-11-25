@@ -13,7 +13,7 @@ jobs:
   installer-windows:
     name: full installer (windows)
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 40 # compiles the packages first
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
@@ -51,7 +51,7 @@ jobs:
   installer-linux:
     name: full installer (linux)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40 # compiles the packages first
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7

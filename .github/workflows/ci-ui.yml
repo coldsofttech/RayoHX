@@ -150,10 +150,20 @@ jobs:
         uses: ./.github/actions/setup-uv
         with:
           sync: "false"
-      - name: Build the package
-        run: uv build --package rayohx-ui
+      - name: Build the compiled wheel
+        env:
+          PYD_BUILD: "1"
+        run: uv build --wheel --package rayohx-ui
       - name: Check the package metadata
         run: uvx twine check --strict dist/*
+      - name: Check the wheel holds the compiled window, stubs and no sources
+        run: |
+          unzip -l dist/*.whl > wheel.txt
+          grep -qE " rayohx_ui\..*\.(so|pyd)$" wheel.txt
+          grep -qE " rayohx_ui/__init__\.pyi$" wheel.txt
+          if grep -E " rayohx_ui.*\.py$" wheel.txt; then
+            echo "the compiled wheel must not hold .py sources"; exit 1
+          fi
 
   ui-build-npm:
     name: ui build-npm (${{ matrix.os }}, node ${{ matrix.node-version }})

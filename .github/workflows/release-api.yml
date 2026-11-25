@@ -1,0 +1,50 @@
+name: Release API
+
+# Tag api-vX.Y.Z: builds the API (rayohx-api) as compiled wheels (one Nuitka .pyd on Windows, .so
+# elsewhere) with cibuildwheel, one per OS, architecture and Python version. No sdist is built, so no .py
+# sources are uploaded. Publishing to PyPI (trusted publishing, no stored tokens) and attaching the
+# files to the GitHub release happen in release.yml, because PyPI does not support trusted
+# publishing from a reusable workflow. Release core first: rayohx-api depends on the rayohx package
+# on PyPI. Called by release.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  api-check:
+    name: api check tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Check the tag
+        uses: ./.github/actions/check-release-tag
+        with:
+          package: rayohx-api
+          prefix: api-v
+
+  api-build:
+    name: api build (${{ matrix.os }})
+    needs: api-check
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15-intel, macos-latest]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Build the compiled wheels
+        uses: pypa/cibuildwheel@v4.3.5
+        with:
+          package-dir: packages/api
+          output-dir: dist
+      - name: Upload the distribution files
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist-${{ matrix.os }}
+          path: dist/*.whl
