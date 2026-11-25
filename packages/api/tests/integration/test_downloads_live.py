@@ -6,7 +6,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from rayohx_testing.hls import expected
+from rayohx_pytest.hls import expected
 
 from tests.helpers.live import ApiProcess, HlsServer
 

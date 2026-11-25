@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 from rayohx import OutputFormat, RemuxBackend, StorageStrategy
+from rayohx_pytest.site import hls_site, single_file_site
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
 from tests.conftest import FakeDownloader, parsed
 from tests.helpers.cli import BASE, MASTER, Serve, last, run_with
-from tests.helpers.site import hls_site, single_file_site
 
 
 def test_the_download_help_lists_the_options_by_group(runner: CliRunner) -> None:

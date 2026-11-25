@@ -7,6 +7,8 @@ from typing import Any
 
 import pytest
 
+from rayohx_pytest.fixtures import FIXTURES
+
 SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "make_media_fixtures.py"
 
 
@@ -22,7 +24,7 @@ def _load() -> Any:
 def test_the_output_folder_is_the_package_media_fixtures() -> None:
     module = _load()
 
-    assert SCRIPT.parents[1] / "tests" / "fixtures" / "media" == module.OUT
+    assert FIXTURES / "media" == module.OUT
 
 
 def test_run_calls_ffmpeg_quietly_and_checks_the_result(monkeypatch: pytest.MonkeyPatch) -> None:

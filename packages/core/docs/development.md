@@ -33,7 +33,7 @@ packages/core/tests/
                    plus tests for single modules such as errors, redaction and serialization
   integration/     the engine against real local servers, and the installed package
   helpers/         small real HTTP servers and builders for playlists, encryption, media and storage
-  fixtures/        sample playlists (hls) and small real media files (media)
+  fixtures/        sample playlists (hls) and, in the shared `rayohx-pytest` package, small real media files
 ```
 
 - **Unit tests** follow the source layout: a change in `rayohx/playlist` is tested in `tests/unit/playlist`. Test the pure modules directly.
@@ -62,7 +62,7 @@ The virtual environment, `wheels/`, `data/` and logs under `scripts/smoke/` are 
 
 ## Media test files
 
-The muxer tests use small real MPEG-TS and fragmented MP4 files in `tests/fixtures/media` (about 860 KB), including two complete HLS sets with separate audio. They were made by FFmpeg so that RayoHX's output can be compared with something it did not write. To regenerate them, run `uv run python packages/core/scripts/make_media_fixtures.py` (needs `ffmpeg` with libx264 and libx265).
+The muxer tests use small real MPEG-TS and fragmented MP4 files in `packages/pytest/src/rayohx_pytest/data/media` (about 860 KB), including two complete HLS sets with separate audio. They were made by FFmpeg so that RayoHX's output can be compared with something it did not write. To regenerate them, run `uv run python packages/core/scripts/make_media_fixtures.py` (needs `ffmpeg` with libx264 and libx265).
 
 `ffmpeg` and `ffprobe` are used by some tests only as a reference to compare against, and those tests are skipped when they are not installed. They are never needed to use or build RayoHX.
 

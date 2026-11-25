@@ -4,7 +4,7 @@ Technical documentation for this project lives in this folder. The top-level [RE
 
 - [Development](development.md): repository layout, tooling and CI.
 - [Architecture](architecture.md): how the packages and the checks fit together.
-- [Testing](testing.md): how tests are organized, and the shared `tests/fixtures` and `tests/helpers`.
+- [Testing](testing.md): how tests are organized, and the shared `rayohx-pytest` plugin.
 - [Manual test streams](manual-test-streams.md): public HLS streams for trying RayoHX by hand, with what each one covers.
 - [Engine design](../packages/core/docs/engine.md): the HLS engine's parts, the FFmpeg-free output approach and licensing rules.
 - [Python guide](guides/python.md): using RayoHX as a library: inspecting and downloading streams, settings, events, errors and logging.

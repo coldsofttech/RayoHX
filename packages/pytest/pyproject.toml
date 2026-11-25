@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling>=1.33.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rayohx-pytest"
+version = "0.1.0"
+description = "Shared pytest plugin for the RayoHX repositories: local HTTP servers, HLS streams and fixtures."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{ name = "coldsofttech" }]
+classifiers = [
+  "Framework :: Pytest",
+  "Programming Language :: Python :: 3",
+  "Typing :: Typed",
+]
+dependencies = [
+  "cryptography>=43",
+  "httpx>=0.28.1",
+  "pytest>=8.3",
+]
+
+# Test support for the RayoHX repositories. Not published to PyPI: the other repositories take it
+# from git as a development dependency.
+[project.entry-points.pytest11]
+rayohx_pytest = "rayohx_pytest.plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rayohx_pytest"]

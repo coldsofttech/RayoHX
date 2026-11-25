@@ -8,7 +8,7 @@ from collections.abc import Iterator
 import httpx
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from rayohx_testing.media import ts_payload
+from rayohx_pytest.media import ts_payload
 
 from rayohx import CancellationToken, MediaPlaylist
 from rayohx._http import HttpClient

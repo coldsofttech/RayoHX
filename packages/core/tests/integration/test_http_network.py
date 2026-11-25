@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 
 import pytest
-from rayohx_testing.servers import LocalServer, Reply, Seen, make_certificate
+from rayohx_pytest.servers import LocalServer, Reply, Seen, make_certificate
 
 from rayohx import MasterPlaylist, SegmentRange, inspect
 from rayohx._http import HttpClient

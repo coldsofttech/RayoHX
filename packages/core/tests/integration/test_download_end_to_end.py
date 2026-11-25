@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from rayohx_testing.servers import LocalServer, Reply, Seen
+from rayohx_pytest.servers import LocalServer, Reply, Seen
 
 from rayohx import EventType, MasterPlaylist, MediaPlaylist, inspect, select_stream
 from rayohx._download import MediaDownload

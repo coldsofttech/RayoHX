@@ -5,13 +5,13 @@ from pathlib import Path
 import httpx
 import pytest
 from rayohx import __version__
+from rayohx_pytest.site import hls_site
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
 from rayohx_cli.settings import user_config_file
 from tests.conftest import FakeDownloader, parsed
 from tests.helpers.cli import MASTER, Serve, run_with
-from tests.helpers.site import hls_site
 
 # --- help, version and usage errors ------------------------------------------------------------
 

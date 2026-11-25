@@ -1,11 +1,10 @@
-"""An in-memory site for the command line tests, built from the fixtures that core ships."""
-
-from pathlib import Path
+"""An in-memory site for tests: an httpx mock handler serving bytes, and the shared HLS sets."""
 
 import httpx
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
-MEDIA = Path(__file__).resolve().parents[3] / "core" / "tests" / "fixtures" / "media"
+from rayohx_pytest.fixtures import FIXTURES, fixture_bytes
+
+MEDIA = FIXTURES / "media"
 
 
 class Site:
@@ -29,12 +28,12 @@ class Site:
 
 
 def fixture(name: str) -> bytes:
-    """The bytes of a file in this package's ``tests/fixtures``."""
-    return (FIXTURES / name).read_bytes()
+    """The bytes of a shared HLS playlist from the ``rayohx-pytest`` fixtures."""
+    return fixture_bytes(f"hls/{name}")
 
 
 def media(name: str) -> bytes:
-    """The bytes of a fixture in core's ``tests/fixtures/media``."""
+    """The bytes of a fixture in the ``rayohx-pytest`` media fixtures."""
     return (MEDIA / name).read_bytes()
 
 

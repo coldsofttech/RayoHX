@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 
 import pytest
-from rayohx_testing.media import ts_payload
-from rayohx_testing.servers import LocalServer, Reply, Route
+from rayohx_pytest.media import ts_payload
+from rayohx_pytest.servers import LocalServer, Reply, Route
 
 from rayohx import Downloader, OutputFormat, inspect
 from rayohx._http import HttpClient

@@ -13,6 +13,7 @@ members = [
     "rayohx",
     "rayohx-api",
     "rayohx-cli",
+    "rayohx-pytest",
     "rayohx-ui",
 ]
 
@@ -29,6 +30,7 @@ dev = [
     { name = "rayohx", editable = "packages/core" },
     { name = "rayohx-api", editable = "packages/api" },
     { name = "rayohx-cli", editable = "packages/cli" },
+    { name = "rayohx-pytest", editable = "packages/pytest" },
     { name = "rayohx-ui", editable = "packages/ui" },
     { name = "ruff", specifier = ">=0.8" },
     { name = "schemathesis", specifier = ">=4.33.2" },
@@ -1954,6 +1956,23 @@ dev = [
 installer = [
     { name = "hatchling", specifier = ">=1.33.0" },
     { name = "pyinstaller", specifier = ">=6.22.3" },
+]
+
+[[package]]
+name = "rayohx-pytest"
+version = "0.1.0"
+source = { editable = "packages/pytest" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "httpx" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cryptography", specifier = ">=43" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pytest", specifier = ">=8.3" },
 ]
 
 [[package]]
