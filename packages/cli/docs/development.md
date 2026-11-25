@@ -11,6 +11,8 @@ uv run rayohx info https://example.com/master.m3u8
 uv run python -m rayohx_cli download --help       # the same thing, as a module
 ```
 
+The module form works here because development runs the plain Python sources. The compiled wheel a release ships has no `python -m rayohx_cli`; use the `rayohx` command there.
+
 ## Checks
 
 Run only what your change touches:
@@ -42,6 +44,26 @@ packages/cli/tests/
 - **Everything under `integration/`** is marked `integration` automatically, so the default run leaves it out.
 - **The frozen tests** need a PyInstaller build first (`uv run python installer/scripts/build.py`). Without one they are skipped. Set `RAYOHX_INSTALLER_DIR` to test a build somewhere other than `build/installer`.
 - **The conftest** removes `RAYOHX_*` variables and settings files from the machine, so a test never depends on the developer's own set-up.
+
+### Smoke test the compiled build
+
+`scripts/smoke/` builds the compiled wheel (a single `.pyd` plus type stubs) and tries it in a
+fresh virtual environment. It is a manual check, separate from the pytest suites, and it needs
+network access and a C compiler. The scripts are PowerShell, so the check runs on Windows, and
+`setup_venv.ps1` expects Python 3.11 (`py -3.11`). It installs the compiled core wheel, so run
+core's smoke `setup_venv.ps1` first.
+
+```powershell
+./scripts/smoke/setup_venv.ps1   # builds the wheel and installs it into scripts/smoke/.venv
+./scripts/smoke/test_cli.ps1     # runs `rayohx info` from the installed build
+```
+
+`test_cli.ps1` runs `rayohx info` on the **first line** of `scripts/smoke/test_links.txt` and fails
+if the command exits with an error. To try another stream, put its URL on the first line of that
+file; any further lines are ignored. `test_links.txt` is kept in the repository, so use a stream
+you are allowed to share.
+
+The virtual environment, `wheels/`, `data/` and logs under `scripts/smoke/` are git-ignored.
 
 ## Adding an option
 

@@ -6,22 +6,22 @@ How the `rayohx` command is packaged and released: the `rayohx-cli` package on P
 
 | Where | What you get | Built with |
 | --- | --- | --- |
-| Any OS with Python 3.11 or newer | the `rayohx-cli` package on PyPI (wheel and sdist) | `uv build --package rayohx-cli` |
+| Windows, Linux or macOS with Python 3.11 or newer | the `rayohx-cli` compiled wheels on PyPI (no sdist) | `PYD_BUILD=1 uv build --wheel --package rayohx-cli` |
 | Windows | the setup and a portable zip: see the [installer notes](../../../installer/docs/packaging.md) | PyInstaller and NSIS |
 | Linux | `.deb` and `.rpm`, for x86_64 and arm64: see the [installer notes](../../../installer/docs/packaging.md#linux) | PyInstaller and nfpm |
 | macOS | no installer: install the PyPI package | |
 
 ## The PyPI package: `rayohx-cli`
 
-The distribution is named `rayohx-cli` and installs the `rayohx` command (`rayohx = rayohx_cli.cli:run` in `[project.scripts]`). It holds only the command line code (`rayohx_cli`). Its dependencies are the core library `rayohx`, Typer, Click and Rich, so the core must be on PyPI at a compatible version before `rayohx-cli` is installable.
+The distribution is named `rayohx-cli` and installs the `rayohx` command (`rayohx = rayohx_cli.cli:run` in `[project.scripts]`). It holds only the command line code (`rayohx_cli`), compiled into one binary (`rayohx_cli.<tag>.pyd` on Windows, `.so` elsewhere) with `.pyi` stubs beside it and no `.py` sources. `python -m rayohx_cli` does not work on the compiled build; the `rayohx` command does. Its dependencies are the core library `rayohx`, Typer, Click and Rich, so the core must be on PyPI at a compatible version before `rayohx-cli` is installable.
 
 ```bash
-uv build --package rayohx-cli          # dist/rayohx_cli-<version>.tar.gz and .whl
+PYD_BUILD=1 uv build --wheel --package rayohx-cli   # dist/rayohx_cli-<version>-<tag>.whl
 uvx twine check --strict dist/*        # the metadata PyPI will show
 uvx --find-links dist --from dist/rayohx_cli-*.whl rayohx --version
 ```
 
-The version is `__version__` in `packages/cli/src/rayohx_cli/__init__.py`; the build backend reads it from there. The `cli-build` job in `ci-cli.yml` does these steps on every change, and also checks that the wheel holds the command line and not the API or the window, so a release never meets a metadata problem for the first time.
+The version is `__version__` in `packages/cli/src/rayohx_cli/__init__.py`; setuptools reads it from there. `packages/cli/setup.py` compiles the package with Nuitka (it needs a C compiler) when `PYD_BUILD=1`, and builds plain Python otherwise, so the installers and local development are unaffected. The `cli-build` job in `ci-cli.yml` does these steps on every change, and also checks that the wheel holds the command line and not the API or the window, so a release never meets a metadata problem for the first time.
 
 Users install it with `uv tool install rayohx-cli` or `pipx install rayohx-cli`, and remove it with `uv tool uninstall rayohx-cli` or `pipx uninstall rayohx-cli`.
 
@@ -49,10 +49,10 @@ There is no installer. Install the PyPI package: `uv tool install rayohx-cli` or
 | Step | Result |
 | --- | --- |
 | Check | the tag must be `cli-v` plus the version of `rayohx-cli` |
-| Build | wheel and sdist of `rayohx-cli` only |
+| Build | compiled wheels of `rayohx-cli` only, one per platform and Python version |
 | Installers | Linux deb and rpm (x86_64 and arm64), each smoke tested (the Windows setup is released with `installer-v<version>`) |
 | Approval | the job waits for a reviewer of the `cli` environment |
-| Publish | `rayohx-cli` to PyPI through trusted publishing, then the wheel, sdist, Linux packages and `SHA256SUMS.txt` to the GitHub release |
+| Publish | `rayohx-cli` to PyPI through trusted publishing, then the wheels, Linux packages and `SHA256SUMS.txt` to the GitHub release |
 
 Everything is built and tested before the approval, so the reviewer approves a release that already works. Release notes are written on the GitHub release by hand (or with its "Generate release notes" button).
 

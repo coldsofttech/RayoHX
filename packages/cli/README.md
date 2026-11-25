@@ -37,7 +37,7 @@ printed on stdout, so it is easy to use in a script.
 
 ## Install
 
-Requires Python 3.11 or newer. Install it in its own isolated environment:
+Requires Python 3.11 or newer on Windows, Linux or macOS, where a ready-to-use compiled build is installed for your platform. Install it in its own isolated environment:
 
 ```sh
 uv tool install rayohx-cli

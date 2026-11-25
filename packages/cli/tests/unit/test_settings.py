@@ -79,6 +79,10 @@ def test_the_search_order(tmp_path: Path) -> None:
     assert find_config(None, cwd=cwd, environ=environ) == local  # the project's file wins
 
 
+@pytest.mark.skipif(
+    not Path(settings.__file__).exists(),
+    reason="the compiled build fixes os.name when it is built, so the test cannot swap it",
+)
 def test_the_personal_file_lives_in_the_usual_place(monkeypatch: pytest.MonkeyPatch) -> None:
     # Only this module's view of ``os`` is replaced, never the real one.
     monkeypatch.setattr(settings, "os", SimpleNamespace(name="posix", environ={}))

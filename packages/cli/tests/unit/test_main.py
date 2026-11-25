@@ -1,8 +1,16 @@
 """Running the command with ``python -m rayohx_cli``."""
 
 import runpy
+from pathlib import Path
 
 import pytest
+
+import rayohx_cli
+
+# The compiled build embeds __main__ in its binary, so ``python -m`` and runpy cannot run it.
+pytestmark = pytest.mark.skipif(
+    not Path(rayohx_cli.__file__).exists(), reason="the compiled build has no __main__ to run"
+)
 
 
 def test_running_the_package_starts_the_command(monkeypatch: pytest.MonkeyPatch) -> None:
