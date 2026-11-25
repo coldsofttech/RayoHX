@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Releases ship as compiled wheels (a single `.pyd` on Windows, `.so` elsewhere) with a type stub and no source files, one per platform and Python version.
 - Default options for new downloads can be saved and are used unless a download sets its own; logins and passwords are never saved.
 - Each download has a log of what the engine reported (the last 200 lines, kept between restarts), and says whether it has one (`has_log`).
 - A failed download reports an `error_code` (such as `output_exists`), and retry can replace an existing file for that run with `overwrite`.

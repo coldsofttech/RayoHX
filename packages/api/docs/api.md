@@ -9,6 +9,8 @@ cp .env.example .env              # set RAYOHX_API_API_KEYS, or RAYOHX_API_AUTH_
 uv run python -m rayohx_api      # http://127.0.0.1:8000
 ```
 
+That is the development form, which runs the plain sources. An installed release is compiled and has no `python -m rayohx_api`; start it with the `rayohx-api` command instead, which takes the same settings.
+
 The app refuses to start without an API key unless authentication is switched off. This is on purpose, so the API is never open by accident. See [security](security.md).
 
 ## Settings
