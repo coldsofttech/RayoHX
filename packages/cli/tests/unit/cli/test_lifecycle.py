@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 from rayohx import DownloadState
+from rayohx_pytest.site import hls_site
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
 from rayohx_cli.cli.lifecycle import graceful_interrupt, pause_toggle
 from tests.conftest import FakeDownloader, parsed
 from tests.helpers.cli import MASTER, Serve
-from tests.helpers.site import hls_site
 
 # --- reporting the result -------------------------------------------------------------------------
 

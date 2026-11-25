@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 import rayohx
-from rayohx_testing.media import ts_payload
-from rayohx_testing.servers import LocalServer, Reply, Seen
-
-from tests.helpers.site import fixture
+from rayohx_pytest.media import ts_payload
+from rayohx_pytest.plugin import ServerFactory
+from rayohx_pytest.servers import Reply, Seen
+from rayohx_pytest.site import fixture
 
 pytestmark = pytest.mark.integration
 
@@ -61,20 +61,20 @@ def test_usage_errors_exit_with_2() -> None:
     assert result.stdout == ""
 
 
-def test_errors_go_to_stderr() -> None:
-    with LocalServer({}) as server:
-        result = _run(_script(), "info", f"{server.url}/missing.m3u8")
+def test_errors_go_to_stderr(local_server: ServerFactory) -> None:
+    server = local_server({})
+    result = _run(_script(), "info", f"{server.url}/missing.m3u8")
     assert result.returncode == 1
     assert "was not found" in result.stderr
     assert result.stdout == ""
 
 
-def test_info_and_download_against_a_server(tmp_path: Path) -> None:
-    with LocalServer(_routes()) as server:  # type: ignore[arg-type]
-        url = f"{server.url}/index.m3u8"
-        info = _run(_script(), "info", url, "--json")
-        out = tmp_path / "clip.ts"
-        done = _run(_script(), "download", url, "-o", str(out), "--format", "ts", "--json")
+def test_info_and_download_against_a_server(tmp_path: Path, local_server: ServerFactory) -> None:
+    server = local_server(_routes())  # type: ignore[arg-type]
+    url = f"{server.url}/index.m3u8"
+    info = _run(_script(), "info", url, "--json")
+    out = tmp_path / "clip.ts"
+    done = _run(_script(), "download", url, "-o", str(out), "--format", "ts", "--json")
     assert info.returncode == 0, info.stderr
     assert json.loads(info.stdout)["segments"] == COUNT
     assert done.returncode == 0, done.stderr
@@ -83,7 +83,7 @@ def test_info_and_download_against_a_server(tmp_path: Path) -> None:
     assert out.read_bytes() == b"".join(ts_payload(i) for i in range(COUNT))
 
 
-def test_the_command_never_prints_secrets(tmp_path: Path) -> None:
+def test_the_command_never_prints_secrets(tmp_path: Path, local_server: ServerFactory) -> None:
     secret_headers = tmp_path / "headers.txt"
     secret_headers.write_text(f"Authorization: Bearer {SECRET}\n", encoding="utf-8")
     log = tmp_path / "run.log"
@@ -95,13 +95,13 @@ def test_the_command_never_prints_secrets(tmp_path: Path) -> None:
         return Reply(body=fixture("single_segment.m3u8"))
 
     routes = {"/index.m3u8": index, "/s0.ts": lambda _s: Reply(body=ts_payload(0))}
-    with LocalServer(routes) as server:
-        command = [
-            sys.executable, "-m", "rayohx_cli", "--verbose", "--log-file", str(log),
-            "download", f"{server.url}/index.m3u8?token={SECRET}", "-o", str(out),
-            "--format", "ts", "-H", f"@{secret_headers}", "--cookie", f"sid={SECRET}",
-        ]  # fmt: skip
-        done = subprocess.run(command, capture_output=True, text=True, check=False, timeout=120)
+    server = local_server(routes)
+    command = [
+        sys.executable, "-m", "rayohx_cli", "--verbose", "--log-file", str(log),
+        "download", f"{server.url}/index.m3u8?token={SECRET}", "-o", str(out),
+        "--format", "ts", "-H", f"@{secret_headers}", "--cookie", f"sid={SECRET}",
+    ]  # fmt: skip
+    done = subprocess.run(command, capture_output=True, text=True, check=False, timeout=120)
     assert done.returncode == 0, done.stderr
     assert seen[0].headers["authorization"] == f"Bearer {SECRET}"  # the server did get it
     assert SECRET not in done.stdout

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import threading
 
-    from rayohx_testing.servers import Route, Seen
+    from rayohx_pytest.servers import Route, Seen
 
 PACKETS = 10
 
@@ -20,7 +20,7 @@ def media_playlist(count: int) -> str:
 
 
 def segment_data(index: int) -> bytes:
-    from rayohx_testing.media import ts_payload
+    from rayohx_pytest.media import ts_payload
 
     return ts_payload(index, PACKETS)
 
@@ -52,7 +52,7 @@ def vod_routes(
     """
     import time
 
-    from rayohx_testing.servers import Reply
+    from rayohx_pytest.servers import Reply
 
     routes: dict[str, Route] = {}
     body = media_playlist(count).encode()

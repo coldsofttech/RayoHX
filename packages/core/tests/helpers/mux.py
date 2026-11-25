@@ -13,8 +13,9 @@ from rayohx._mux._mp4read import iter_boxes
 from rayohx._mux._muxer import Mp4Muxer
 from rayohx._mux._source import TsSource
 from rayohx._mux._ts import TsDemuxer
+from rayohx_pytest.fixtures import FIXTURES
 
-MEDIA = Path(__file__).resolve().parents[1] / "fixtures" / "media"
+MEDIA = FIXTURES / "media"
 
 HAS_FFPROBE = shutil.which("ffprobe") is not None and shutil.which("ffmpeg") is not None
 needs_ffmpeg = pytest.mark.skipif(
@@ -24,7 +25,7 @@ needs_ffmpeg = pytest.mark.skipif(
 
 
 def media(name: str) -> bytes:
-    """The bytes of a fixture in ``tests/fixtures/media``."""
+    """The bytes of a fixture in the ``rayohx-pytest`` media fixtures."""
     return (MEDIA / name).read_bytes()
 
 

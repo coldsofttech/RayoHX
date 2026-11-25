@@ -3,11 +3,11 @@
 import json
 from pathlib import Path
 
+from rayohx_pytest.site import hls_site
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
 from tests.helpers.cli import BASE, Serve
-from tests.helpers.site import hls_site
 
 
 def local_playlist(tmp_path: Path) -> tuple[Path, str]:

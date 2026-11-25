@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from rayohx_testing.fixtures import fixture_text
+from rayohx_pytest.fixtures import fixture_text
 
 URL = "https://cdn.example.com/m.m3u8"
 MASTER = fixture_text("hls/master_two_variants.m3u8")

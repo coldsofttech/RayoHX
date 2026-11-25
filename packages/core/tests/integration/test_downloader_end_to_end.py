@@ -5,8 +5,8 @@ import time
 from pathlib import Path
 
 import pytest
-from rayohx_testing.hls import expected, segment_index, vod_routes
-from rayohx_testing.servers import LocalServer
+from rayohx_pytest.hls import expected, segment_index, vod_routes
+from rayohx_pytest.servers import LocalServer
 
 from rayohx import CancellationToken, Downloader, DownloadResult, DownloadState, EventType
 from rayohx.config import DownloadConfig, OutputConfig

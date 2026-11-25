@@ -17,9 +17,8 @@ from rayohx import (
 )
 from rayohx.config import DownloadConfig
 from rayohx.events import EventBus
+from rayohx_pytest.site import Site
 from typer.testing import CliRunner
-
-from tests.helpers.site import Site
 
 
 @pytest.fixture(autouse=True)

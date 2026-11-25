@@ -1,8 +1,8 @@
-"""Files shared by every package's tests, kept in the repository's ``tests/fixtures`` folder."""
+"""Fixture files shipped with the package, for the tests of every RayoHX repository."""
 
 from pathlib import Path
 
-FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
+FIXTURES = Path(__file__).resolve().parent / "data"
 
 
 def fixture_path(name: str) -> Path:

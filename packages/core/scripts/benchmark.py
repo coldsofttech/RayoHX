@@ -21,16 +21,17 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from rayohx_testing.servers import Route
+    from rayohx_pytest.servers import Route
 
     from rayohx.config import DownloadConfig
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-# shared test helpers (rayohx_testing)
-sys.path.insert(0, str(ROOT.parents[1] / "tests" / "helpers"))
 
-MEDIA = ROOT / "tests" / "fixtures" / "media" / "h264_aac.ts"
+# shared test helpers (rayohx-pytest)
+from rayohx_pytest.fixtures import FIXTURES  # noqa: E402
+
+MEDIA = FIXTURES / "media" / "h264_aac.ts"
 
 
 def _playlist(count: int) -> bytes:
@@ -41,7 +42,7 @@ def _playlist(count: int) -> bytes:
 
 
 def _routes(count: int, body: bytes) -> dict[str, Route]:
-    from rayohx_testing.servers import Reply
+    from rayohx_pytest.servers import Reply
 
     routes: dict[str, Route] = {"/index.m3u8": lambda _s: Reply(body=_playlist(count))}
     for index in range(count):
@@ -95,7 +96,7 @@ def run_scenario(
     import tempfile
     import time
 
-    from rayohx_testing.servers import LocalServer
+    from rayohx_pytest.servers import LocalServer
 
     from rayohx import Downloader
 
@@ -120,7 +121,7 @@ def run_scenario(
 
 def scenarios(args: argparse.Namespace) -> list[Callable[[], dict[str, object]]]:
     """The scenarios to run, each a function returning one result row."""
-    from rayohx_testing.media import ts_payload
+    from rayohx_pytest.media import ts_payload
 
     from rayohx import OutputFormat
     from rayohx.config import DownloadConfig, OutputConfig

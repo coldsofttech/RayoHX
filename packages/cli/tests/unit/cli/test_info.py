@@ -3,12 +3,12 @@
 from pathlib import Path
 
 import httpx
+from rayohx_pytest.site import Site, fixture, hls_site
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
 from tests.conftest import parsed
 from tests.helpers.cli import BASE, MASTER, Serve
-from tests.helpers.site import Site, fixture, hls_site
 
 
 def test_info_lists_the_streams_and_the_choice(runner: CliRunner, serve: Serve) -> None:

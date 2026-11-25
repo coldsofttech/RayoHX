@@ -3,11 +3,11 @@
 import json
 from pathlib import Path
 
+from rayohx_pytest.site import Site, hls_site
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
 from tests.helpers.cli import BASE, Serve
-from tests.helpers.site import Site, hls_site
 
 ONE = BASE + "one/master.m3u8"
 TWO = BASE + "two/master.m3u8"

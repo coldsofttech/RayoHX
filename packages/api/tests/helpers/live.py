@@ -11,9 +11,9 @@ import time
 from typing import TYPE_CHECKING, Any, Self
 
 import httpx
-from rayohx_testing.fixtures import fixture_bytes
-from rayohx_testing.hls import segment_index, vod_routes
-from rayohx_testing.servers import LocalServer, Reply
+from rayohx_pytest.fixtures import fixture_bytes
+from rayohx_pytest.hls import segment_index, vod_routes
+from rayohx_pytest.servers import LocalServer, Reply
 
 if TYPE_CHECKING:
     from pathlib import Path

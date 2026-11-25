@@ -3,11 +3,11 @@
 from collections.abc import Callable
 
 from rayohx.config import DownloadConfig
+from rayohx_pytest.site import Site
 from typer.testing import CliRunner
 
 from rayohx_cli.cli import app
 from tests.conftest import FakeDownloader
-from tests.helpers.site import Site
 
 BASE = "https://media.example.com/"
 MASTER = BASE + "ts/master.m3u8"
