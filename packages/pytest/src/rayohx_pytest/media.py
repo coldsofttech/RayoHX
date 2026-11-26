@@ -22,7 +22,9 @@ def encrypt(data: bytes, key: bytes, iv: bytes) -> bytes:
     """AES-128-CBC with PKCS#7 padding, as HLS does."""
     padder = padding.PKCS7(128).padder()
     padded = padder.update(data) + padder.finalize()
-    encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+    # HLS defines AES-128 segments as plain CBC, so a test stream must be built that way: GCM is not
+    # an option. This only makes test data and protects nothing.
+    encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()  # nosemgrep
     return encryptor.update(padded) + encryptor.finalize()
 
 
