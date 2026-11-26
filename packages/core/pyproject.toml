@@ -43,7 +43,8 @@ where = ["src"]
 build = "cp311-* cp312-* cp313-* cp314-* cp315-*"
 environment = { PYD_BUILD = "1" }
 test-requires = "pytest"
-test-command = "pytest -o addopts= {project}/tests/unit"
+before-test = "pip install {project}/packages/pytest"
+test-command = "pytest -o addopts= {package}/tests/unit --ignore={package}/tests/unit/scripts"
 
 [tool.uv.sources]
 rayohx-pytest = { workspace = true }
