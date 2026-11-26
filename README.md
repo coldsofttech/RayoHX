@@ -45,7 +45,7 @@ Coming from `pym3u8downloader`? See the [migration guide](docs/guides/migration.
 pip install rayohx
 ```
 
-Requires Python 3.11 or newer on Windows, Linux or macOS, where a ready-to-use compiled build is
+Requires Python 3.11 or newer on 64-bit Windows, Linux or macOS, where a ready-to-use compiled build is
 installed for your platform. An installed FFmpeg is used only as an optional fallback for codecs
 the built-in remuxer cannot copy.
 

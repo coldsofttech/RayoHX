@@ -46,6 +46,10 @@ test-requires = "pytest"
 before-test = "pip install {project}/packages/pytest"
 test-command = "pytest -o addopts= {package}/tests/unit --ignore={package}/tests/unit/scripts"
 
+# 64-bit only: cryptography publishes no 32-bit Windows wheel, so a 32-bit build could not install it.
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+
 [tool.uv.sources]
 rayohx-pytest = { workspace = true }
 

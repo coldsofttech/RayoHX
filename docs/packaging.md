@@ -6,7 +6,7 @@ How the `rayohx` library is packaged and released to PyPI. The command line, Doc
 
 | Where | What you get | Built with |
 | --- | --- | --- |
-| Windows, Linux or macOS with Python 3.11 or newer | the `rayohx` compiled wheels on PyPI (no sdist) | `PYD_BUILD=1 uv build --wheel --package rayohx` |
+| 64-bit Windows, Linux or macOS with Python 3.11 or newer | the `rayohx` compiled wheels on PyPI (no sdist) | `PYD_BUILD=1 uv build --wheel --package rayohx` |
 
 The core has no installer. The command line and the desktop window ship their own, and carry their own copy of the library.
 
