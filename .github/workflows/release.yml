@@ -36,27 +36,31 @@ jobs:
           package: rayohx
           prefix: v
 
+  # One job per OS and Python version, so the wheels build in parallel.
   core-build:
-    name: core build (${{ matrix.os }})
+    name: core build (${{ matrix.os }}, cp${{ matrix.python }})
     needs: core-check
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 30
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15-intel, macos-latest]
+        python: ["311", "312", "313", "314", "315"]
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
-      - name: Build the compiled wheels
+      - name: Build the compiled wheel
         uses: pypa/cibuildwheel@v4.3.5
+        env:
+          CIBW_BUILD: cp${{ matrix.python }}-*
         with:
           package-dir: packages/core
           output-dir: dist
       - name: Upload the distribution files
         uses: actions/upload-artifact@v7
         with:
-          name: dist-${{ matrix.os }}
+          name: dist-${{ matrix.os }}-cp${{ matrix.python }}
           path: dist/*.whl
 
   core-publish:

@@ -38,7 +38,7 @@ The tag must equal the package version, for example `v0.1.0`. The pytest plugin 
 1. Bump `__version__` in `packages/core/src/rayohx/__init__.py` and move the `[Unreleased]` entries in the root `CHANGELOG.md` under the new version, in a pull request.
 2. After it is merged, publish a GitHub release tagged `v<version>`.
 3. `release.yml` sees the `v` prefix and runs three jobs:
-   - **`core-check`** checks the tag equals the package version (it fails if they differ). **`core-build`** then builds one wheel per OS, architecture and Python version with cibuildwheel, runs the unit tests against each, and uploads the files.
+   - **`core-check`** checks the tag equals the package version (it fails if they differ). **`core-build`** then builds one wheel per OS, architecture and Python version with cibuildwheel, as parallel jobs. Each wheel gets a short smoke test (`packages/core/scripts/wheel_smoke.py`) that checks the compiled binary loads, reports the right version and parses a playlist. The unit tests are not repeated, because every pull request already runs them on the source.
    - **`core-publish`** runs in the `core` environment, so it waits for a reviewer's approval. It publishes the files to PyPI, then attaches them and a `SHA256SUMS.txt` to the GitHub release.
 4. Check the new version on PyPI and install it in a clean environment: `uv run --with rayohx==<version> python -c "import rayohx; print(rayohx.__version__)"`.
 
