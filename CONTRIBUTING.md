@@ -8,17 +8,14 @@ Open an issue using one of the provided forms. Search existing issues first. For
 
 ## Repository layout
 
-One uv workspace holds five packages under `packages/`, each with its own `src/`, `tests/`, `docs/` and `CHANGELOG.md`:
+One uv workspace holds two packages under `packages/`, each with its own `src/`:
 
 | Package | What it is |
 | --- | --- |
-| `core` | The `rayohx` library |
-| `cli` | The command line (`rayohx-cli`), built on core |
-| `api` | The HTTP API (`rayohx-api`), built on core |
-| `ui` | The desktop window (`rayohx-ui`), with the command line and the API |
-| `docker` | The container image and its docs |
+| `core` | The `rayohx` library, with its `tests/` and `scripts/` |
+| `pytest` | The `rayohx-pytest` plugin: test servers, certificates and sample streams shared by the RayoHX repositories |
 
-Shared docs are in `docs/`, and each package's own are in `packages/<package>/docs/`.
+Docs are in `docs/`, and the changelog is the root `CHANGELOG.md`. The command line, Docker image, desktop window and installers live in their own repositories (listed in the [README](README.md#other-ways-to-use-rayohx)).
 
 ## Submitting changes
 
@@ -26,7 +23,7 @@ Shared docs are in `docs/`, and each package's own are in `packages/<package>/do
 2. Make your change, keeping it focused on one thing.
 3. Set up with [uv](https://docs.astral.sh/uv/): `uv sync`, then `uv run pre-commit install --hook-type pre-commit --hook-type post-commit`.
 4. Run the checks for what you changed (below) before you push.
-5. Add an entry under `[Unreleased]` in the `CHANGELOG.md` of the package you changed (one or two lines, written from a reader's point of view).
+5. Add an entry under `[Unreleased]` in `CHANGELOG.md` (one or two lines, written from a reader's point of view).
 6. Open a pull request and fill in the template.
 
 ## Checks by area
@@ -35,15 +32,11 @@ Run these from the repository root. Scope them to the package you changed rather
 
 | You changed | Run |
 | --- | --- |
-| Any Python | `uv run ruff check packages/<package>`, `uv run ruff format --check packages/<package>`, `uv run mypy packages/<package>` and `uv run pytest packages/<package>/tests` |
-| The library (`packages/core`) | The Python checks above for `core`; see `packages/core/docs/development.md` |
-| The command line (`packages/cli`) | The Python checks above for `cli`; if commands, options or exit codes changed, update the [command line guide](packages/cli/docs/guides/cli.md) |
-| The API (`packages/api`) | The Python checks above for `api`, then `uv run python packages/api/scripts/export_openapi.py` and commit `packages/api/docs/openapi.json` |
-| The frontend (`packages/ui/src/rayohx_ui/ui`) | `npm ci`, `npm run lint`, `npm test` and `npm run build` in that folder |
-| The installers (`installer/`) | `uv run python installer/scripts/build.py --sync --smoke` |
-| The Docker image (`packages/docker`) | See `packages/docker/docs/development.md` |
+| The library (`packages/core`) | `uv run ruff check packages/core`, `uv run ruff format --check packages/core`, `uv run mypy packages/core/src` and `uv run pytest packages/core/tests`; see [development](docs/development.md) |
+| The test plugin (`packages/pytest`) | `uv run ruff check packages/pytest`, `uv run ruff format --check packages/pytest` and `uv run mypy packages/pytest/src`; it has no tests of its own, so also run the core tests |
+| Docs or the repository files | `uv run pre-commit run --files <files>` |
 
-You need Node for frontend work and Windows only to open the real window. The UI's Python tests use a stand-in for the window and run anywhere. See `docs/development.md` and each package's `docs/development.md` for the details.
+See [development](docs/development.md) and [testing](docs/testing.md) for the details.
 
 ## Pull request rules
 

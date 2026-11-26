@@ -2,40 +2,71 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-This file covers the repository as a whole. Each package keeps its own changelog: [core](packages/core/CHANGELOG.md), [cli](packages/cli/CHANGELOG.md), [api](packages/api/CHANGELOG.md), [ui](packages/ui/CHANGELOG.md), [installer](installer/CHANGELOG.md) and [docker](packages/docker/CHANGELOG.md).
-
 ## [Unreleased]
+
+## [0.1.1] - 2026-11-26
 
 ### Added
 
-- Shared test helpers and sample streams that the library, command line and API tests all use, so each package no longer keeps its own copy.
-- Downloads through the HTTP API accept every engine option, several addresses at once and playlist text, and the window can use files on this computer for them.
+- Shared test helpers and sample streams for the library tests, available as a pytest plugin that other repositories can use.
 
 ### Changed
 
-- The Docker image checks in continuous integration are now an automated test suite instead of a shell script.
-- The PyPI packages are now compiled wheels for Windows, Linux and macOS, with no source files.
+- The PyPI package is now compiled wheels for Windows, Linux and macOS, with no source files.
+- Core tests and the benchmark script now use the test fixtures and helpers shared across the project.
+
+### Fixed
+
+- A paused download no longer reports itself as downloading again while the segments already in progress finish.
+- A secure connection that drops partway through is now retried as a connection problem instead of failing as a certificate error. Only genuine certificate failures are reported as such.
 
 ## [0.1.0] - 2026-11-21
 
 ### Added
 
-- The repository is now a set of five packages (library, command line, API, desktop window and Docker image) that are built, tested, versioned and released separately.
-- Continuous integration for each package: linting, type checks, tests on Linux, Windows and macOS, and builds of the installers and the Docker image.
-- Release workflows that publish each package and attach its installers. After each full release, the `core-latest`, `cli-latest`, `installer-latest` and `docker-latest` tags and pre-releases move to the new version, so every package has its own latest, and the repository's Latest badge stays on the newest core release.
-- Documentation for the whole project and for each package, with guides, architecture notes and a development guide.
+- The repository holds the `rayohx` library and a shared pytest plugin for its tests.
+- Continuous integration: linting, type checks, tests on Linux, Windows and macOS, and a build of the compiled wheels.
+- Documentation with guides, architecture notes and a development guide.
 - Issue forms, a pull request template, contributing, support and code of conduct pages, and automatic dependency updates.
-- Logo and icon artwork in light and dark variants.
 - The project is released under the Apache-2.0 licence.
-
-### Changed
-
-- The Linux packages (deb and rpm) are now built and attached with the installer release instead of the command line release.
-- The step that decides which parts of the project a pull request changes uses a newer version of its action.
+- `find_workspaces` and `remove_workspaces` list and delete the working folders that interrupted downloads leave behind. Folders a running download is using are never removed.
+- Download or look at a playlist you already have as text (`Downloader(playlist_text=...)`, `inspect_text`) without fetching it first.
+- A download can be paused and resumed (`Downloader.pause()`, `resume()` and `is_paused`). Segments already running finish first, and `download_paused` and `download_resumed` events report the change.
+- `download_many` saves several streams one after another into a folder and reports how each one ended. `batch_outputs` shows the file names it would use, and `OutputConfig(directory=...)` sets the folder for outputs that are not named.
+- Streams whose AES-128 key is given inside the playlist (`data:` addresses) now download. Local key files (`file:`) can be allowed with `allow_file_keys`, and `key_fetcher` lets you supply keys from anywhere.
+- Streams that use playlist variables (`EXT-X-DEFINE`) are now read and downloaded instead of refused.
+- Prefer a video codec (`codec`) or dynamic range (`video_range`), and cap the frame rate (`max_frame_rate`), in `SelectionConfig`.
+- SOCKS5 proxies (`socks5://`, `socks5h://`), proxies read from the environment with `NetworkConfig(proxy_from_env=True)`, and client certificates for mutual TLS (`client_cert`, `client_key`, `client_key_password`).
+- Choose a stream exactly with `variant` (its number in the listing, from 1), `resolution` (such as `1280x720`), `bandwidth` and `variant_name` in `SelectionConfig`. A choice that matches nothing lists the available streams.
+- `StorageConfig(check_space=False)` turns off the disk-space check, for drives that report free space wrongly.
+- A guide for moving from `pym3u8downloader`.
+- Damaged or hostile streams are refused with a clear error instead of crashing: playlists, MPEG-TS, MP4 and subtitles are tested against thousands of corrupted variations.
+- A benchmark script (`scripts/benchmark.py`) to compare download speed and memory between changes.
+- Read HLS playlists, including audio and subtitle tracks, encryption, byte ranges and fMP4.
+- Look at a stream's variants, tracks and encryption from a web address without downloading any media.
+- Choose a stream by quality, resolution or bitrate limit, with audio and subtitle selection by language or name.
+- Download a stream to a file in one call, with parallel segments, progress events, and a cancelled download returning a result instead of an error.
+- Encrypted (AES-128) streams are decrypted; protected (DRM) and live streams are refused with an explanation.
+- MPEG-TS streams are saved as `.ts` and fragmented MP4 streams as `.mp4`; a name that does not match is refused instead of mislabelling the file, and an existing file is never replaced unless you allow it.
+- Streams with a separate audio track are joined into one MP4 in the chosen language, and MPEG-TS streams can be saved as MP4. The re-wrapping is built in and nothing is re-encoded.
+- Subtitles are saved next to the video as `.vtt` files that line up with it.
+- An installed FFmpeg is used as an optional fallback for codecs the built-in remuxer cannot copy; it is never required or shipped.
+- Segments can be saved as separate files in a folder, and a video-only option downloads just the video of a stream with a separate audio track.
+- Interrupted or cancelled downloads continue where they stopped, and need disk space for the video only, not twice that.
+- Every segment and the finished file are checked, so an error page, a cut-off file or a wrong key is caught instead of producing a corrupt file.
+- Requests retry with back-off, follow redirects, and support proxies, TLS settings, headers, cookies and a speed limit.
+- Typed settings, results, progress events and clear errors with hints, and logging that stays silent until you turn it on.
+- A cancellation token lets one thread stop work started by others.
+- A Python guide describes using RayoHX as a library.
 
 ### Security
 
 - Dependencies are audited for known vulnerabilities and checked for disallowed licences on every change.
 - Code is scanned for security problems, and commits are scanned for leaked secrets.
 - Pull requests are checked for risky new dependencies.
-- A security policy explains how to report a vulnerability privately, and each package documents how it protects secrets, requests and the machine it runs on.
+- A security policy explains how to report a vulnerability privately, and the docs describe how the library protects secrets, requests and the machine it runs on.
+- Login credentials go only to the starting host and to hosts you list; redirects never carry them elsewhere.
+- Secrets such as tokens, cookies and proxy passwords are hidden from logs and error messages.
+- Segment names from a stream cannot write outside the download folder, and an existing file is never replaced unless you allow it.
+- Unsupported web address schemes and endless redirect loops are refused.
+- Damaged or hostile streams are refused with a clear error instead of crashing.

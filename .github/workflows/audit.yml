@@ -2,30 +2,30 @@ name: Audit
 
 # Checks locked dependencies for known vulnerabilities. Dependency review only covers
 # pull requests, so this catches advisories published against dependencies already in use.
-# Calls one workflow per package (audit-core, audit-cli, audit-api, audit-ui) and one for the
-# workspace root (audit-repo).
+# Covers the runtime and development dependencies of core and the pytest plugin.
 on:
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:
   pull_request:
-    paths: [uv.lock, '**/package-lock.json']
+    paths: [uv.lock]
 
 permissions:
   contents: read
 
 jobs:
-  core:
-    uses: ./.github/workflows/audit-core.yml
-
-  cli:
-    uses: ./.github/workflows/audit-cli.yml
-
-  api:
-    uses: ./.github/workflows/audit-api.yml
-
-  ui:
-    uses: ./.github/workflows/audit-ui.yml
-
-  repo:
-    uses: ./.github/workflows/audit-repo.yml
+  pip-audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          sync: "false"
+      - name: Export locked dependencies
+        run: uv export --locked --all-packages --all-groups --no-emit-workspace --no-hashes --format requirements-txt -o requirements-audit.txt
+      - name: Audit
+        run: uvx pip-audit --requirement requirements-audit.txt --no-deps --disable-pip

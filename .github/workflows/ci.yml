@@ -1,9 +1,7 @@
 name: CI
 
-# Calls one workflow per package (ci-core, ci-cli, ci-api, ci-ui, ci-docker), one for the rest
-# of the repository (ci-repo) and ci-installer once the cli and ui have passed; `ci` at the end is
-# the single required check for the branch ruleset. On pull requests, `changes` limits the run to
-# the parts of the repository the change can affect; every other event runs everything.
+# Core (lint, tests, integration tests, build), the pytest plugin (lint, build) and the rest of the
+# repository (pre-commit); `ci` at the end is the single required check for the branch ruleset.
 on:
   pull_request:
   push:
@@ -17,51 +15,159 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
-    permissions:
-      contents: read
-      pull-requests: read
-    uses: ./.github/workflows/changes.yml
+  # --- packages/core -------------------------------------------------------------------------
 
-  core:
-    needs: changes
-    if: needs.changes.outputs.core == 'true'
-    uses: ./.github/workflows/ci-core.yml
+  core-lint:
+    name: core lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+      - name: Lint
+        uses: ./.github/actions/lint-python
+        with:
+          path: packages/core
+      - name: Check dependency licenses
+        run: uv run pip-licenses --from=mixed --partial-match --fail-on="GPL" --format=plain
 
-  cli:
-    needs: changes
-    if: needs.changes.outputs.cli == 'true'
-    uses: ./.github/workflows/ci-cli.yml
+  core-test:
+    name: core test (${{ matrix.os }}, ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        include:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: macos-latest # Apple silicon
+            python-version: "3.11"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Run tests
+        uses: ./.github/actions/run-pytest
+        with:
+          package: core
+          python-version: ${{ matrix.python-version }}
 
-  api:
-    needs: changes
-    if: needs.changes.outputs.api == 'true'
-    uses: ./.github/workflows/ci-api.yml
+  core-int-test:
+    name: core int-test (${{ matrix.os }}, ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        include:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: macos-latest # Apple silicon
+            python-version: "3.11"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Run integration tests
+        uses: ./.github/actions/run-pytest
+        with:
+          package: core
+          python-version: ${{ matrix.python-version }}
+          integration: "true"
 
-  ui:
-    needs: changes
-    if: needs.changes.outputs.ui == 'true'
-    uses: ./.github/workflows/ci-ui.yml
+  core-build:
+    name: core build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          sync: "false"
+      - name: Build the compiled wheel
+        env:
+          PYD_BUILD: "1"
+        run: uv build --wheel --package rayohx
+      - name: Check the package metadata
+        run: uvx twine check --strict dist/*
+      - name: Check the wheel holds the compiled library, stubs and no sources
+        run: |
+          unzip -l dist/*.whl > wheel.txt
+          grep -qE " rayohx\..*\.(so|pyd)$" wheel.txt
+          grep -qE " rayohx/__init__\.pyi$" wheel.txt
+          if grep -E " rayohx.*\.py$" wheel.txt; then
+            echo "the compiled wheel must not hold .py sources"; exit 1
+          fi
+          if grep -E " rayohx_pytest[./]" wheel.txt; then
+            echo "the core wheel must not contain the test plugin"; exit 1
+          fi
 
-  docker:
-    needs: changes
-    if: needs.changes.outputs.docker == 'true'
-    uses: ./.github/workflows/ci-docker.yml
+  # --- packages/pytest: it has no tests of its own; the core tests use it --------------------
 
-  repo:
-    needs: changes
-    if: needs.changes.outputs.repo == 'true'
-    uses: ./.github/workflows/ci-repo.yml
+  pytest-lint:
+    name: pytest lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+      - name: Lint
+        uses: ./.github/actions/lint-python
+        with:
+          path: packages/pytest
 
-  installer:
-    needs: [changes, cli, ui]
-    if: needs.changes.outputs.installer == 'true' && !cancelled() && !failure()
-    uses: ./.github/workflows/ci-installer.yml
+  pytest-build:
+    name: pytest build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          sync: "false"
+      - name: Build the wheel
+        run: uv build --wheel --package rayohx-pytest
+      - name: Check the package metadata
+        run: uvx twine check --strict dist/*
+      - name: Check the wheel holds the plugin and its sample data
+        run: |
+          unzip -l dist/*.whl > wheel.txt
+          grep -qE " rayohx_pytest/plugin\.py$" wheel.txt
+          grep -qE " rayohx_pytest/data/hls/.*\.m3u8$" wheel.txt
+          grep -qE " rayohx_pytest/data/media/.*\.ts$" wheel.txt
 
+  # --- everything outside packages/: docs, workflows and the root files ----------------------
+
+  repo-lint:
+    name: repo lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+      - name: Run pre-commit hooks
+        env:
+          SKIP: pytest-core # covered by the test jobs across all Python versions
+        run: git ls-files -z . ':(exclude)packages' | xargs -0 uvx pre-commit run --files
+
+  # Single required status check for the branch ruleset.
   ci:
     name: CI result
     if: always()
-    needs: [changes, core, cli, api, ui, docker, repo, installer]
+    needs: [core-lint, core-test, core-int-test, core-build, pytest-lint, pytest-build, repo-lint]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -70,5 +176,4 @@ jobs:
           NEEDS: ${{ toJSON(needs) }}
         run: |
           jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
-          # A job skipped because its part of the repository did not change counts as passed.
-          jq -e 'all(.[]; .result == "success" or .result == "skipped")' <<< "$NEEDS" > /dev/null
+          jq -e 'all(.[]; .result == "success")' <<< "$NEEDS" > /dev/null

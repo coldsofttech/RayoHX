@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rayohx"
 dynamic = ["version"]
-description = "RayoHX core library: HLS stream inspecting and downloading."
+description = "RayoHX library: HLS stream inspecting and downloading."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -45,8 +45,12 @@ environment = { PYD_BUILD = "1" }
 test-requires = "pytest"
 test-command = "pytest -o addopts= {project}/tests/unit"
 
+[tool.uv.sources]
+rayohx-pytest = { workspace = true }
+
 [dependency-groups]
 dev = [
+  "rayohx-pytest",
   "mypy>=1.13",
   "pytest>=8.3",
   "pytest-cov>=6.0",
@@ -70,7 +74,7 @@ select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
 [tool.mypy]
 strict = true
 explicit_package_bases = true
-mypy_path = "src"
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src:$MYPY_CONFIG_FILE_DIR/../pytest/src"
 files = ["src", "tests"]
 
 [tool.pytest.ini_options]

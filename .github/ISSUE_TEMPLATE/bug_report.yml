@@ -8,8 +8,6 @@ body:
       label: Which part is affected?
       options:
         - Python Package
-        - Command Line
-        - UI
         - Not Sure
     validations:
       required: true
@@ -38,9 +36,9 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Operating system and version, Python version, and how you installed it. For the UI window, also say if the Microsoft Edge WebView2 runtime is installed.
+      description: Operating system and version, Python version, and how you installed it.
       placeholder: |
-        Windows 11, Python 3.13, installed with uv tool install
+        Windows 11, Python 3.13, installed with pip
   - type: textarea
     id: logs
     attributes:

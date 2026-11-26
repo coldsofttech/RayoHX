@@ -1,53 +1,135 @@
 # Development
 
-Repository-wide set-up and tooling. Each package documents its own development: [core](../packages/core/docs/development.md), [CLI](../packages/cli/docs/development.md), [API](../packages/api/docs/development.md), [UI](../packages/ui/docs/development.md) and [Docker](../packages/docker/docs/development.md).
+How to work on this repository: the `rayohx` library (`packages/core`) and the `rayohx_pytest` test plugin (`packages/pytest`). For how the library is built, see [architecture](architecture.md); for using it, see the [Python guide](guides/python.md).
 
 ## Layout
 
 ```text
 packages/core/     the `rayohx` library: all the logic, never prints or exits (typed)
-packages/cli/      the `rayohx` command (Typer + Rich): parses input, calls the library, shows output
-packages/api/      the `rayohx_api` FastAPI app: routers, schemas, errors, settings, OpenAPI contract
-packages/ui/       the `rayohxu` window (Cornea Shell) and its React + Vite frontend
-packages/docker/   the container image
-installer/         shared installer pieces: NSIS behavior and pinned tool versions
-scripts/           repository settings and the shared installer build helpers
-tests/             fixtures and helpers shared by every package's tests (see [Testing](testing.md))
-docs/              repository-wide documentation
+packages/pytest/   the `rayohx_pytest` plugin: test servers, certificates and sample HLS and media files
+brand/             the social preview image
+docs/              repository documentation
 pyproject.toml     workspace metadata and tool configuration
 uv.lock            locked dependencies (commit this file)
 ```
 
-Each package has its own `src/`, `tests/` (with `unit/` and `integration/`), `docs/` and `CHANGELOG.md`. The core library never imports the other packages; the CLI, API and UI build on it.
+Each package has its own `src/`. Core also has `tests/` (with `unit/` and `integration/`), `scripts/` and `docs/guides/`. The changelog is the root `CHANGELOG.md`. Core uses the plugin in its tests, and the library never imports the plugin.
 
 ## Tooling
 
 | Purpose | Tool |
 | --- | --- |
-| Environment, dependencies, build | [uv](https://docs.astral.sh/uv/) with setuptools (compiled core, CLI and API) and Hatchling (window) |
+| Environment, dependencies, build | [uv](https://docs.astral.sh/uv/) with setuptools (compiled core) |
 | Lint and format | Ruff |
 | Type checking | mypy (strict) |
 | Tests and coverage | pytest with pytest-cov (80% minimum) |
-| API | FastAPI, uvicorn, pydantic-settings; Schemathesis for contract tests |
-| Window | `cornea-shell` (Windows only) |
-| Frontend | Node 22 or newer, Vite, React, Vitest, ESLint, Prettier |
+
+## Set up and run
 
 ```bash
-uv sync --locked           # create .venv and install every package and the dev tools
-uv run pytest packages/<name>/tests/unit --no-cov           # one package's unit tests
-uv run pytest -m integration packages/<name>/tests --no-cov # its integration tests
-uv run ruff check packages/<name>
-uv run mypy packages/<name>/src
+uv sync --locked                                  # create .venv and install both packages and the dev tools
+uv run python                                     # then: import rayohx
+uv run python -c "import rayohx; print(rayohx.inspect('https://example.com/master.m3u8'))"
 ```
 
-Run only what your change touches. Integration tests are marked `integration` automatically, excluded from the default run, and run as their own CI jobs.
+## Checks
 
-To try a compiled build by hand, each package has smoke scripts in `packages/<name>/scripts/smoke/` (see that package's development guide). Build in this order, because each one installs the compiled wheels before it: core, then API and CLI, then UI. The Docker image has its own script.
+Run only what your change touches:
+
+```bash
+uv run pytest packages/core/tests/unit --no-cov            # unit tests
+uv run pytest -m integration packages/core/tests --no-cov  # real local servers and the installed package
+uv run ruff check packages/core
+uv run ruff format --check packages/core
+uv run mypy packages/core
+```
+
+Core's own pytest settings require 80% coverage of `rayohx`, so a run of a few tests fails on coverage unless you pass `--no-cov`. mypy runs in strict mode over `src` and `tests`. CI runs the same commands (`ci.yml`), plus pre-commit on the files and a licence check on the dependencies. Integration tests are marked `integration` automatically, excluded from the default run, and run as their own CI jobs. For the test layers and the shared helpers, see [testing](testing.md).
+
+## Tests
+
+```text
+packages/core/tests/
+  conftest.py      marks every test under an integration folder as an integration test
+  unit/            one folder per package (config, downloader, playlist, stream, _http, _mux ...),
+                   plus tests for single modules such as errors, redaction and serialization
+  integration/     the engine against real local servers, and the installed package
+  helpers/         small real HTTP servers and builders for playlists, encryption, media and storage
+  fixtures/        sample playlists (hls) and, in the `rayohx-pytest` package, small real media files
+```
+
+- **Unit tests** follow the source layout: a change in `rayohx/playlist` is tested in `tests/unit/playlist`. Test the pure modules directly.
+- **Everything under `integration/`** is marked `integration` automatically, so the default run leaves it out.
+- **Use the helpers** instead of mocking the network: they run real HTTP servers on the local machine, so retries, redirects, timeouts and damaged responses are exercised for real.
+- **Damaged media.** `unit/test_hardening.py` feeds corrupted input to the parsers and the muxer. For a longer run, set the number of seeds: `RAYOHX_FUZZ_SEEDS=1500 uv run pytest packages/core/tests/unit/test_hardening.py --no-cov`.
+
+### Smoke test the compiled build
+
+`packages/core/scripts/smoke/` builds the compiled wheel (a single `.pyd` plus type stubs) and tries it in a
+fresh virtual environment. It is a manual check, separate from the pytest suites, and it needs
+network access, uv and a C compiler. The scripts are Python, so the check runs on Windows, Linux and
+macOS. Run them from `packages/core`; `--python` picks another Python version through uv.
+
+```sh
+cd packages/core
+python scripts/smoke/setup_venv.py [--python 3.11]   # builds the wheel and installs it into scripts/smoke/.venv
+python scripts/smoke/test_core.py                    # runs the check against the installed build
+```
+
+`test_core.py` imports `rayohx` from that environment, warns if the loaded module is not a compiled
+build, then calls `rayohx.inspect()` on the **first line** of `scripts/smoke/test_links.txt` and prints the playlist.
+To try another stream, put its URL on the first line of that file; any further lines are ignored.
+`test_links.txt` is kept in the repository, so use a stream you are allowed to share.
+
+The virtual environment, `wheels/`, `data/` and logs under `scripts/smoke/` are git-ignored.
+
+## Pytest plugin
+
+`packages/pytest` is a plain-Python package with no build step. Its fixtures (`local_server`, `tls_certificate` and `ts_payload`) are registered through `plugin.py`, so tests use them without imports. Change it when a helper is useful to more than one test file, and keep it free of anything specific to a single test. It is not published to PyPI; other repositories install it from git at a tag (see its README).
+
+## Media test files
+
+The muxer tests use small real MPEG-TS and fragmented MP4 files in `packages/pytest/src/rayohx_pytest/data/media` (about 860 KB), including two complete HLS sets with separate audio. They were made by FFmpeg so that RayoHX's output can be compared with something it did not write. To regenerate them, run `uv run python packages/core/scripts/make_media_fixtures.py` (needs `ffmpeg` with libx264 and libx265).
+
+`ffmpeg` and `ffprobe` are used by some tests only as a reference to compare against, and those tests are skipped when they are not installed. They are never needed to use or build RayoHX.
+
+## Speed
+
+```bash
+uv run python packages/core/scripts/benchmark.py              # all scenarios, default size
+uv run python packages/core/scripts/benchmark.py --json > before.json
+```
+
+The benchmark downloads generated segments from a server on your own machine, so no internet is involved. Use it to compare one change with another on the same machine; see [benchmarks](benchmarks.md).
 
 ## Continuous integration
 
-Each package has its own workflows: `ci-<package>.yml`, `audit-<package>.yml`, `security-<package>.yml` and `release-<package>.yml`, plus repository-wide `ci-repo.yml`, `audit-repo.yml` and `security-repo.yml`. Each CI workflow ends in a gating job, and these are the required checks in the branch ruleset. Tests run on Linux (Python 3.11 to 3.15), and on Windows, macOS and Linux ARM64 (Python 3.11), as each package's workflow defines.
+`ci.yml` runs the core, pytest plugin and repository checks, and ends in a gating job (`ci`), which is the required check in the branch ruleset. The other workflows are `security.yml`, `audit.yml` and `release.yml`. Tests run on Linux (Python 3.11 to 3.15), and on Windows, macOS (Apple silicon and Intel) and Linux ARM64 (Python 3.11). Code must work on all of them, so use `pathlib` and avoid assuming POSIX paths or signals.
 
-## Releasing
+## Changing the library
 
-Releases are routed by tag and published with trusted publishing, so no API token is stored. See [releasing](releasing.md), and each package's `packaging.md` for the details.
+1. Put the logic in the module that owns it (see the module map in [architecture](architecture.md)). Names without a leading underscore are public; add a new public name to the package's `__all__`, and to `rayohx/__init__.py` only if users should reach it from the top.
+2. Validate settings in `config/` and raise `ConfigurationError` with a message and a hint, before any request is made.
+3. Add unit tests next to the matching folder, and an integration test when the change touches the network or the output files.
+4. If you change public behaviour, update the guide in `docs/guides/python/` and the `[Unreleased]` section of the root `CHANGELOG.md`.
+
+## Rules to keep
+
+- The library never prints, exits the process or reads global state. Report through return values, exceptions, events and `logging`. The linter rejects `print` (scripts are the exception).
+- Every network request goes through `HttpClient`, and nothing logs or shows a URL, header, key or token without `_redaction` first.
+- Keep it typed: public models are frozen, and everything passes strict mypy.
+- Import heavy modules inside the function or under `TYPE_CHECKING`, as the existing modules do, so `import rayohx` stays cheap. A public package exposing submodules does so through a lazy `__getattr__`.
+- The library never imports an application built on it, or the test plugin. The only runtime dependencies are `httpx` and `cryptography`; adding another needs a strong reason.
+- Runtime dependencies must be permissively licensed (MIT, BSD, Apache-2.0 and similar); CI runs `pip-licenses` and fails on any GPL-family license. Do not copy code from GPL, LGPL or AGPL projects such as FFmpeg, Bento4 or GPAC; implement from the specifications instead.
+- Explain any `# noqa` or `# nosemgrep` with a reason in the comment.
+
+## Building and releasing
+
+```bash
+uv build --package rayohx          # a plain-Python wheel and sdist, for a quick check
+PYD_BUILD=1 uv build --wheel --package rayohx   # the compiled wheel a release ships
+```
+
+A release ships one Nuitka binary with `.pyi` stubs and no `.py` sources, so a platform without a wheel cannot install `rayohx`. Compiling is obfuscation, not encryption. Without `PYD_BUILD`, `uv sync`, tests and coverage run against the plain sources.
+
+Releases are routed by tag and published with trusted publishing, so no API token is stored. The version is `__version__` in `packages/core/src/rayohx/__init__.py`. Bump it and update `CHANGELOG.md` in the same pull request; the release workflow (`release.yml`) fails if the tag and the version differ. The steps to publish are in [packaging](packaging.md#releasing-to-pypi).

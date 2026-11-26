@@ -10,6 +10,7 @@ import string
 from pathlib import Path
 
 import pytest
+from rayohx_pytest.site import media
 
 from rayohx import ContainerFormat, OutputFormat, parse_playlist
 from rayohx._download._output._names import name_from_url, sanitize_filename
@@ -19,7 +20,7 @@ from rayohx._mux._fmp4_source import Fmp4Source
 from rayohx._mux._muxer import Mp4Muxer
 from rayohx._mux._source import probe_streams
 from rayohx.errors import RayoHXError
-from tests.helpers.mux import media, mux_ts
+from tests.helpers.mux import mux_ts
 
 SEEDS = range(int(os.environ.get("RAYOHX_FUZZ_SEEDS", "12")))
 

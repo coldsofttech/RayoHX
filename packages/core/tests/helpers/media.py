@@ -1,14 +1,11 @@
 """A fake media origin for download tests: serves segments, keys and init sections in memory."""
 
-import struct
 import threading
 import time
 from collections.abc import Iterator
 
 import httpx
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from rayohx_pytest.media import ts_payload
+from rayohx_pytest.media import encrypt, fmp4_fragment, fmp4_init, payload, ts_payload
 
 from rayohx import CancellationToken, MediaPlaylist
 from rayohx._http import HttpClient
@@ -18,36 +15,6 @@ from rayohx.playlist import parse_playlist
 BASE = "https://media.example.com/v/"
 KEY = bytes(range(16, 32))
 IV = bytes(range(16))
-
-
-def payload(index: int, size: int = 500) -> bytes:
-    """Deterministic, recognisable bytes for segment ``index``."""
-    return bytes((index * 31 + offset * 7) % 251 for offset in range(size))
-
-
-def box(kind: bytes, body: bytes = b"") -> bytes:
-    """An MP4 box: a 4-byte size, a 4-byte type, then the body."""
-    return struct.pack(">I4s", 8 + len(body), kind) + body
-
-
-def fmp4_init() -> bytes:
-    """A minimal fragmented-MP4 initialization section."""
-    return box(b"ftyp", b"iso5\x00\x00\x00\x01iso5") + box(b"moov", box(b"mvhd", bytes(20)))
-
-
-def fmp4_fragment(index: int, size: int = 100) -> bytes:
-    """A movie fragment: a ``moof`` box followed by its ``mdat`` box."""
-    return box(b"moof", box(b"mfhd", struct.pack(">II", 0, index + 1))) + box(
-        b"mdat", bytes([index % 251]) * size
-    )
-
-
-def encrypt(data: bytes, key: bytes, iv: bytes) -> bytes:
-    """AES-128-CBC with PKCS#7 padding, as HLS does."""
-    padder = padding.PKCS7(128).padder()
-    padded = padder.update(data) + padder.finalize()
-    encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
-    return encryptor.update(padded) + encryptor.finalize()
 
 
 class Origin:

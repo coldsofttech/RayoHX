@@ -3,7 +3,7 @@ description: Set up uv with the locked dependencies and run one package's tests.
 
 inputs:
   package:
-    description: Package folder name under packages/ (core, cli, api, ui).
+    description: Package folder name under packages/ (core).
     required: true
   python-version:
     description: Python version.

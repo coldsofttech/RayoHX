@@ -1,11 +1,12 @@
 import httpx
 import pytest
+from rayohx_pytest.media import payload
 
 from rayohx import CancellationToken, MediaPlaylist
 from rayohx._download._fetcher import HlsSegmentFetcher
 from rayohx.errors import CancellationError, SegmentDownloadError, UnsupportedPlaylistError
 from rayohx.playlist import parse_playlist
-from tests.helpers.media import BASE, Origin, client_for, payload
+from tests.helpers.media import BASE, Origin, client_for
 
 
 def fetcher_for(origin: Origin) -> HlsSegmentFetcher:

@@ -3,6 +3,7 @@ from email.utils import format_datetime
 
 import httpx
 import pytest
+from rayohx_pytest.mocks import Body, ok, sequence
 
 from rayohx import SegmentRange
 from rayohx._http._common import MAX_RETRY_AFTER
@@ -13,7 +14,7 @@ from rayohx.errors import (
     NetworkError,
     PlaylistNotFoundError,
 )
-from tests.helpers.http import URL, Body, make, ok, sequence
+from tests.helpers.http import URL, make
 
 
 def test_redirects_are_followed_and_the_final_address_reported() -> None:

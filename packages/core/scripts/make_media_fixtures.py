@@ -12,9 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-OUT = (
-    Path(__file__).resolve().parents[2] / "pytest" / "src" / "rayohx_pytest" / "data" / "media"
-)
+OUT = Path(__file__).resolve().parents[2] / "pytest" / "src" / "rayohx_pytest" / "data" / "media"
 VIDEO = ["-f", "lavfi", "-i", "testsrc=duration=4:size=320x240:rate=25"]
 AUDIO = ["-f", "lavfi", "-i", "sine=frequency=440:duration=4:sample_rate=44100"]
 H264 = [

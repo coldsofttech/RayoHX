@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from rayohx_pytest.fixtures import FIXTURES
 
 SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "make_media_fixtures.py"

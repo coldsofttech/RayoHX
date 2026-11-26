@@ -3,6 +3,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from rayohx_pytest.mocks import Handler
 
 from rayohx._http import HttpClient
 from rayohx._http._common import proxy_url
@@ -16,7 +17,7 @@ from rayohx.errors import (
     NetworkTimeoutError,
     TLSError,
 )
-from tests.helpers.http import URL, Handler, make
+from tests.helpers.http import URL, make
 
 
 def failing(error: Exception) -> Handler:

@@ -1,11 +1,12 @@
 """Which hosts receive secrets, and the headers each request carries."""
 
 import httpx
+from rayohx_pytest.mocks import Handler, ok
 
 from rayohx._http._credentials import CredentialScope
 from rayohx.config import NetworkConfig
 from rayohx.models import SegmentRange
-from tests.helpers.http import URL, Handler, make, ok
+from tests.helpers.http import URL, make
 
 
 def test_custom_user_agent_and_headers_are_sent() -> None:

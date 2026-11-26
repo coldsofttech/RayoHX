@@ -8,8 +8,10 @@ add it to the development dependencies from git:
 dev = ["rayohx-pytest"]
 
 [tool.uv.sources]
-rayohx-pytest = { git = "https://github.com/coldsofttech/RayoHX", subdirectory = "packages/pytest", tag = "..." }
+rayohx-pytest = { git = "https://github.com/coldsofttech/RayoHX", subdirectory = "packages/pytest", tag = "pytest-v0.1.0" }
 ```
+
+Releases of the plugin are git tags named `pytest-v<version>`, matching `__version__` in `src/rayohx_pytest/__init__.py`. They have no GitHub release, and the plain `v<version>` tags belong to the `rayohx` library.
 
 ## Fixtures
 
@@ -21,4 +23,4 @@ rayohx-pytest = { git = "https://github.com/coldsofttech/RayoHX", subdirectory =
 The `rayohx_pytest.site` module has `Site`, an httpx mock handler that serves bytes by path and logs requests, and `hls_site` and `single_file_site`, which build streams from the shared media fixtures.
 
 The classes and helpers behind them (`Reply`, `Seen`, `LocalServer`, `vod_routes` and the fixture
-readers) are importable from `rayohx_pytest.servers`, `rayohx_pytest.hls` and `rayohx_pytest.fixtures`.
+readers) are importable from `rayohx_pytest.servers`, `rayohx_pytest.hls` and `rayohx_pytest.fixtures`. `HlsServer` (in `hls`) is a ready-made server for a small stream with a master playlist, and `free_port()` (in `servers`) finds a free local port.

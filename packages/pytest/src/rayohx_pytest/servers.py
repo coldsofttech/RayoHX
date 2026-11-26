@@ -120,6 +120,15 @@ class LocalServer:
         self._thread.join(timeout=5)
 
 
+def free_port() -> int:
+    """A TCP port on 127.0.0.1 that is free right now."""
+    import socket
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
 def make_certificate(directory: Path) -> tuple[Path, Path]:
     """Write a self-signed certificate (valid for 127.0.0.1 and localhost) and its key."""
     import datetime

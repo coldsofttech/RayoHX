@@ -13,7 +13,7 @@ The RayoHX Python library: look at an HLS stream, choose the quality and tracks 
 download it to a file, all from your own code.
 
 Coming from `pym3u8downloader`? See the
-[migration guide](https://github.com/coldsofttech/RayoHX/blob/main/packages/core/docs/guides/migration.md).
+[migration guide](https://github.com/coldsofttech/RayoHX/blob/main/docs/guides/migration.md).
 
 Want a ready-made command instead? Install the `rayohx` command line from `rayohx-cli`.
 
@@ -67,9 +67,9 @@ print(result.output.path, result.output.size_bytes)
 
 ## Learn more
 
-- [Python guide](https://github.com/coldsofttech/RayoHX/blob/main/packages/core/docs/guides/python.md): inspecting, selecting, downloading, settings, events,
+- [Python guide](https://github.com/coldsofttech/RayoHX/blob/main/docs/guides/python.md): inspecting, selecting, downloading, settings, events,
   errors and logging
-- [Migration guide](https://github.com/coldsofttech/RayoHX/blob/main/packages/core/docs/guides/migration.md):
+- [Migration guide](https://github.com/coldsofttech/RayoHX/blob/main/docs/guides/migration.md):
   moving from `pym3u8downloader`
 - Prefer a command? See the [`rayohx-cli`](https://pypi.org/project/rayohx-cli/) command line
 - [Changelog](CHANGELOG.md)

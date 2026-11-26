@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rayohx-pytest"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Shared pytest plugin for the RayoHX repositories: local HTTP servers, HLS streams and fixtures."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -26,5 +26,28 @@ dependencies = [
 [project.entry-points.pytest11]
 rayohx_pytest = "rayohx_pytest.plugin"
 
+[dependency-groups]
+dev = [
+  "mypy>=1.13",
+  "ruff>=0.17.4",
+]
+
+[tool.hatch.version]
+path = "src/rayohx_pytest/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/rayohx_pytest"]
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["B", "C4", "E", "F", "I", "PT", "RUF", "S", "SIM", "T20", "UP", "W"]
+
+[tool.mypy]
+strict = true
+explicit_package_bases = true
+mypy_path = "src"
+files = ["src"]

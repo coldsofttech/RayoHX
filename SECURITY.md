@@ -2,19 +2,13 @@
 
 ## Supported versions
 
-Only the latest release of each package (core, command line, API, UI and the Docker image) receives security fixes. The newest release of each package is also available as a stable entry on the releases page: `core-latest`, `cli-latest`, `installer-latest` and `docker-latest`. The repository's "Latest" badge always shows the newest core release.
+Only the latest release of the `rayohx` library receives security fixes. The command line, Docker image, desktop window and installers are released from their own repositories, which have their own security policies.
 
 ## What is covered
 
-Anything this project ships: the `rayohx` library, the command line, the HTTP API (run on its own), the local server behind the Windows window, the Docker image, and the installers and packages published with each release. Please report problems in the packaged software here, not in the dependencies of it; those go to their own projects.
+Anything this repository ships: the `rayohx` library. Please report problems in the packaged software here, not in the dependencies of it; those go to their own projects. The `rayohx-pytest` test plugin is for development only and is not published.
 
-How each part protects requests, secrets and the machine it runs on is described in [docs/security.md](docs/security.md), which links to the notes of each package:
-
-- [Core](packages/core/docs/security.md)
-- [Command line](packages/cli/docs/security.md)
-- [API](packages/api/docs/security.md)
-- [UI](packages/ui/docs/security.md)
-- [Docker](packages/docker/docs/security.md)
+How the library protects requests, secrets and the machine it runs on is described in [docs/security.md](docs/security.md).
 
 ## Reporting a vulnerability
 
