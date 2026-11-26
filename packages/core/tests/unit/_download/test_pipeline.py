@@ -195,7 +195,7 @@ def test_a_slow_first_segment_holds_back_the_workers_beyond_the_window() -> None
 def test_a_download_can_start_part_way_through() -> None:
     rig = build(6, start_index=3)
     rig.pipeline.run()
-    assert rig.fetcher.requested == [3, 4, 5]
+    assert sorted(rig.fetcher.requested) == [3, 4, 5]  # the workers fetch at the same time
     assert rig.sink.written == [3, 4, 5]
     assert rig.pipeline.head == 6
 
