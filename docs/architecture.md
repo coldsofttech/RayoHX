@@ -1,25 +1,143 @@
 # Architecture
 
-How the repository fits together. Each package documents its own design: [core](../packages/core/docs/architecture.md), [CLI](../packages/cli/docs/architecture.md), [API](../packages/api/docs/architecture.md), [UI](../packages/ui/docs/architecture.md) and [Docker](../packages/docker/docs/architecture.md). For commands, see [development](development.md).
+How the repository fits together, and how the `rayohx` package (the download engine) is put together. For using the library, see the [Python guide](guides/python.md). For commands, see [development](development.md).
 
 ## Packages
 
+The repository has two packages:
+
+- **core** (`packages/core`, import name `rayohx`) is the download engine. It holds all the logic.
+- **pytest** (`packages/pytest`, import name `rayohx_pytest`) is a pytest plugin with the test support shared by the RayoHX repositories: local HTTP servers, TLS certificates, sample HLS playlists and media files. It is not published to PyPI; other repositories add it as a development dependency from git, pinned to a tag.
+
+The core tests use the plugin instead of keeping their own copies of these helpers.
+
+## Core
+
+### Layering
+
+The package is a library. It takes typed settings, returns frozen results and raises meaningful exceptions. It never prints, never exits the process and never reads global state, so any application can build on it, and the package never imports one.
+
 ```mermaid
 flowchart LR
-    C[cli: rayohx] --> L[core: rayohx]
-    A[api: rayohx_api] --> L
-    U[ui: rayohx_ui] --> A
-    U --> L
-    D[docker image] --> C
+    App[Your application] -->|calls| L[rayohx]
+    T[Core tests] -->|use| P[rayohx_pytest]
+    T -->|exercise| L
 ```
 
-- **core** holds all the logic. It raises exceptions instead of printing or exiting, so every front end can reuse it.
-- **cli** reads options, calls the library and shows results.
-- **api** validates input, calls the library and shapes responses. It runs on its own or is mounted inside the window.
-- **ui** wires Cornea Shell to the API and the library. It is Windows only.
-- **docker** packages the command line as a container image.
+It has two runtime dependencies: `httpx` for every network request and `cryptography` for AES-128 segment decryption. Everything else, including the MPEG-TS and MP4 remuxer, is written in the package.
 
-Dependencies point one way: the core library never imports the other packages, and the API and core never import the UI.
+Names without a leading underscore are public; the ones re-exported from `rayohx/__init__.py` (listed in `__all__`) are the supported surface. Modules and packages that start with `_` are internal and may change at any time. Public packages load their submodules lazily on first use, so `import rayohx` stays cheap.
+
+### Modules
+
+```text
+packages/core/src/rayohx/
+  __init__.py      the public names: inspect, select_stream, download, Downloader and the models
+  config/          typed, validated settings: network, storage, output, selection, proxy, and DownloadConfig that groups them
+  models/          frozen data: playlists, tracks, segments, requests, progress and results
+  enums.py         DownloadState, EventType, StorageStrategy, OutputFormat, RemuxBackend and the other enums
+  errors.py        every exception the engine raises, each with a message and a hint
+  cancellation.py  CancellationToken: ask work to stop, and let it stop cleanly
+  events/          the download state machine and the event bus
+  playlist/        reading HLS playlists (RFC 8216) and inspecting a stream before downloading it
+  stream/          choosing a variant and its audio and subtitle tracks
+  downloader/      Downloader (the controller), the download() shortcut and the ways output is delivered
+  serialization.py plain-data views of playlists, selections, progress and results
+  logs.py          configure_logging for applications
+
+  _http/           HttpClient: every network request goes through it
+  _crypto/         AES-128 decryption and key retrieval
+  _download/       the engine that downloads, stores and checks segments
+  _mux/            the built-in remuxer, and the optional use of an installed FFmpeg
+  _ratelimit.py    a speed limit shared by all workers
+  _redaction.py    removes secrets from URLs, headers and text before they are logged or shown
+  _logs.py         the logger namespace, the download id tag and the redaction filter
+```
+
+### Looking at a stream
+
+`inspect` fetches a playlist through `HttpClient` and returns a `MasterPlaylist` (a list of variants and their tracks) or a `MediaPlaylist` (a list of segments). `playlist/parser.py` reads the text into the frozen models in `models/playlist` and `models/segment`; an invalid playlist raises `InvalidPlaylistError` with the line it failed on. `select_stream` then picks a variant and its audio and subtitle tracks from a `SelectionConfig`, and reports in `notes` why a wish could not be met. Neither step downloads any media.
+
+### A download, step by step
+
+1. `download()` is a shortcut that builds a `DownloadRequest` and a `DownloadConfig` and runs a `Downloader`. `Downloader.run()` can also be used directly, with `cancel()` and `events` for control and progress.
+2. The settings and the address are validated first. A bad value raises `ConfigurationError` before any request is made.
+3. **Inspecting.** The playlists are read and the stream is chosen, as above. Separate audio tracks and subtitles become extra jobs beside the main video.
+4. **Preparing.** `_download/_output` decides the output name and format, `_download/_storage` estimates the space needed and checks the disk has it, and `_download/_workspace` opens the working folder.
+5. **Downloading.** `_download/_media.py` downloads one media playlist with the segment pipeline (see below).
+6. **Finalizing.** The finished output is checked against the format the playlist promised, then moved into place.
+7. The result is a frozen `DownloadResult`. A failure raises an error, and a stop raises `CancellationError`.
+
+The controller moves through the states `queued`, `inspecting`, `preparing`, `downloading` (or `paused`) and `finalizing`, and ends in `completed`, `failed` or `cancelled`. Each change is published as an event.
+
+### The segment pipeline
+
+Workers fetch, decrypt and store; one thread takes segments out of the store in playlist order and hands them to the output sink. Because only one thread writes, sinks need no locking. New work starts only while the storage strategy allows it, which is what keeps memory and disk use bounded.
+
+- **Fetching** (`_fetcher.py`) turns a playlist entry into decrypted bytes: it requests the segment (or its byte range), fetches the key, and decrypts. Playlists whose encryption cannot be undone are refused up front rather than failing part-way.
+- **Storage strategy** (`_storage`) decides where finished segments wait for their turn. `auto` writes straight to a resumable file when the output is one, and streams otherwise. With `direct` and `streaming`, workers may run at most twice the worker count ahead of the segment being written. `StorageMetrics` reports what is held in memory and on disk.
+- **Sinks** (`_sinks.py`) are where the ordered segments go: a file, a caller's stream, or a folder of one file per segment. All share one protocol: `preflight`, `open`, `write`, `checkpoint`, `commit` and `abort`.
+- **Containers** (`_containers`) recognise a segment's format from its first bytes and check each segment, and the finished file, against what the playlist promised, so damaged media is caught instead of saved.
+- **Progress** (`_progress.py`) turns the counts into speed, ETA and the other numbers a display needs.
+
+### Output
+
+A download becomes an output file in one of three ways (`downloader/_delivery.py`):
+
+- **Plain.** The segments are joined as they are (MPEG-TS into `.ts`, fragmented MP4 into `.mp4`), or saved one file each.
+- **Native remux.** The built-in remuxer in `_mux` re-wraps the stream into a fragmented MP4, joining in any separate audio tracks. It demuxes MPEG-TS, parses H.264, HEVC, AAC, AC-3/E-AC-3 and MP3, and writes the fragments.
+- **FFmpeg.** For codecs the built-in remuxer cannot copy, an FFmpeg that is already installed copies the pieces into an MP4. It is never required, bundled or asked to transcode. `RemuxBackend` chooses between the two.
+
+Subtitles are written next to the output as `.vtt` files.
+
+### Resuming
+
+Each download has its own working folder, named from a hash of the download (the address without its query string, so signed links still match) and never from user input, so a hostile address cannot point it elsewhere. It holds the resume state (`state.json`), staged segments and a lock. The state is saved safely, so an interrupted download continues where it stopped, and the lock keeps two runs from sharing a folder.
+
+### Events and cancellation
+
+`Downloader.events` is an `EventBus`. Listeners receive a `DownloadEvent` for each `EventType`: started, playlist loaded, stream selected, segment started, completed or failed, progress, finalization, and the three endings. A listener can be any callable, which is how an application draws progress.
+
+Cancellation is cooperative. `Downloader.cancel()` (or a `CancellationToken` passed in) asks the workers to stop; they finish or drop what they are doing and the download ends cleanly with the partial work kept for a later resume.
+
+Pausing uses the same token. `Downloader.pause()` stops new segments from starting while the ones already running finish, and `resume()` lets the download go on. The state becomes `paused` and back to `downloading`, with `download_paused` and `download_resumed` events. Cancelling a paused download wakes it and stops it.
+
+### HTTP and security
+
+- Every request goes through `HttpClient` (`_http`), which applies the timeouts, retries, TLS, proxy and rate limit from `NetworkConfig`, and rejects bad responses.
+- `_redaction` removes secrets (tokens in URLs, sensitive headers, keys in text) before anything is logged, shown in an error or stored in the settings' text form.
+- Settings and models are frozen after they are built, so they can be shared between threads.
+
+See [security](security.md) for how the repository protects secrets and dependencies.
+
+### Errors
+
+Every error derives from `RayoHXError` and carries a message and a hint. The main ones are `ConfigurationError`, `InvalidPlaylistError`, `DownloadError`, `OutputFormatError`, `UnsupportedCodecError` and `CancellationError`. An application shows the message and the hint; it never needs to parse text.
+
+## Pytest plugin
+
+`packages/pytest/src/rayohx_pytest/` is registered as a pytest plugin (`plugin.py`), so its fixtures are available without imports.
+
+```text
+packages/pytest/src/rayohx_pytest/
+  plugin.py     registers the fixtures
+  fixtures.py   readers for the sample playlists and media files
+  servers.py    LocalServer, a real HTTP server on 127.0.0.1, and free_port()
+  hls.py        HlsServer and the routes for a small stream
+  site.py       Site, an httpx mock handler that serves bytes by path and logs requests
+  media.py      builds MPEG-TS bytes the engine accepts as real segments
+  data/         sample HLS playlists and MPEG-TS and MP4 media
+```
+
+The main fixtures are `local_server` (a factory that starts a server and stops it after the test), `tls_certificate` (a self-signed certificate for `127.0.0.1`, for HTTPS tests) and `ts_payload`.
+
+## Tests
+
+The core tests live in `packages/core/tests`: `unit/` runs by default, and `integration/` holds slower end-to-end tests marked `integration`, which are skipped by default and in pre-commit and run in CI. Coverage must stay at 80% or more. See [testing](testing.md).
+
+## Packaging
+
+Core is built with setuptools, and releases compile it with Nuitka into one binary per platform. The version lives in one place, `__version__` in `rayohx/__init__.py`, and setuptools reads it at build time. The release workflow compares it with the release tag. The compiled wheels go to PyPI (no sdist). The pytest plugin is not published; it is installed from git. See [packaging](packaging.md).
 
 ## Checks
 
@@ -28,17 +146,17 @@ Dependencies point one way: the core library never imports the other packages, a
 | Local | secret scan, file hygiene, Ruff, mypy and the lock check | pre-commit hooks |
 | Pull request | CI, security scans and dependency review | GitHub Actions |
 | Repository | Branch ruleset, secret scanning, Dependabot | GitHub settings |
-| Release | Tag and version check, build, trusted publish, installers | `release-<package>.yml` |
+| Release | Tag and version check, build, trusted publish | `release.yml` |
 
 ## Workflows
 
-Every package has its own workflow for each concern, plus one for the rest of the repository:
+Core has a workflow for each concern, and one more covers the rest of the repository:
 
 | Workflow | Purpose |
 | --- | --- |
-| `ci-<package>.yml` | lint, type check, tests and build for that package; `ci-repo.yml` covers the shared files |
-| `security-<package>.yml` | static analysis and, for Docker, image scanning |
-| `audit-<package>.yml` | weekly audit of the locked dependencies |
-| `release-<package>.yml` | build, publish and attach the artifacts for that package |
+| `ci.yml` | lint, type check, tests and build for core, lint and build for the pytest plugin, and pre-commit checks for the shared files |
+| `security.yml` | Semgrep static analysis of core, the pytest plugin and the shared files and workflows |
+| `audit.yml` | weekly audit of the locked dependencies of core and the pytest plugin |
+| `release.yml` | check the tag, build, publish and attach the artifacts for core |
 
-`ci.yml`, `security.yml`, `audit.yml` and `release.yml` are the entry points that call them. `ci` is the single required check in the branch ruleset, and `release.yml` routes a release by its tag. Shared steps live in `.github/actions/`. See [releasing](releasing.md) and [security](security.md).
+`ci` is the single required check in the branch ruleset, and `release.yml` runs when a release is published with a `v` tag. Shared steps live in `.github/actions/`. See [packaging](packaging.md) and [security](security.md).

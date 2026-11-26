@@ -3,6 +3,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from rayohx_pytest.mocks import Handler
 
 from rayohx._http import HttpClient
 from rayohx._http._common import proxy_url
@@ -16,7 +17,7 @@ from rayohx.errors import (
     NetworkTimeoutError,
     TLSError,
 )
-from tests.helpers.http import URL, Handler, make
+from tests.helpers.http import URL, make
 
 
 def failing(error: Exception) -> Handler:
@@ -55,6 +56,17 @@ def test_certificate_problems_are_not_retried() -> None:
         client.fetch_bytes(URL)
     assert info.value.hint
     assert len(recorder.requests) == 1
+
+
+def test_a_broken_secure_connection_is_retried() -> None:
+    error = httpx.ConnectError("handshake failed")
+    error.__cause__ = ssl.SSLError("EOF occurred in violation of protocol")
+    client, recorder, _ = make(failing(error), retries=2)
+    with pytest.raises(NetworkConnectionError) as info:
+        client.fetch_bytes(URL)
+    assert not isinstance(info.value, TLSError)
+    assert info.value.hint
+    assert len(recorder.requests) == 3
 
 
 def test_error_messages_never_contain_credentials() -> None:

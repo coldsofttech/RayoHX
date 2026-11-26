@@ -55,6 +55,37 @@ def test_no_segment_starts_while_paused_and_the_file_is_still_correct(tmp_path: 
     assert not downloader.is_paused
 
 
+def test_events_from_segments_still_running_report_paused(tmp_path: Path) -> None:
+    origin = Origin(10, content="ts")
+    config = DownloadConfig(network=NetworkConfig(retries=0), concurrency=4)
+    downloader = Downloader(
+        BASE + "index.m3u8",
+        output=tmp_path / "out.ts",
+        config=config,
+        transport=httpx.MockTransport(origin),
+    )
+    paused: list[DownloadEvent] = []
+    seen_pause = threading.Event()
+
+    def listen(event: DownloadEvent) -> None:
+        if event.type is EventType.DOWNLOAD_PAUSED:
+            seen_pause.set()
+        elif event.type is EventType.DOWNLOAD_RESUMED:
+            seen_pause.clear()
+        elif seen_pause.is_set():
+            paused.append(event)
+        elif event.type is EventType.SEGMENT_COMPLETED and not downloader.is_paused:
+            downloader.pause()
+            threading.Timer(0.3, downloader.resume).start()
+
+    downloader.events.subscribe(listen)
+    assert downloader.run().success
+    running = {EventType.SEGMENT_STARTED, EventType.SEGMENT_COMPLETED, EventType.DOWNLOAD_PROGRESS}
+    reports = [event for event in paused if event.type in running]
+    assert reports
+    assert {event.state for event in reports} == {DownloadState.PAUSED}
+
+
 def test_a_pause_before_the_download_waits_for_resume(tmp_path: Path) -> None:
     origin, downloader = make(tmp_path, count=3)
     downloader.pause()

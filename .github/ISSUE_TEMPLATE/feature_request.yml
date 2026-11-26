@@ -8,8 +8,6 @@ body:
       label: Which part is this for?
       options:
         - Python Package
-        - Command Line
-        - UI
         - Not Sure
     validations:
       required: true

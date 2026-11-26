@@ -3,6 +3,9 @@ contact_links:
   - name: Report a security vulnerability
     url: https://github.com/coldsofttech/RayoHX/security/policy
     about: Please report security problems privately, not as a public issue.
+  - name: Command line, Docker, desktop or installer issues
+    url: https://github.com/coldsofttech/RayoHX#other-ways-to-use-rayohx
+    about: These live in their own repositories. Open the issue there.
   - name: Questions and support
     url: https://github.com/coldsofttech/RayoHX/blob/main/SUPPORT.md
     about: See how to get help before opening an issue.

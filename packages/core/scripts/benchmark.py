@@ -21,14 +21,17 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from tests.helpers.servers import Route
+    from rayohx_pytest.servers import Route
 
     from rayohx.config import DownloadConfig
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-MEDIA = ROOT / "tests" / "fixtures" / "media" / "h264_aac.ts"
+# shared test helpers (rayohx-pytest)
+from rayohx_pytest.fixtures import FIXTURES  # noqa: E402
+
+MEDIA = FIXTURES / "media" / "h264_aac.ts"
 
 
 def _playlist(count: int) -> bytes:
@@ -39,7 +42,7 @@ def _playlist(count: int) -> bytes:
 
 
 def _routes(count: int, body: bytes) -> dict[str, Route]:
-    from tests.helpers.servers import Reply
+    from rayohx_pytest.servers import Reply
 
     routes: dict[str, Route] = {"/index.m3u8": lambda _s: Reply(body=_playlist(count))}
     for index in range(count):
@@ -48,6 +51,38 @@ def _routes(count: int, body: bytes) -> dict[str, Route]:
 
 
 def _peak_memory_mb() -> float:
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        class Counters(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD),
+                ("PageFaultCount", wintypes.DWORD),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+            ]
+
+        counters = Counters()
+        counters.cb = ctypes.sizeof(counters)
+        kernel32 = ctypes.WinDLL("kernel32")
+        psapi = ctypes.WinDLL("psapi")
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        psapi.GetProcessMemoryInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(Counters),
+            wintypes.DWORD,
+        ]
+        process = kernel32.GetCurrentProcess()
+        psapi.GetProcessMemoryInfo(process, ctypes.byref(counters), counters.cb)
+        return counters.PeakWorkingSetSize / (1024 * 1024)
+
     import resource
 
     peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -61,7 +96,7 @@ def run_scenario(
     import tempfile
     import time
 
-    from tests.helpers.servers import LocalServer
+    from rayohx_pytest.servers import LocalServer
 
     from rayohx import Downloader
 
@@ -86,7 +121,7 @@ def run_scenario(
 
 def scenarios(args: argparse.Namespace) -> list[Callable[[], dict[str, object]]]:
     """The scenarios to run, each a function returning one result row."""
-    from tests.helpers.media import ts_payload
+    from rayohx_pytest.media import ts_payload
 
     from rayohx import OutputFormat
     from rayohx.config import DownloadConfig, OutputConfig

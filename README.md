@@ -1,81 +1,88 @@
 # RayoHX
 
 [![CI](https://github.com/coldsofttech/RayoHX/actions/workflows/ci.yml/badge.svg)](https://github.com/coldsofttech/RayoHX/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/coldsofttech/RayoHX)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/rayohx)](https://pypi.org/project/rayohx/)
+[![Python versions](https://img.shields.io/pypi/pyversions/rayohx)](https://pypi.org/project/rayohx/)
+[![Typed](https://img.shields.io/badge/typing-strict-blue)](https://mypy-lang.org/)
+[![httpx](https://img.shields.io/badge/HTTP-httpx-blue)](https://www.python-httpx.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![License](https://img.shields.io/github/license/coldsofttech/RayoHX)](LICENSE)
 
-Download HLS streams from your terminal, your Python code or a desktop window.
+The RayoHX Python library: look at an HLS stream, choose the quality and tracks you want, and
+download it to a file, all from your own code.
 
-## What is RayoHX?
+Coming from `pym3u8downloader`? See the [migration guide](docs/guides/migration.md).
 
-RayoHX is a tool for saving HLS streams (`.m3u8` links) as ordinary video files. Many websites play
-video as a stream made of many small pieces, which is awkward to save by hand. Give RayoHX the
-stream's web address and it looks at what the stream offers, lets you choose the quality, audio and
-subtitles you want, and puts everything together into a single file you can keep and play anywhere.
+## What you can do
 
-## How it helps
+- Inspect a stream from its web address and see its qualities, audio and subtitle tracks and
+  encryption, without downloading any media
+- Choose a stream by quality, resolution or bitrate limit, or exactly by its number, resolution or
+  name, prefer a video codec or dynamic range, and pick audio and subtitles by language or name
+- Download in one call, with parallel segments, progress events, and cancellation that returns a
+  result instead of an error
+- Pause a running download and resume it later
+- Work with a playlist you already have as text, without fetching it
+- Download several streams one after another into a folder with `download_many`
+- Find and remove the working folders that interrupted downloads leave behind
+- Resume interrupted downloads where they stopped, with disk space needed for the video only
+- Save segments as separate files in a folder, or download just the video of a stream with a
+  separate audio track
+- Save MPEG-TS and fragmented MP4 streams, join a separate audio track into one MP4 and save
+  subtitles as `.vtt` files, with nothing re-encoded
+- Decrypt AES-128 streams, including keys given in the playlist or supplied by your own code;
+  protected (DRM) and live streams are refused with a clear explanation
+- Use proxies (including SOCKS5 and ones from the environment), client certificates, TLS settings,
+  headers, cookies and a speed limit, with automatic retries
+- Refuse damaged or hostile streams with a clear error instead of crashing, and never replace an
+  existing file unless you allow it
+- Keep secrets such as tokens, cookies and proxy passwords out of logs and error messages
 
-- **See before you download**: check a stream's qualities, audio and subtitle tracks and encryption
-  without downloading any video
-- **Get exactly what you want**: pick a quality, resolution or size limit, and the audio and
-  subtitles you need, instead of taking whatever comes first
-- **Finish what you started**: interrupted downloads continue where they stopped
-- **Safe by default**: it never replaces an existing file unless you allow it, and refuses damaged
-  or unsafe streams with a clear explanation instead of failing in a confusing way
-- **Use it your way**: the same features are available from the terminal, from your own Python code,
-  from a container or from a desktop window
+## Install
 
-## Features
+```sh
+pip install rayohx
+```
 
-- Inspect a stream's qualities, audio and subtitle tracks and encryption
-- Choose a stream by quality, resolution, bitrate limit or exact number, prefer a video codec or
-  dynamic range, and pick audio and subtitles by language or name
-- Fast downloads with several pieces fetched at once, a progress display and an optional speed limit
-- Resume interrupted downloads, pause and continue a running one, and clean up the folders that
-  interrupted downloads leave behind
-- Download several streams in one go, from a list of addresses or a file
-- Use a playlist file you already have instead of fetching it
-- Save MPEG-TS and fragmented MP4 streams to a file, or keep the pieces as separate files in a
-  folder
-- Join a separate audio track into one MP4 and save subtitles as `.vtt` files, with nothing
-  re-encoded
-- Download encrypted (AES-128) streams, including ones whose key is stored in a local file you allow
-- Clear explanation when a stream is protected (DRM) or live, as these are not supported
-- Proxies (including SOCKS5 and a proxy login), client certificates, custom headers and cookies
-  (including a browser's `cookies.txt`), with automatic retries
-- Keep your usual options in a settings file, and check what is in effect with `rayohx config`
-- Machine-readable output for scripts, including a stream of download events
-- Tokens, cookies and proxy passwords are kept out of logs and error messages
-
-## Ways to use RayoHX
-
-| Package | What it is | Install |
-|---|---|---|
-| [rayohx](packages/core) | Python library | `pip install rayohx` |
-| [rayohx-cli](packages/cli) | The `rayohx` command | `uv tool install rayohx-cli` |
-| [rayohx-ui](packages/ui) | Desktop window (Windows) | `rayohx-<version>-full-setup.exe` |
-| [rayohx-docker](packages/docker) | The `rayohx` command as a container image | `docker pull ghcr.io/coldsofttech/rayohx` |
-
-- **Python package**: use RayoHX inside your own programs and scripts.
-- **Command line**: run `rayohx info`, `rayohx download`, `rayohx clean` and `rayohx config` from a
-  terminal or a script.
-- **Docker**: the same command line without installing Python, handy for servers and automation.
-- **Desktop window**: work with streams from a window on Windows, no terminal needed.
+Requires Python 3.11 or newer on Windows, Linux or macOS, where a ready-to-use compiled build is
+installed for your platform. An installed FFmpeg is used only as an optional fallback for codecs
+the built-in remuxer cannot copy.
 
 ## Quick start
 
-```sh
-rayohx info https://cdn.example.com/vod/master.m3u8
-rayohx download https://cdn.example.com/vod/master.m3u8 -o movie.mp4
+```python
+import rayohx
+
+url = "https://cdn.example.com/vod/master.m3u8"
+
+playlist = rayohx.inspect(url)
+for variant in playlist.variants:
+    print(variant.height, variant.bandwidth)
+
+result = rayohx.download(url, "video.ts", quality="720p")
+print(result.output.path, result.output.size_bytes)
 ```
+
+## Other ways to use RayoHX
+
+Prefer a command, a container or a window over writing code? They live in their own repositories:
+
+| Project | What it is |
+|---|---|
+| [RayoHX-CLI](https://github.com/coldsofttech/RayoHX-CLI) | The `rayohx` command for the terminal and scripts |
+| [RayoHX-Docker](https://github.com/coldsofttech/RayoHX-Docker) | The command as a container image, no Python needed |
+| [RayoHX-Desktop](https://github.com/coldsofttech/RayoHX-Desktop) | A desktop window for Windows, no terminal needed |
+| [RayoHX-Installer](https://github.com/coldsofttech/RayoHX-Installer) | Installers for Windows and Linux |
 
 ## Learn more
 
-- [Python guide](packages/core/docs/guides/python.md)
-- [Command line guide](packages/cli/docs/guides/cli.md)
-- [Docker guide](packages/docker/docs/docker.md)
+- [Python guide](docs/guides/python.md): inspecting, selecting, downloading, settings, events,
+  errors and logging
+- [Migration guide](docs/guides/migration.md): moving from `pym3u8downloader`
+- [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Support](SUPPORT.md)
+- [Report a problem](https://github.com/coldsofttech/RayoHX/issues)
 
 ## License
 

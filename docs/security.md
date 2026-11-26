@@ -1,25 +1,83 @@
 # Security
 
-A high-level view of how RayoHX is protected. Each package documents its own protections; start there for detail. To report a vulnerability, see [SECURITY.md](../SECURITY.md).
+How the repository is protected, and how the `rayohx` library protects secrets, requests and the machine it runs on. To report a vulnerability, see [SECURITY.md](../SECURITY.md).
 
 ## Packages
 
 | Package | Protects | Notes |
 | --- | --- | --- |
-| core (`rayohx`) | secrets, requests, files, untrusted media, FFmpeg | [Core security](../packages/core/docs/security.md) |
-| CLI (`rayohx`) | secrets you pass, output and logs, the installers | [CLI security](../packages/cli/docs/security.md) |
-| API (`rayohx_api`) | requests when run on its own: API key, response headers, request size limit | [API security](../packages/api/docs/security.md) |
-| UI (`rayohxu`) | the local window server: host and origin checks, start-up token, content security policy | [UI security](../packages/ui/docs/security.md) |
-| Docker | the image: unprivileged user, minimal runtime, no baked-in secrets | [Docker security](../packages/docker/docs/security.md) |
+| core (`rayohx`) | secrets, requests, files, untrusted media, FFmpeg | [Core](#core) |
+| pytest (`rayohx_pytest`) | nothing at run time; test support only | [Pytest plugin](#pytest-plugin) |
 
-The CLI, API, UI and Docker image all build on the core library, so its protections (redaction, input checks, credentials per host, safe file names) apply to each of them.
+## Core
+
+### Secrets you give it
+
+- **Settings hide them.** `repr` and `as_dict()` of the settings leave out header values, cookie values and proxy passwords. Resume state must be built from `as_dict()`, never from the raw objects.
+- **Credentials stay with their host.** Secret headers and configured cookies go only to the starting host and the hosts listed in `credential_hosts`, including across redirects.
+- **Local key files are off by default.** A `file:` key address in a playlist is refused unless `allow_file_keys` is set, so a stream from the internet cannot make the library read files from your machine. `data:` key addresses are always allowed, as they hold the key inside the playlist.
+- **Keys stay in memory.** Decryption keys are never written to disk, and never appear in resume state.
+
+### What it shows and logs
+
+- **Redaction.** URLs (user info and the values of keys such as `token`, `sig` and `key`), `Authorization`, `Cookie` and proxy credentials are hidden in log records and error messages by `rayohx._redaction`. Every exception message and every handler added by `configure_logging` goes through it, including formatted tracebacks.
+- **Errors carry a message and a hint,** not the request that failed.
+
+### Input checks
+
+- Download addresses must be absolute `http` or `https` URLs without control characters.
+- Header names must be valid tokens, and header and cookie values cannot hold line breaks, which stops header injection.
+- Proxies must be `http` or `https`, and redirect targets must be `http` or `https`.
+- **Address guard.** Every request address, including redirect targets, can be vetted by a `url_guard` function, which keeps protection against server-side request forgery possible when the library is used in a server.
+
+### Connections
+
+- **Certificates are checked.** TLS verification is on by default, and a warning is logged whenever it is turned off.
+- **Proxies are explicit.** Proxy settings and environment variables such as `HTTPS_PROXY` are not read implicitly.
+- **Responses are limited.** A playlist may be at most 32 MiB, and a single media request 512 MiB by default.
+- **Every request goes through `HttpClient`,** so these protections cannot be skipped by a new code path.
+
+### Files and folders
+
+- **Working folder.** Its name is a hash of the address and output name, never user input, so it cannot point elsewhere. It is created readable by the current user only, where the system allows, and locked while in use. Resume state holds a fingerprint, counters and a redacted address, never headers, cookies or keys.
+- **File names.** Names made from an address contain only letters, digits, dots, dashes and underscores, never start with a dot, never contain a path separator and are never Windows device names, so a hostile address cannot write outside the chosen folder. A name you give is used as given, but its extension must match the content.
+- **Existing files are safe.** An existing output file is never replaced unless `overwrite` is on. Output is written to a `.part` file and renamed only when complete.
+- **Temporary files.** Separate audio tracks and FFmpeg inputs are saved as hidden files beside the output (never in a shared temporary folder) and removed on success, failure and cancellation.
+
+### Untrusted media
+
+- **Parsers check what they read.** The demuxer and codec parsers read untrusted data, so every length and count is checked against the data actually present, and malformed headers raise a clear error instead of reading past the end. Buffered data waiting for another track is capped at 64 MiB.
+- **Fuzzed.** The playlist parser, the transport stream and MP4 readers, the codec parsers and the subtitle merger are fuzzed with repeatable damage (flipped, cut, removed and inserted bytes, and random data) in `packages/core/tests/unit/test_hardening.py`. Damaged input ends in one of the engine's own errors, never an unhandled exception or an endless loop, and implausible timestamps are ignored instead of breaking the output file. Run it longer with `RAYOHX_FUZZ_SEEDS=1500`.
+- **No DRM claim.** Only plain AES-128 is decrypted. SAMPLE-AES and DRM key formats are refused before downloading.
+
+### FFmpeg
+
+FFmpeg is optional and never bundled. When it is used, it is started without a shell, with a fixed argument list built from paths RayoHX chose itself, no standard input, and only on files already downloaded. It is only asked to copy streams, never to transcode. Its output is shown with secrets removed, and it is stopped at once if the download is cancelled. It is found only on the `PATH` or at a path the user configures.
+
+### Checked end to end
+
+`packages/core/tests/integration/test_security_end_to_end.py` shows over real sockets that:
+
+- credentials are not sent to another host after a redirect
+- redirects to `file:` and other schemes are refused, and redirect loops end
+- segment addresses with `../` cannot write outside the output folder
+- an existing file survives a failed download
+- the output and log never contain a token, header or cookie
+
+### Not included
+
+The library does not sandbox the media it downloads: it checks it, but it runs with the permissions of the program using it. Download only from sources you trust, and keep FFmpeg, if you use it, up to date. A program that lets other people choose the address should set a `url_guard`, restrict `credential_hosts`, and run the download with limited permissions.
+
+## Pytest plugin
+
+`rayohx_pytest` is test support and is not published to PyPI, so it never ships with a release of the library. Its local servers listen on `127.0.0.1` only and stop after each test, and the self-signed certificate from `tls_certificate` is valid for `127.0.0.1` only and exists for tests. Do not reuse either outside tests, and do not point it at a public address.
 
 ## Supply chain
 
-Dependabot covers Python, npm and Actions. Each package has its own audit and security workflows (`audit-<package>.yml`, `security-<package>.yml`) that check locked dependencies weekly and run static analysis. Dependency review blocks vulnerable additions on pull requests, and the lock files are committed. Releases are published with trusted publishing, with no stored token (see [releasing](releasing.md)).
+The library depends only on `httpx` and `cryptography`. Dependabot covers the repository's dependencies, `audit.yml` audits the locked dependencies weekly, `security.yml` runs Semgrep, and dependency review blocks vulnerable additions on pull requests. The lock files are committed. Releases are published with trusted publishing, with no stored token (see [packaging](packaging.md#releasing-to-pypi)).
 
 ## Rules to keep
 
-- Keep every protection on unless the maintainer says otherwise.
-- Document a new protection in the package's `docs/security.md`.
+- Keep every protection on unless the maintainer says otherwise, and document a new one here.
+- Never log or show a URL, header, key or token without `_redaction` first.
 - Explain any `# noqa` or `# nosemgrep` with a reason in the comment.

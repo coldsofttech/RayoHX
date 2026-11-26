@@ -2,6 +2,7 @@ import gzip
 
 import httpx
 import pytest
+from rayohx_pytest.mocks import ok, sequence
 
 from rayohx import CancellationToken
 from rayohx.errors import (
@@ -9,7 +10,7 @@ from rayohx.errors import (
     ConfigurationError,
     HTTPError,
 )
-from tests.helpers.http import URL, make, ok, sequence
+from tests.helpers.http import URL, make
 
 
 def test_fetch_text_returns_text_and_address() -> None:

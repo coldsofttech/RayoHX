@@ -1,4 +1,5 @@
 import pytest
+from rayohx_pytest.media import encrypt
 
 from rayohx import EncryptionInfo, EncryptionMethod
 from rayohx._crypto import (
@@ -10,7 +11,7 @@ from rayohx.errors import (
     DecryptionError,
 )
 from tests.helpers.crypto import DATA, segment
-from tests.helpers.media import BASE, IV, KEY, encrypt
+from tests.helpers.media import BASE, IV, KEY
 
 
 def test_decrypt_round_trip() -> None:

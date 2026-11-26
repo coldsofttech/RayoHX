@@ -1,24 +1,15 @@
 name: Release
 
-# Runs when a GitHub release is published. The tag decides what is released, and each part waits for
-# the approval of its own environment (Settings > Environments) before it publishes anything:
+# Runs when a GitHub release is published with a tag vX.Y.Z. It builds the rayohx library as compiled
+# wheels (one Nuitka .pyd on Windows, .so elsewhere) with cibuildwheel, one per OS, architecture and
+# Python version, with no sdist and so no .py sources. Once the `core` environment is approved
+# (Settings > Environments), it publishes them to PyPI with trusted publishing (no stored tokens) and
+# attaches them to the release. The pytest plugin is not released: it is installed from git.
 #
-#   vX.Y.Z          core    the rayohx package to PyPI                       environment: core
-#   cli-vX.Y.Z      cli     the rayohx-cli package to PyPI                   environment: cli
-#   installer-vX.Y.Z installer the full Windows setup (command line and window), the
-#                           portable zip, and the deb and rpm packages on
-#                           the GitHub release                               environment: installer
-#   docker-vX.Y.Z   docker  the image to GHCR                                environment: docker
-#
-# After a release is published, the update-latest action keeps the repository's Latest badge on the newest
-# core release (core owns it) and moves a <package>-latest tag and pre-release (core-latest, cli-latest,
-# installer-latest, docker-latest) to the new version, so every package has its own stable "latest".
-# Pre-releases change nothing.
-#
-# The tag must match the version in the package's pyproject.toml (installer/build.toml for the installer). Release core before cli, because
-# rayohx-cli depends on the rayohx package on PyPI. SIGN_COMMAND (repository variable) optionally
-# signs the installers; {file} marks where the path of one file goes. Homebrew, Scoop and winget
-# are not updated for now.
+# The tag must match the version in packages/core/pyproject.toml (read from __version__ in
+# packages/core/src/rayohx/__init__.py). The RayoHX-CLI, RayoHX-Docker, RayoHX-Desktop and
+# RayoHX-Installer repositories release on their own, and rayohx-cli depends on the rayohx package on
+# PyPI, so release core first.
 on:
   release:
     types: [published]
@@ -31,17 +22,46 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  core:
+  core-check:
+    name: core check tag
     if: startsWith(github.event.release.tag_name, 'v')
-    uses: ./.github/workflows/release-core.yml
-    permissions:
-      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Check the tag
+        uses: ./.github/actions/check-release-tag
+        with:
+          package: rayohx
+          prefix: v
 
-  # Publishing is a job of this workflow, not of the called one: PyPI trusted publishing does not
-  # support reusable workflows (the token names the called workflow, not release.yml).
+  core-build:
+    name: core build (${{ matrix.os }})
+    needs: core-check
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15-intel, macos-latest]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Build the compiled wheels
+        uses: pypa/cibuildwheel@v4.3.5
+        with:
+          package-dir: packages/core
+          output-dir: dist
+      - name: Upload the distribution files
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist-${{ matrix.os }}
+          path: dist/*.whl
+
   core-publish:
     name: core publish (PyPI)
-    needs: core
+    needs: core-build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: core
@@ -54,58 +74,10 @@ jobs:
       - name: Download the distribution files
         uses: actions/download-artifact@v8
         with:
-          name: dist
+          pattern: dist-*
+          merge-multiple: true
           path: dist/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
       - name: Attach the files to the release
         uses: ./.github/actions/attach-release-files
-      - name: Update the latest markers
-        uses: ./.github/actions/update-latest
-        with:
-          package: core
-
-  cli:
-    if: startsWith(github.event.release.tag_name, 'cli-v')
-    uses: ./.github/workflows/release-cli.yml
-    permissions:
-      contents: read
-
-  cli-publish:
-    name: cli publish (PyPI, GitHub release)
-    needs: cli
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: cli
-    permissions:
-      contents: write # attach files to the release
-      id-token: write # PyPI trusted publishing
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-      - name: Download the distribution files
-        uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-      - name: Attach the files to the release
-        uses: ./.github/actions/attach-release-files
-      - name: Update the latest markers
-        uses: ./.github/actions/update-latest
-        with:
-          package: cli
-
-  installer:
-    if: startsWith(github.event.release.tag_name, 'installer-v')
-    uses: ./.github/workflows/release-installer.yml
-    permissions:
-      contents: write
-
-  docker:
-    if: startsWith(github.event.release.tag_name, 'docker-v')
-    uses: ./.github/workflows/release-docker.yml
-    permissions:
-      contents: write # move the docker-latest pointer
-      packages: write

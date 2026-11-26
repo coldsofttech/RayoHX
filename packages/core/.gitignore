@@ -36,8 +36,6 @@ dist/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
-.hypothesis/
-.schemathesis/
 .coverage
 .coverage.*
 htmlcov/
@@ -45,5 +43,8 @@ coverage.xml
 
 .temp/
 
-# Node (rayohx_ui/ui); its build output is covered by dist/ above
-node_modules/
+# Smoke-test scripts (scripts/smoke): virtual environment, built wheels, data and logs
+scripts/smoke/.venv/
+scripts/smoke/wheels/
+scripts/smoke/data/
+scripts/smoke/*.log

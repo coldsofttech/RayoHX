@@ -2,6 +2,7 @@ import struct
 from pathlib import Path
 
 import pytest
+from rayohx_pytest.site import MEDIA
 
 from rayohx._mux._boxes import box
 from rayohx._mux._fmp4 import build_init_ordered
@@ -15,7 +16,7 @@ from rayohx._mux._fmp4_source import (
 from rayohx._mux._mp4read import find_box, iter_boxes
 from rayohx._mux._muxer import Mp4Muxer
 from rayohx.errors import FinalizationError, UnsupportedCodecError
-from tests.helpers.mux import MEDIA, config, read_fragments, top_level
+from tests.helpers.mux import config, read_fragments, top_level
 
 HLS = MEDIA / "hls_fmp4"
 
@@ -190,7 +191,7 @@ def test_a_jump_in_decode_time_is_closed_up() -> None:
 
 
 def test_boxes_that_are_not_media_are_skipped() -> None:
-    from tests.helpers.media import box
+    from rayohx_pytest.media import box
 
     padded = box(b"emsg", b"x" * 12) + VIDEO[1][0] + box(b"free", b"y" * 5) + box(b"prft", bytes(8))
     out = join((VIDEO[0], [padded]))
