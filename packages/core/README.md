@@ -47,7 +47,7 @@ Want a ready-made command instead? Install the `rayohx` command line from `rayoh
 pip install rayohx
 ```
 
-Requires Python 3.11 or newer on Windows, Linux or macOS, where a ready-to-use compiled build is installed for your platform. An installed FFmpeg is used only as an optional fallback for codecs
+Requires Python 3.11 or newer on 64-bit Windows, Linux or macOS, where a ready-to-use compiled build is installed for your platform. An installed FFmpeg is used only as an optional fallback for codecs
 the built-in remuxer cannot copy.
 
 ## Quick start

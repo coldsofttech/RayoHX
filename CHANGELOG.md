@@ -12,7 +12,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
-- The PyPI package is now compiled wheels for Windows, Linux and macOS, with no source files.
+- The PyPI package is now compiled wheels for 64-bit Windows, Linux and macOS, with no source files.
 - Core tests and the benchmark script now use the test fixtures and helpers shared across the project.
 
 ### Fixed
