@@ -42,9 +42,8 @@ where = ["src"]
 [tool.cibuildwheel]
 build = "cp311-* cp312-* cp313-* cp314-* cp315-*"
 environment = { PYD_BUILD = "1" }
-test-requires = "pytest"
-before-test = "pip install {project}/packages/pytest"
-test-command = "pytest -o addopts= {package}/tests/unit --ignore={package}/tests/unit/scripts"
+# The unit tests run on the source in every pull request, so each wheel only gets a smoke test.
+test-command = "python {package}/scripts/wheel_smoke.py --compiled"
 
 # 64-bit only: cryptography publishes no 32-bit Windows wheel, so a 32-bit build could not install it.
 [tool.cibuildwheel.windows]
