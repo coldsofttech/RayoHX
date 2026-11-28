@@ -7,9 +7,9 @@ name: Release
 # attaches them to the release. The pytest plugin is not released: it is installed from git.
 #
 # The tag must match the version in packages/core/pyproject.toml (read from __version__ in
-# packages/core/src/rayohx/__init__.py). The RayoHX-CLI, RayoHX-Docker, RayoHX-Desktop and
-# RayoHX-Installer repositories release on their own, and rayohx-cli depends on the rayohx package on
-# PyPI, so release core first.
+# packages/core/src/rayohx/__init__.py). The RayoHX-CLI, RayoHX-Docker and RayoHX-Desktop
+# repositories release on their own, and rayohx-cli depends on the rayohx package on PyPI, so release
+# core first.
 on:
   release:
     types: [published]
