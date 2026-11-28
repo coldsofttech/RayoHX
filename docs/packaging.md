@@ -1,6 +1,6 @@
 # Core packaging and releasing
 
-How the `rayohx` library is packaged and released to PyPI. The command line, Docker image, desktop window and installers are released from their own repositories.
+How the `rayohx` library is packaged and released to PyPI. The command line, Docker image and desktop window, with their installers, are released from their own repositories.
 
 ## What is built
 

@@ -73,7 +73,6 @@ Prefer a command, a container or a window over writing code? They live in their 
 | [RayoHX-CLI](https://github.com/coldsofttech/RayoHX-CLI) | The `rayohx` command for the terminal and scripts |
 | [RayoHX-Docker](https://github.com/coldsofttech/RayoHX-Docker) | The command as a container image, no Python needed |
 | [RayoHX-Desktop](https://github.com/coldsofttech/RayoHX-Desktop) | A desktop window for Windows, no terminal needed |
-| [RayoHX-Installer](https://github.com/coldsofttech/RayoHX-Installer) | Installers for Windows and Linux |
 
 ## Learn more
 
